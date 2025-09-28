@@ -1,103 +1,153 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useState } from "react";
+
+export default function HomePage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Searching for:", searchQuery);
+    alert(`Searching for: ${searchQuery}`);
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-background">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Main Content */}
+      <div className="flex items-center justify-center pt-20 pb-8 px-4">
+        <div className="max-w-4xl w-full text-center">
+          {/* Hero Section */}
+          <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl mb-6 text-[#0A400C] font-bold">
+            Empowering Neurodivergent Talent
+          </h1>
+            <p className="text-xl text-[#3b6b3d] mb-8 max-w-2xl mx-auto">
+              Discover your potential and connect with opportunities that match
+              your unique talents.
+            </p>
+          </div>
+
+          {/* Search Bar Section */}
+          <div className="mb-12">
+            <div className="max-w-2xl mx-auto">
+              <form onSubmit={handleSearch} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for talents, skills, or opportunities..."
+                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white p-2 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </button>
+              </form>
+
+              {/* Search Suggestions */}
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <span className="text-sm text-[#3a4043]">
+                  Popular searches:
+                </span>
+                {["Leadership", "Design", "Programming", "Marketing", "Analytics"].map(
+                  (tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setSearchQuery(tag)}
+                      className="px-3 py-1 bg-white/60 border border-[#e8e6f0] rounded-full text-sm text-[#6b8a7a] hover:bg-[#6b8a7a] hover:text-white transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <Link
+            href="/role-selection"
+            className="w-full sm:w-auto bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white font-medium px-8 py-3 rounded-lg transition-colors shadow-lg"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Get Started - Choose Your Role
+          </Link>
+          <Link
+            href="/dashboard"
+            className="w-full sm:w-auto bg-white border-2 border-[#6b8a7a] text-[#6b8a7a] hover:bg-[#6b8a7a] hover:text-white font-medium px-8 py-3 rounded-lg transition-colors"
           >
-            Read our docs
-          </a>
+            Go to Dashboard
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+          {/* Features */}
+          <div className="grid md:grid-cols-4 gap-6 mt-16">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+              <div className="text-3xl mb-4">🎯</div>
+              <h3 className="text-lg font-semibold text-[#3a4043] mb-2">
+                Talent Discovery
+              </h3>
+              <p className="text-[#3a4043] text-sm">
+                Uncover your hidden talents and strengths through our
+                comprehensive assessment tools.
+              </p>
+            </div>
+
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+              <div className="text-3xl mb-4">🤖</div>
+              <h3 className="text-lg font-semibold text-[#3a4043] mb-2">
+                AI Mock Interviews
+              </h3>
+              <p className="text-[#3a4043] text-sm">
+                Practice with our 3D AI interviewer in a safe, neurodivergent-friendly environment.
+              </p>
+              <Link href="/mock-interview" className="inline-block mt-3">
+                <button className="text-xs bg-[#6b8a7a] text-white px-3 py-1 rounded-full hover:bg-[#5d7c6b] transition-colors">
+                  Try Now
+                </button>
+              </Link>
+            </div>
+
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+              <div className="text-3xl mb-4">🤝</div>
+              <h3 className="text-lg font-semibold text-[#3a4043] mb-2">
+                Perfect Matches
+              </h3>
+              <p className="text-[#3a4043] text-sm">
+                Connect with opportunities and teams that align with your unique
+                skill set.
+              </p>
+            </div>
+
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+              <div className="text-3xl mb-4">📈</div>
+              <h3 className="text-lg font-semibold text-[#3a4043] mb-2">
+                Growth Tracking
+              </h3>
+              <p className="text-[#3a4043] text-sm">
+                Monitor your progress and development across different areas of
+                expertise.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

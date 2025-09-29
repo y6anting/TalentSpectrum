@@ -72,7 +72,7 @@ export default function Dashboard() {
   }
 
   // Redirect to appropriate dashboard based on role
-  if (session.user.role === "EMPLOYER") {
+  if (session.user.role === "CANDIDATE") {
     return <CandidateDashboard user={session.user} activeTab={activeTab} setActiveTab={setActiveTab} />;
   } else {
     return <EmployerDashboard user={session.user} activeTab={activeTab} setActiveTab={setActiveTab} />;

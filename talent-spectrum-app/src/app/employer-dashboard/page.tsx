@@ -72,7 +72,7 @@ export default function EmployerDashboard() {
     },
     {
       id: "3",
-      title: "Data Scientist",
+      title: "Data Analyst",
       department: "Analytics",
       location: "On-site",
       type: "Full-time",

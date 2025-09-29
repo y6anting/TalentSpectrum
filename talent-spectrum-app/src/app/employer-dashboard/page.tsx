@@ -46,7 +46,7 @@ export default function EmployerDashboard() {
   const jobPostings = [
     {
       id: "1",
-      title: "Frontend Developer",
+      title: "Backend Developer",
       department: "Engineering",
       location: "Remote",
       type: "Full-time",

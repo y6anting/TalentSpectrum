@@ -13,7 +13,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-background">
+    <div className="bg-gradient-to-b from-emerald-50 to-background">
 
       {/* Main Content */}
       <div className="flex items-center justify-center pt-20 pb-8 px-4">

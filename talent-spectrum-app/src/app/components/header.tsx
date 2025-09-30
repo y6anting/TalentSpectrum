@@ -11,11 +11,11 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/discover", label: "Discover" },
     { href: "/jobListing", label: "Jobs" },
-    { href: "/about", label: "About" },
+    { href: "/JobCoach", label: "Job Coach" },
+    { href: "/JobSeeker", label: "Job Seeker" },
     // { href: "/contact", label: "Contact" },
-    {href: "dashboard", label: "Dashboard"}
+    {href: "Employer", label: "Employer"}
   ];
 
   const isActive = (path: string) => pathname === path;

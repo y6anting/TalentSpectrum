@@ -21,11 +21,16 @@ export default function HomePage() {
           {/* Hero Section */}
           <div className="mb-12">
           <h1 className="text-4xl md:text-5xl mb-6 text-[#0A400C] font-bold">
-            Empowering Neurodivergent Talent
+            Empowering Neurodivergent Talents.
+            <br></br>
+            Enabling Inclusive Workplaces.
           </h1>
             <p className="text-xl text-[#3b6b3d] mb-8 max-w-2xl mx-auto">
-              Discover your potential and connect with opportunities that match
-              your unique talents.
+              Turning inclusion into opportunities for all -
+              <br></br>
+              where Neurodivergent Talent finds fulfilling careers,
+              <br></br>
+              and Employers discover exceptional Talents.
             </p>
           </div>
 
@@ -37,7 +42,7 @@ export default function HomePage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search for talents, skills, or opportunities..."
+                  placeholder="Search jobs, inclusive employers, coaches & more..."
                   className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
                 />
                 <button
@@ -65,7 +70,7 @@ export default function HomePage() {
                 <span className="text-sm text-[#3a4043]">
                   Popular searches:
                 </span>
-                {["Leadership", "Design", "Programming", "Marketing", "Analytics"].map(
+                {["Analyst", "Content Marketing", "Designer", "Engineer", "HR"].map(
                   (tag) => (
                     <button
                       key={tag}
@@ -80,20 +85,13 @@ export default function HomePage() {
             </div>
           </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-          <Link
-            href="/role-selection"
-            className="w-full sm:w-auto bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white font-medium px-8 py-3 rounded-lg transition-colors shadow-lg"
-          >
-            Get Started - Choose Your Role
-          </Link>
-          <Link
-            href="/dashboard"
-            className="w-full sm:w-auto bg-white border-2 border-[#6b8a7a] text-[#6b8a7a] hover:bg-[#6b8a7a] hover:text-white font-medium px-8 py-3 rounded-lg transition-colors"
-          >
-            Go to Dashboard
-          </Link>
+        {/* Employers and Jobs Highlights */}
+        <div className="mb-12">
+          <h2 className="text-4xl md:text-4xl mb-6 text-[#0A400C] font-bold">
+            Empowering Neurodivergent Talents.
+            <br></br>
+            Enabling Inclusive Workplaces.
+          </h2>
         </div>
 
           {/* Features */}

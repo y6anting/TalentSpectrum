@@ -10,8 +10,8 @@ import { Search, Filter, SlidersHorizontal } from "lucide-react";
 const jobs = [
   {
     id: "1",
-    title: "Developer",
-    company: "Gamuda",
+    title: "Frontend Developer",
+    company: "NeuroTech",
     location: "Remote",
     type: "Full-time",
     salary: "$70k - $90k",
@@ -26,8 +26,8 @@ const jobs = [
   {
     id: "2",
     title: "Data Analyst",
-    company: "SLB",
-    location: "Damansara",
+    company: "InclusionWorks",
+    location: "Singapore",
     type: "Part-time",
     salary: "$40k - $55k",
     isRemote: false,
@@ -41,7 +41,7 @@ const jobs = [
   {
     id: "3",
     title: "UX Designer",
-    company: "Google",
+    company: "DesignForward",
     location: "Hybrid",
     type: "Full-time",
     salary: "$65k - $85k",
@@ -55,8 +55,8 @@ const jobs = [
   },
   {
     id: "4",
-    title: "Consultant",
-    company: "PwC",
+    title: "Software Engineer",
+    company: "TechInclusive",
     location: "Remote",
     type: "Full-time",
     salary: "$80k - $110k",
@@ -65,7 +65,7 @@ const jobs = [
     hasAccommodations: true,
     isInclusive: true,
     description:
-      "Provide consultancy in a neurodivergent-friendly environment.",
+      "Build scalable software solutions in a neurodivergent-friendly environment.",
     posted: "3 days ago",
   },
 ];
@@ -94,9 +94,9 @@ export default function OpportunitiesPage() {
 
   const filters = [
     { id: "remote", label: "Remote" },
-    { id: "hybrid", label: "Hybrid" },
     { id: "flexible", label: "Flexible Hours" },
-    { id: "mentalhealthsupport", label: "Mental Health Support" },
+    { id: "accommodations", label: "Accommodations Available" },
+    { id: "inclusive", label: "Neurodivergent Friendly" },
     { id: "fulltime", label: "Full-time" },
     { id: "parttime", label: "Part-time" },
   ];
@@ -138,7 +138,7 @@ export default function OpportunitiesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search jobs, inclusive employers, coaches & more..."
+                placeholder="Search jobs, companies, or skills..."
                 className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-white shadow-lg"
               />
               <button

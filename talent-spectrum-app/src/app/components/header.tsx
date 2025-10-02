@@ -15,6 +15,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
+    { href: "/about", label: "About" },
     { href: "/jobListing", label: "Jobs" },
     { href: "/JobCoach", label: "Job Coach" },
     { href: "/JobSeeker", label: "Job Seeker" },
@@ -50,7 +51,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                     ? "text-[#6b8a7a] font-medium"
                     : "text-[#3a4043] hover:text-[#6b8a7a]"
                 }`}
-                onClick={() => setCurrentPage?.(item.page)}
+                // onClick={() => setCurrentPage?.(item.page)}
               >
                 {item.label}
               </Link>
@@ -101,7 +102,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                       : "text-[#3a4043] hover:text-[#6b8a7a] hover:bg-gray-50"
                   }`}
                   onClick={() => {
-                    setCurrentPage?.(item.page);
+                    // setCurrentPage?.(item.page);
                     setIsMobileMenuOpen(false);
                   }}
                 >

@@ -15,16 +15,18 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/discover", label: "Discover", page: "discover" },
-    { href: "/jobListing", label: "Jobs", page: "jobs" },
-    { href: "/about", label: "About", page: "about" },
-    { href: "/dashboard", label: "Dashboard", page: "dashboard" },
+    { href: "/about", label: "About" },
+    { href: "/jobListing", label: "Jobs" },
+    // { href: "/JobCoach", label: "Job Coach" },
+    { href: "/JobSeeker", label: "Job Seeker" },
+    // { href: "/contact", label: "Contact" },
+    {href: "Employer", label: "Employer"}
   ];
 
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="w-full bg-[#f5faf7] backdrop-blur-md border-b border-[#e8e6f0] sticky top-0 z-100">
+    <header className="w-full bg-[#ecebff] backdrop-blur-md border-b border-[#e8e6f0] sticky top-0 z-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -47,9 +49,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 className={`transition-colors ${
                   isActive(item.href)
                     ? "text-[#6b8a7a] font-medium"
-                    : "text-[#3a4043] hover:text-[#6b8a7a]"
+                    : "text-[#3a4043] hover:text-[#827CFF]"
                 }`}
-                onClick={() => setCurrentPage?.(item.page)}
+                // onClick={() => setCurrentPage?.(item.page)}
               >
                 {item.label}
               </Link>
@@ -60,14 +62,14 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/login"
-              className="text-[#6b8a7a] hover:text-[#5d7c6b] font-medium transition-colors"
+              className="text-[#635bff] hover:text-[#827CFF] font-medium transition-colors"
               onClick={() => setCurrentPage?.("login")}
             >
               Sign In
             </Link>
             <Link
               href="/role-selection"
-              className="bg-[#3b6b3d] hover:bg-[#508D4E] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="bg-[#635bff] hover:bg-[#827CFF] text-white px-4 py-2 rounded-lg font-medium transition-colors"
               onClick={() => setCurrentPage?.("role-selection")}
             >
               Get Started
@@ -100,7 +102,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                       : "text-[#3a4043] hover:text-[#6b8a7a] hover:bg-gray-50"
                   }`}
                   onClick={() => {
-                    setCurrentPage?.(item.page);
+                    // setCurrentPage?.(item.page);
                     setIsMobileMenuOpen(false);
                   }}
                 >

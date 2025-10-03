@@ -13,14 +13,14 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-emerald-50 to-background">
+    <div className="bg-gradient-to-b from-violet-50 to-background">
 
       {/* Main Content */}
       <div className="flex items-center justify-center pt-20 pb-8 px-4">
         <div className="max-w-6xl w-full text-center">
           {/* Hero Section */}
           <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl mb-6 text-[#0A400C] font-bold">
+          <h1 className="text-4xl md:text-5xl mb-6 text-[#635bff] font-bold">
             Neurodiversity:
             <br></br>
             Innovation Beyond Inclusion.
@@ -36,11 +36,11 @@ export default function HomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search jobs, inclusive employers, coaches & more..."
-                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
+                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white p-2 rounded-lg transition-colors"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors"
                 >
                   <svg
                     className="w-5 h-5"
@@ -68,7 +68,7 @@ export default function HomePage() {
                     <button
                       key={tag}
                       onClick={() => setSearchQuery(tag)}
-                      className="px-3 py-1 bg-white/60 border border-[#e8e6f0] rounded-full text-sm text-[#6b8a7a] hover:bg-[#6b8a7a] hover:text-white transition-colors"
+                      className="px-3 py-1 bg-white/60 border border-[#e8e6f0] rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors"
                     >
                       {tag}
                     </button>
@@ -80,14 +80,14 @@ export default function HomePage() {
 
         {/* Employers and Jobs Highlights */}
         <div className="mb-12">
-          <h2 className="text-4xl md:text-4xl mb-6 text-[#0A400C] font-bold">
+          <h2 className="text-4xl md:text-4xl mb-6 text-[#635bff] font-bold">
             Inclusive Careers For You.
           </h2>
         </div>
 
           {/* Features */}
           <div className="grid md:grid-cols-4 gap-6 mt-16">
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#635bff]">
               <div className="text-3xl mb-4 flex justify-center"><img src="/Google_Logo.png"
                   alt="Google Logo"
                   style={{ width: 'auto', height: '80px'}}
@@ -104,13 +104,13 @@ export default function HomePage() {
                 RM65k - 85k / annum
               </p>
               <Link href="/mock-interview" className="inline-block mt-3">
-                <button className="text-xs bg-[#6b8a7a] text-white px-3 py-1 rounded-full hover:bg-[#5d7c6b] transition-colors">
+                <button className="text-xs bg-[#635bff] text-white px-3 py-1 rounded-full hover:bg-[#827CFF] transition-colors">
                   Apply Now
                 </button>
               </Link>
             </div>
 
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#635bff]">
               <div className="text-3xl mb-4 flex justify-center"><img src="/PwC_Logo.png"
                   alt="PwC Logo"
                   style={{ width: 'auto', height: '80px'}}
@@ -127,13 +127,13 @@ export default function HomePage() {
                 RM80k - 110k / annum
               </p>
               <Link href="/mock-interview" className="inline-block mt-3">
-                <button className="text-xs bg-[#6b8a7a] text-white px-3 py-1 rounded-full hover:bg-[#5d7c6b] transition-colors">
+                <button className="text-xs bg-[#635bff] text-white px-3 py-1 rounded-full hover:bg-[#827CFF] transition-colors">
                   Apply Now
                 </button>
               </Link>
             </div>
 
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#635bff]">
               <div className="text-3xl mb-4 flex justify-center"><img src="/Gamuda_Logo.png"
                   alt="Gamuda Logo"
                   style={{ width: 'auto', height: '80px'}}
@@ -150,13 +150,13 @@ export default function HomePage() {
                 RM70k - 90k / annum
               </p>
               <Link href="/mock-interview" className="inline-block mt-3">
-                <button className="text-xs bg-[#6b8a7a] text-white px-3 py-1 rounded-full hover:bg-[#5d7c6b] transition-colors">
+                <button className="text-xs bg-[#635bff] text-white px-3 py-1 rounded-full hover:bg-[#827CFF] transition-colors">
                   Apply Now
                 </button>
               </Link>
             </div>
 
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#e8e6f0]">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-[#635bff]">
               <div className="text-3xl mb-4 flex justify-center"><img src="/SLB_Logo.png"
                   alt="SLB Logo"
                   style={{ width: 'auto', height: '80px'}}
@@ -173,7 +173,7 @@ export default function HomePage() {
                 RM40k - 55k / annum
               </p>
               <Link href="/mock-interview" className="inline-block mt-3">
-                <button className="text-xs bg-[#6b8a7a] text-white px-3 py-1 rounded-full hover:bg-[#5d7c6b] transition-colors">
+                <button className="text-xs bg-[#635bff] text-white px-3 py-1 rounded-full hover:bg-[#827CFF] transition-colors">
                   Apply Now
                 </button>
               </Link>
@@ -187,19 +187,19 @@ export default function HomePage() {
                  
         {/* Job Coaches Section */}
         <div className="mb-12">
-          <h2 className="text-4xl md:text-4xl mb-6 text-[#0A400C] font-bold">
+          <h2 className="text-4xl md:text-4xl mb-6 text-[#635bff] font-bold">
             Job Coaches Matches To You.
           </h2>
         </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#e8e6f0]">
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#635bff]">
               <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
                 <img src="/LeeCheeTat.png"
                 alt="Profile photo of Lee Chee Tat"
                 className="w-full h-full object-cover"/>
                 </div>
               <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Lee Chee Tat</h3>
-              <p className="text-[#6b8a7a] mb-3">Expert in <br></br>Autism Spectrum Condition</p>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>Autism Spectrum Condition</p>
               <p className="text-sm text-[#3a4043] mb-3">
                 <em>Certified Professional Coach, Neurodiversity-Affirming Coach.</em>
               </p>
@@ -208,14 +208,14 @@ export default function HomePage() {
               </p>
             </div>
             
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#e8e6f0]">
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#635bff]">
               <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
                 <img src="/JohnStefan.png"
                 alt="Profile photo of John Stefan"
                 className="w-full h-full object-cover"/>
               </div>
               <h3 className="text-xl font-semibold text-[#3a4043] mb-2">John Stefan</h3>
-              <p className="text-[#6b8a7a] mb-3">Expert in <br></br>ADHD and Dyslexia</p>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>ADHD and Dyslexia</p>
               <p className="text-sm text-[#3a4043] mb-3">
                 <em>ADHD Coach Practitioner, Certified Career Services Provider.</em>
               </p>
@@ -224,14 +224,14 @@ export default function HomePage() {
               </p>
             </div>
             
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#e8e6f0]">
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-[#635bff]">
               <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
                 <img src="/DrIsaacEbi.png"
                 alt="Profile photo of Dr. Isaac Ebi"
                 className="w-full h-full object-cover"/>
               </div>
               <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Dr. Isaac Ebi</h3>
-              <p className="text-[#6b8a7a] mb-3">Expert in <br></br>Dyslexia and Dyspraxia</p>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>Dyslexia and Dyspraxia</p>
               <p className="text-sm text-[#3a4043] mb-3">
                 <em>Ph.D. in Occupational Psychology, ICF Professional Certified Coach.</em>
               </p>

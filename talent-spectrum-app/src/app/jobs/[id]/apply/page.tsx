@@ -1,235 +1,593 @@
-"use client";
+"use client"
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { Button } from "@/app/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
-import { Badge } from "@/app/components/badge";
-import { Upload, FileText, Shield, Heart, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Button } from "@/app/components//button";
+import { Card, CardContent, CardHeader } from "@/app/components/card";
+import { Input } from "@/app/components/input";
+import { Label } from "@/app/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/select";
+import { Textarea } from "@/app/components/textarea";
+import { Checkbox } from "@/app/components/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/app/components/radio-group";
+import { Separator } from "@/app/components//separator";
+import {
+  ArrowLeft,
+  Upload,
+  Plus,
+  X,
+  FileText,
+  User,
+} from "lucide-react";
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-interface JobApplicationPageProps {
-  params: {
-    id: string;
-  };
+gsap.registerPlugin(ScrollTrigger);
+
+interface JobApplicationFormProps {
+  jobId: string;
+  setCurrentPage: (page: string) => void;
 }
 
-export default function JobApplicationPage({ params }: JobApplicationPageProps) {
+interface Experience {
+  id: string;
+  title: string;
+  company: string;
+  duration: string;
+  description: string;
+}
+
+interface Education {
+  id: string;
+  institution: string;
+  degree: string;
+  year: string;
+}
+
+interface Skill {
+  id: string;
+  name: string;
+}
+
+export default function JobApplicationForm({
+  jobId,
+  setCurrentPage,
+}: JobApplicationFormProps) {
+  const [fillMethod, setFillMethod] = useState<
+    "resume" | "manual" | null
+  >(null);
+  
+  // Animation refs
+  const backButtonRef = useRef<HTMLDivElement>(null);
+  const selectionHeaderRef = useRef<HTMLDivElement>(null);
+  const selectionCardsRef = useRef<HTMLDivElement>(null);
+  const formHeaderRef = useRef<HTMLDivElement>(null);
+  const formSectionsRef = useRef<HTMLDivElement>(null);
+  
   const [formData, setFormData] = useState({
-    personalInfo: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      location: "",
-    },
-    workPreferences: {
-      preferredCommunication: "email",
-      workingHours: "flexible",
-      workLocation: "remote",
-    },
-    accommodations: {
-      needsAccommodations: false,
-      accommodationDetails: "",
-      specificNeeds: [] as string[],
-    },
-    application: {
-      coverLetter: "",
-      portfolio: "",
-      availability: "",
-    },
+    // Personal Information
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    citizenship: "",
+    gender: "",
+    race: "",
+
+    // Contact & Address
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    postcode: "",
+
+    // Medical & Neurodivergent Information
+    isNeurodivergent: "",
+    neurodivergentConditions: [] as string[],
+    hasOkuCard: "",
+    okuNumber: "",
+    
+    // Neurodivergent Strengths (multiple choice)
+    neurodivergentStrengths: [] as string[],
+    
+    // Preferred Communication Style
+    communicationMedium: "",
+    teamCollaborationStyle: "",
+    checkInFrequency: "",
+    presentationComfort: "",
+    needsJobCoach: "",
+    
+    // Environmental & Sensory Needs
+    auditoryPreference: "",
+    workspaceType: "",
+    workdayStructure: "",
+
+    // Job Preferences
+    preferredJobTitle: "",
+    workType: "",
+    workMode: "",
+
+    // Additional Info
+    coverLetter: "",
   });
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [files, setFiles] = useState<{[key: string]: File | null}>({
-    resume: null,
-    portfolio: null,
-  });
+  const [experiences, setExperiences] = useState<Experience[]>(
+    [],
+  );
+  const [education, setEducation] = useState<Education[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [resumeFile, setResumeFile] = useState<File | null>(
+    null,
+  );
 
-  const accommodationOptions = [
-    "Flexible working hours",
-    "Quiet workspace",
-    "Written instructions preferred",
-    "Regular check-ins with manager",
-    "Extended time for tasks",
-    "Noise-cancelling headphones",
-    "Adjustable lighting",
-    "Frequent breaks",
-    "Visual schedules/reminders",
-    "Alternative communication methods",
-  ];
-
-  const handleInputChange = (section: string, field: string, value: any) => {
-    setFormData(prev => ({
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({
       ...prev,
-      [section]: {
-        ...prev[section as keyof typeof prev],
-        [field]: value,
-      },
+      [field]: value,
     }));
   };
 
-  const handleAccommodationToggle = (accommodation: string) => {
-    const current = formData.accommodations.specificNeeds;
-    const updated = current.includes(accommodation)
-      ? current.filter(item => item !== accommodation)
-      : [...current, accommodation];
-    
-    handleInputChange('accommodations', 'specificNeeds', updated);
+  const handleNeurodivergentConditionChange = (
+    condition: string,
+    checked: boolean,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      neurodivergentConditions: checked
+        ? [...prev.neurodivergentConditions, condition]
+        : prev.neurodivergentConditions.filter(
+            (c) => c !== condition,
+          ),
+    }));
   };
 
-  const handleFileUpload = (type: string, file: File | null) => {
-    setFiles(prev => ({ ...prev, [type]: file }));
+  const handleNeurodivergentStrengthChange = (
+    strength: string,
+    checked: boolean,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      neurodivergentStrengths: checked
+        ? [...prev.neurodivergentStrengths, strength]
+        : prev.neurodivergentStrengths.filter(
+            (s) => s !== strength,
+          ),
+    }));
+  };
+
+  const addExperience = () => {
+    const newExperience: Experience = {
+      id: Date.now().toString(),
+      title: "",
+      company: "",
+      duration: "",
+      description: "",
+    };
+    setExperiences((prev) => [...prev, newExperience]);
+  };
+
+  const updateExperience = (
+    id: string,
+    field: string,
+    value: string,
+  ) => {
+    setExperiences((prev) =>
+      prev.map((exp) =>
+        exp.id === id ? { ...exp, [field]: value } : exp,
+      ),
+    );
+  };
+
+  const removeExperience = (id: string) => {
+    setExperiences((prev) =>
+      prev.filter((exp) => exp.id !== id),
+    );
+  };
+
+  const addEducation = () => {
+    const newEducation: Education = {
+      id: Date.now().toString(),
+      institution: "",
+      degree: "",
+      year: "",
+    };
+    setEducation((prev) => [...prev, newEducation]);
+  };
+
+  const updateEducation = (
+    id: string,
+    field: string,
+    value: string,
+  ) => {
+    setEducation((prev) =>
+      prev.map((edu) =>
+        edu.id === id ? { ...edu, [field]: value } : edu,
+      ),
+    );
+  };
+
+  const removeEducation = (id: string) => {
+    setEducation((prev) => prev.filter((edu) => edu.id !== id));
+  };
+
+  const addSkill = () => {
+    const newSkill: Skill = {
+      id: Date.now().toString(),
+      name: "",
+    };
+    setSkills((prev) => [...prev, newSkill]);
+  };
+
+  const updateSkill = (id: string, value: string) => {
+    setSkills((prev) =>
+      prev.map((skill) =>
+        skill.id === id ? { ...skill, name: value } : skill,
+      ),
+    );
+  };
+
+  const removeSkill = (id: string) => {
+    setSkills((prev) =>
+      prev.filter((skill) => skill.id !== id),
+    );
+  };
+
+  const handleFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setResumeFile(file);
+      // Simulate auto-filling from resume
+      setFormData((prev) => ({
+        ...prev,
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@email.com",
+        phone: "+60123456789",
+        preferredJobTitle: "Software Developer",
+      }));
+      setExperiences([
+        {
+          id: "1",
+          title: "Software Developer",
+          company: "TechCorp Malaysia",
+          duration: "2020 - Present",
+          description:
+            "Developed web applications using React and Node.js",
+        },
+      ]);
+      setEducation([
+        {
+          id: "1",
+          institution: "University of Malaya",
+          degree: "Bachelor of Computer Science",
+          year: "2019",
+        },
+      ]);
+      setSkills([
+        { id: "1", name: "JavaScript" },
+        { id: "2", name: "React" },
+        { id: "3", name: "Node.js" },
+      ]);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Application submitted:", formData, files);
-    alert("Application submitted successfully! We'll be in touch soon.");
+    // Handle form submission
+    console.log("Application submitted:", {
+      formData,
+      experiences,
+      education,
+      skills,
+      resumeFile,
+    });
+    // Show success message and redirect
+    alert("Application submitted successfully!");
+    setCurrentPage("job-details");
   };
 
-  const nextStep = () => {
-    if (currentStep < 4) setCurrentStep(currentStep + 1);
+  // Mock job data for header
+  const job = {
+    title: "Senior Software Developer",
+    company: "TechCorp",
+    location: "Remote / Kuala Lumpur, Malaysia",
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
-  };
+  // Animation for method selection screen
+  useEffect(() => {
+    if (fillMethod !== null) return;
+    
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const ctx = gsap.context(() => {
+      // Back button animation
+      if (backButtonRef.current) {
+        gsap.from(backButtonRef.current, {
+          opacity: 0,
+          x: -20,
+          duration: 0.5,
+          ease: 'power2.out'
+        });
+      }
+
+      // Header animation
+      if (selectionHeaderRef.current) {
+        gsap.from(selectionHeaderRef.current, {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          delay: 0.2,
+          ease: 'power2.out'
+        });
+      }
+
+      // Cards animation
+      if (selectionCardsRef.current) {
+        gsap.from(selectionCardsRef.current.children, {
+          opacity: 0,
+          y: 30,
+          duration: 0.5,
+          stagger: 0.15,
+          delay: 0.4,
+          ease: 'power2.out'
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, [fillMethod]);
+
+  // Animation for form screen
+  useEffect(() => {
+    if (fillMethod === null) return;
+    
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const ctx = gsap.context(() => {
+      // Back button animation
+      if (backButtonRef.current) {
+        gsap.from(backButtonRef.current, {
+          opacity: 0,
+          x: -20,
+          duration: 0.5,
+          ease: 'power2.out'
+        });
+      }
+
+      // Form header animation
+      if (formHeaderRef.current) {
+        gsap.from(formHeaderRef.current, {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          delay: 0.2,
+          ease: 'power2.out'
+        });
+      }
+
+      // Form sections scroll-triggered animation
+      if (formSectionsRef.current) {
+        const sections = formSectionsRef.current.querySelectorAll('.form-section');
+        
+        sections.forEach((section) => {
+          gsap.from(section, {
+            opacity: 0,
+            y: 40,
+            duration: 0.6,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 85%',
+              toggleActions: 'play none none reverse'
+            }
+          });
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, [fillMethod]);
+
+  // Animate newly added items (experiences, education, skills)
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion || experiences.length === 0) return;
+
+    const lastExperience = document.querySelector(`[data-experience-id="${experiences[experiences.length - 1].id}"]`);
+    if (lastExperience) {
+      gsap.from(lastExperience, {
+        opacity: 0,
+        scale: 0.95,
+        y: 20,
+        duration: 0.4,
+        ease: 'back.out(1.2)'
+      });
+    }
+  }, [experiences]);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion || education.length === 0) return;
+
+    const lastEducation = document.querySelector(`[data-education-id="${education[education.length - 1].id}"]`);
+    if (lastEducation) {
+      gsap.from(lastEducation, {
+        opacity: 0,
+        scale: 0.95,
+        y: 20,
+        duration: 0.4,
+        ease: 'back.out(1.2)'
+      });
+    }
+  }, [education]);
+
+  if (fillMethod === null) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <div className="container mx-auto max-w-4xl">
+          {/* Back Button */}
+          <div ref={backButtonRef}>
+            <Button
+              variant="ghost"
+              onClick={() => setCurrentPage("job-details")}
+              className="mb-6"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Job Details
+            </Button>
+          </div>
+
+          {/* Application Method Selection */}
+          <Card className="border-2 border-border bg-card">
+            <CardHeader ref={selectionHeaderRef} className="text-center pb-8">
+              <h1 className="mb-4">Apply for {job.title}</h1>
+              <div className="space-y-2 text-muted-foreground mb-6">
+                <p className="text-lg">{job.company}</p>
+                <p>{job.location}</p>
+              </div>
+              <p className="text-muted-foreground">
+                Choose how you'd like to fill out your
+                application
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div ref={selectionCardsRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card
+                  className="cursor-pointer border-2 border-border hover:border-primary transition-colors bg-card"
+                  onClick={() => setFillMethod("resume")}
+                >
+                  <CardContent className="p-6 text-center">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="mb-2">Upload Resume</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Upload your resume and we'll automatically
+                      fill in your details
+                    </p>
+                    <Button className="w-full">
+                      Upload & Auto-fill
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer border-2 border-border hover:border-primary transition-colors bg-card"
+                  onClick={() => setFillMethod("manual")}
+                >
+                  <CardContent className="p-6 text-center">
+                    <User className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <h3 className="mb-2">Fill Manually</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Enter your information manually step by
+                      step
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Fill Manually
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step <= currentStep 
-                    ? 'bg-[#6b8a7a] text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {step}
-                </div>
-                {step < 4 && (
-                  <div className={`w-16 h-1 mx-2 ${
-                    step < currentStep ? 'bg-[#6b8a7a]' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Personal Info</span>
-            <span>Work Preferences</span>
-            <span>Accommodations</span>
-            <span>Application</span>
-          </div>
+    <div className="min-h-screen py-8 px-4">
+      <div className="container mx-auto max-w-4xl">
+        {/* Back Button */}
+        <div ref={backButtonRef}>
+          <Button
+            variant="ghost"
+            onClick={() => setCurrentPage("job-details")}
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Job Details
+          </Button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Step 1: Personal Information */}
-          {currentStep === 1 && (
-            <Card>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Header */}
+          <Card ref={formHeaderRef} className="border-2 border-border bg-card">
+            <CardHeader className="pb-6">
+              <div className="space-y-4">
+                <h1>Job Application</h1>
+                <div className="bg-muted/50 border border-border rounded-lg p-4">
+                  <h2 className="text-lg mb-2 text-foreground">{job.title}</h2>
+                  <div className="text-muted-foreground space-y-1">
+                    <p>{job.company}</p>
+                    <p>{job.location}</p>
+                  </div>
+                </div>
+                <p className="text-muted-foreground">
+                  Please fill out this form completely. All
+                  fields marked with * are required.
+                </p>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <div ref={formSectionsRef} className="space-y-8">
+          {/* Resume Upload */}
+          {fillMethod === "resume" && (
+            <Card className="form-section border-2 border-border bg-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
+                <h2>Resume Upload *</h2>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.personalInfo.firstName}
-                      onChange={(e) => handleInputChange('personalInfo', 'firstName', e.target.value)}
-                      className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.personalInfo.lastName}
-                      onChange={(e) => handleInputChange('personalInfo', 'lastName', e.target.value)}
-                      className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.personalInfo.email}
-                    onChange={(e) => handleInputChange('personalInfo', 'email', e.target.value)}
-                    className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.personalInfo.phone}
-                      onChange={(e) => handleInputChange('personalInfo', 'phone', e.target.value)}
-                      className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.personalInfo.location}
-                      onChange={(e) => handleInputChange('personalInfo', 'location', e.target.value)}
-                      className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                      placeholder="City, Country"
-                    />
-                  </div>
-                </div>
-
-                {/* Resume Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                    Resume/CV *
-                  </label>
-                  <div className="border-2 border-dashed border-[#e8e6f0] rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Drop your resume here or click to browse
+              <CardContent>
+                <div className="border-2 border-dashed border-border bg-muted/30 rounded-lg p-8 text-center">
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <div className="space-y-2">
+                    <p>Upload your resume</p>
+                    <p className="text-sm text-muted-foreground">
+                      Supported formats: PDF, DOC, DOCX (Max
+                      5MB)
                     </p>
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx"
-                      onChange={(e) => handleFileUpload('resume', e.target.files?.[0] || null)}
+                      onChange={handleFileUpload}
                       className="hidden"
                       id="resume-upload"
                     />
-                    <label htmlFor="resume-upload">
-                      <Button type="button" variant="outline" className="cursor-pointer">
-                        Choose File
-                      </Button>
-                    </label>
-                    {files.resume && (
-                      <p className="text-sm text-[#6b8a7a] mt-2">
-                        Selected: {files.resume.name}
-                      </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        document
+                          .getElementById("resume-upload")
+                          ?.click()
+                      }
+                    >
+                      Choose File
+                    </Button>
+                    {resumeFile && (
+                      <div className="text-sm text-green-700 mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p className="mb-2">
+                          ✓ {resumeFile.name} uploaded
+                          successfully
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Your information has been
+                          automatically filled in the form
+                          below. Please review and update as
+                          needed.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -237,266 +595,988 @@ export default function JobApplicationPage({ params }: JobApplicationPageProps) 
             </Card>
           )}
 
-          {/* Step 2: Work Preferences */}
-          {currentStep === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
-                  Work Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
+          {/* Personal Information */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <h2>Personal Information</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-3">
-                    Preferred Communication Method
-                  </label>
-                  <div className="space-y-2">
+                  <Label htmlFor="firstName">
+                    First Name *
+                  </Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "firstName",
+                        e.target.value,
+                      )
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "lastName",
+                        e.target.value,
+                      )
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="dateOfBirth">
+                  Date of Birth *
+                </Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "dateOfBirth",
+                      e.target.value,
+                    )
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="citizenship">
+                  Citizenship Status *
+                </Label>
+                <Select
+                  value={formData.citizenship}
+                  onValueChange={(value) =>
+                    handleInputChange("citizenship", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select citizenship status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="citizen">
+                      Malaysian Citizen
+                    </SelectItem>
+                    <SelectItem value="permanent-resident">
+                      Permanent Resident
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  value={formData.gender}
+                  onValueChange={(value) =>
+                    handleInputChange("gender", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">
+                      Female
+                    </SelectItem>
+                    <SelectItem value="prefer-not-to-say-gender">
+                      Prefer not to say
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="race">Race</Label>
+                <Select
+                  value={formData.race}
+                  onValueChange={(value) =>
+                    handleInputChange("race", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select race" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="malay">Malay</SelectItem>
+                    <SelectItem value="chinese">
+                      Chinese
+                    </SelectItem>
+                    <SelectItem value="indian">
+                      Indian
+                    </SelectItem>
+                    <SelectItem value="prefer-not-to-say-race">
+                      Prefer not to say
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contact & Address */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <h2>Contact & Address (Malaysia)</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      handleInputChange("email", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      handleInputChange("phone", e.target.value)
+                    }
+                    placeholder="+60"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="address">
+                  Street Address *
+                </Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) =>
+                    handleInputChange("address", e.target.value)
+                  }
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) =>
+                      handleInputChange("city", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="state">State *</Label>
+                  <Select
+                    value={formData.state}
+                    onValueChange={(value) =>
+                      handleInputChange("state", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="johor">
+                        Johor
+                      </SelectItem>
+                      <SelectItem value="kedah">
+                        Kedah
+                      </SelectItem>
+                      <SelectItem value="kelantan">
+                        Kelantan
+                      </SelectItem>
+                      <SelectItem value="melaka">
+                        Melaka
+                      </SelectItem>
+                      <SelectItem value="negeri-sembilan">
+                        Negeri Sembilan
+                      </SelectItem>
+                      <SelectItem value="pahang">
+                        Pahang
+                      </SelectItem>
+                      <SelectItem value="perak">
+                        Perak
+                      </SelectItem>
+                      <SelectItem value="perlis">
+                        Perlis
+                      </SelectItem>
+                      <SelectItem value="pulau-pinang">
+                        Pulau Pinang
+                      </SelectItem>
+                      <SelectItem value="sabah">
+                        Sabah
+                      </SelectItem>
+                      <SelectItem value="sarawak">
+                        Sarawak
+                      </SelectItem>
+                      <SelectItem value="selangor">
+                        Selangor
+                      </SelectItem>
+                      <SelectItem value="terengganu">
+                        Terengganu
+                      </SelectItem>
+                      <SelectItem value="kuala-lumpur">
+                        Kuala Lumpur
+                      </SelectItem>
+                      <SelectItem value="labuan">
+                        Labuan
+                      </SelectItem>
+                      <SelectItem value="putrajaya">
+                        Putrajaya
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="postcode">Postcode *</Label>
+                  <Input
+                    id="postcode"
+                    value={formData.postcode}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "postcode",
+                        e.target.value,
+                      )
+                    }
+                    required
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Medical & Neurodivergent Information */}
+          <Card className="form-section border-2 border-primary/20 bg-accent">
+            <CardHeader>
+              <h2>Neurodivergent Information</h2>
+              <p className="text-sm text-muted-foreground">
+                This information helps us provide appropriate
+                workplace accommodations.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="isNeurodivergent">
+                  Are you a neurodivergent?
+                </Label>
+                <Select
+                  value={formData.isNeurodivergent}
+                  onValueChange={(value) =>
+                    handleInputChange("isNeurodivergent", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select answer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.isNeurodivergent === "yes" && (
+                <div>
+                  <Label>
+                    What is your neurodivergent condition?
+                    (Select all that apply)
+                  </Label>
+                  <div className="space-y-2 mt-2">
                     {[
-                      { value: 'email', label: 'Email' },
-                      { value: 'phone', label: 'Phone' },
-                      { value: 'video', label: 'Video calls' },
-                      { value: 'chat', label: 'Instant messaging' },
-                      { value: 'written', label: 'Written instructions only' },
-                    ].map((option) => (
-                      <label key={option.value} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="communication"
-                          value={option.value}
-                          checked={formData.workPreferences.preferredCommunication === option.value}
-                          onChange={(e) => handleInputChange('workPreferences', 'preferredCommunication', e.target.value)}
-                          className="text-[#6b8a7a] focus:ring-[#6b8a7a]"
+                      "Autism",
+                      "ADHD",
+                      "Dyslexia",
+                      "Others",
+                    ].map((condition) => (
+                      <div
+                        key={condition}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={condition.toLowerCase()}
+                          checked={formData.neurodivergentConditions.includes(
+                            condition,
+                          )}
+                          onCheckedChange={(checked) =>
+                            handleNeurodivergentConditionChange(
+                              condition,
+                              checked as boolean,
+                            )
+                          }
                         />
-                        <span className="text-[#3a4043]">{option.label}</span>
-                      </label>
+                        <Label
+                          htmlFor={condition.toLowerCase()}
+                        >
+                          {condition}
+                        </Label>
+                      </div>
                     ))}
                   </div>
                 </div>
+              )}
 
+              <div>
+                <Label htmlFor="hasOkuCard">
+                  Do you have an OKU card?
+                </Label>
+                <Select
+                  value={formData.hasOkuCard}
+                  onValueChange={(value) =>
+                    handleInputChange("hasOkuCard", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select answer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.hasOkuCard === "yes" && (
                 <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-3">
-                    Working Hours Preference
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'standard', label: '9 AM - 5 PM (Standard hours)' },
-                      { value: 'flexible', label: 'Flexible hours' },
-                      { value: 'early', label: 'Early start (7 AM - 3 PM)' },
-                      { value: 'late', label: 'Late start (11 AM - 7 PM)' },
-                    ].map((option) => (
-                      <label key={option.value} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="workingHours"
-                          value={option.value}
-                          checked={formData.workPreferences.workingHours === option.value}
-                          onChange={(e) => handleInputChange('workPreferences', 'workingHours', e.target.value)}
-                          className="text-[#6b8a7a] focus:ring-[#6b8a7a]"
-                        />
-                        <span className="text-[#3a4043]">{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <Label htmlFor="okuNumber">
+                    OKU Number *
+                  </Label>
+                  <Input
+                    id="okuNumber"
+                    value={formData.okuNumber}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "okuNumber",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Enter your OKU number"
+                    required={formData.hasOkuCard === "yes"}
+                  />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-3">
-                    Work Location Preference
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'remote', label: 'Fully remote' },
-                      { value: 'hybrid', label: 'Hybrid (2-3 days in office)' },
-                      { value: 'office', label: 'In-office' },
-                      { value: 'flexible', label: 'Flexible arrangement' },
-                    ].map((option) => (
-                      <label key={option.value} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="workLocation"
-                          value={option.value}
-                          checked={formData.workPreferences.workLocation === option.value}
-                          onChange={(e) => handleInputChange('workPreferences', 'workLocation', e.target.value)}
-                          className="text-[#6b8a7a] focus:ring-[#6b8a7a]"
-                        />
-                        <span className="text-[#3a4043]">{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 3: Accommodations */}
-          {currentStep === 3 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" />
-                  Workplace Accommodations
-                </CardTitle>
-                <p className="text-sm text-gray-600 mt-2">
-                  We're committed to providing accommodations that help you do your best work. This information is confidential and will only be shared with relevant team members.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-purple-800">
-                        Your privacy is protected
-                      </p>
-                      <p className="text-sm text-purple-700">
-                        Accommodation requests are handled confidentially and in compliance with privacy laws.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 mb-4">
-                    <input
-                      type="checkbox"
-                      checked={formData.accommodations.needsAccommodations}
-                      onChange={(e) => handleInputChange('accommodations', 'needsAccommodations', e.target.checked)}
-                      className="text-[#6b8a7a] focus:ring-[#6b8a7a]"
-                    />
-                    <span className="text-[#3a4043] font-medium">
-                      I would like to request workplace accommodations
-                    </span>
-                  </label>
-
-                  {formData.accommodations.needsAccommodations && (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium text-[#3a4043] mb-3">
-                          Select accommodations that would help you succeed:
-                        </p>
-                        <div className="grid md:grid-cols-2 gap-2">
-                          {accommodationOptions.map((accommodation) => (
-                            <label key={accommodation} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={formData.accommodations.specificNeeds.includes(accommodation)}
-                                onChange={() => handleAccommodationToggle(accommodation)}
-                                className="text-[#6b8a7a] focus:ring-[#6b8a7a]"
-                              />
-                              <span className="text-sm text-[#3a4043]">{accommodation}</span>
-                            </label>
-                          ))}
+              )}
+              
+              {formData.isNeurodivergent === "yes" && (
+                <>
+                  <Separator className="my-6" />
+                  
+                  <div>
+                    <Label>
+                      What are your neurodivergent strengths?
+                      (Select all that apply)
+                    </Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Help us understand your unique abilities and talents.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                      {[
+                        "Pattern Recognition",
+                        "Attention to Detail", 
+                        "Systematic Thinking",
+                        "Big Picture Thinking",
+                        "Task Switching",
+                        "Creative/Innovative Thinking",
+                        "Hyperfocus"
+                      ].map((strength) => (
+                        <div
+                          key={strength}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={strength.toLowerCase().replace(/[\/\s]/g, '-')}
+                            checked={formData.neurodivergentStrengths.includes(
+                              strength,
+                            )}
+                            onCheckedChange={(checked) =>
+                              handleNeurodivergentStrengthChange(
+                                strength,
+                                checked as boolean,
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={strength.toLowerCase().replace(/[\/\s]/g, '-')}
+                            className="text-sm"
+                          >
+                            {strength}
+                          </Label>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator className="my-6" />
+
+                  <div>
+                    <h3 className="font-medium mb-4">Communication Preferences</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="communicationMedium">
+                          Preferred Communication Medium
+                        </Label>
+                        <Select
+                          value={formData.communicationMedium}
+                          onValueChange={(value) =>
+                            handleInputChange("communicationMedium", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Text/Written</SelectItem>
+                            <SelectItem value="verbal">Verbal/Spoken</SelectItem>
+                            <SelectItem value="mixed">Mix of Both</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                          Additional accommodation details (optional)
-                        </label>
-                        <textarea
-                          value={formData.accommodations.accommodationDetails}
-                          onChange={(e) => handleInputChange('accommodations', 'accommodationDetails', e.target.value)}
-                          rows={4}
-                          className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                          placeholder="Please describe any specific accommodations or support you need..."
+                        <Label htmlFor="teamCollaborationStyle">
+                          Team Collaboration Style
+                        </Label>
+                        <Select
+                          value={formData.teamCollaborationStyle}
+                          onValueChange={(value) =>
+                            handleInputChange("teamCollaborationStyle", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="independent">Work Independently</SelectItem>
+                            <SelectItem value="small-group">Small Group (2-4 people)</SelectItem>
+                            <SelectItem value="large-team">Large Team (5+ people)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="checkInFrequency">
+                          Check-in Frequency
+                        </Label>
+                        <Select
+                          value={formData.checkInFrequency}
+                          onValueChange={(value) =>
+                            handleInputChange("checkInFrequency", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="frequent">Frequent Check-ins</SelectItem>
+                            <SelectItem value="scheduled">Scheduled Check-ins</SelectItem>
+                            <SelectItem value="autonomous">Given Task & Left to Complete</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="presentationComfort">
+                          Presentation Comfort Level
+                        </Label>
+                        <Select
+                          value={formData.presentationComfort}
+                          onValueChange={(value) =>
+                            handleInputChange("presentationComfort", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select comfort level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="comfortable">Comfortable</SelectItem>
+                            <SelectItem value="not-comfortable">Not Comfortable</SelectItem>
+                            <SelectItem value="willing-to-try">Willing to Try</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="needsJobCoach">
+                          Job Coach Support
+                        </Label>
+                        <Select
+                          value={formData.needsJobCoach}
+                          onValueChange={(value) =>
+                            handleInputChange("needsJobCoach", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select need" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="need">Need Job Coach</SelectItem>
+                            <SelectItem value="no-need">No Need for Job Coach</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-6" />
+
+                  <div>
+                    <h3 className="font-medium mb-4">Environmental & Sensory Needs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="auditoryPreference">
+                          Auditory Environment Preference
+                        </Label>
+                        <Select
+                          value={formData.auditoryPreference}
+                          onValueChange={(value) =>
+                            handleInputChange("auditoryPreference", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="quiet">Quiet Environment</SelectItem>
+                            <SelectItem value="background-noise">Background Noise Okay</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="workspaceType">
+                          Workspace Type Preference
+                        </Label>
+                        <Select
+                          value={formData.workspaceType}
+                          onValueChange={(value) =>
+                            handleInputChange("workspaceType", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixed-desk">Fixed Desk/Table</SelectItem>
+                            <SelectItem value="hot-desk">Hot Desk (Flexible Seating)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="workdayStructure">
+                          Workday Structure Preference
+                        </Label>
+                        <Select
+                          value={formData.workdayStructure}
+                          onValueChange={(value) =>
+                            handleInputChange("workdayStructure", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixed-hours">Fixed Work Hours</SelectItem>
+                            <SelectItem value="flexible-hours">Flexible Work Hours</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Job Preferences */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <h2>Job Preferences</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="preferredJobTitle">
+                  Preferred Job Title
+                </Label>
+                <Input
+                  id="preferredJobTitle"
+                  value={formData.preferredJobTitle}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "preferredJobTitle",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="e.g., Software Developer"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="workType">Work Type</Label>
+                  <Select
+                    value={formData.workType}
+                    onValueChange={(value) =>
+                      handleInputChange("workType", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select work type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full-time">
+                        Full-time
+                      </SelectItem>
+                      <SelectItem value="part-time">
+                        Part-time
+                      </SelectItem>
+                      <SelectItem value="freelance">
+                        Freelance
+                      </SelectItem>
+                      <SelectItem value="contract">
+                        Contract
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="workMode">Work Mode</Label>
+                  <Select
+                    value={formData.workMode}
+                    onValueChange={(value) =>
+                      handleInputChange("workMode", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select work mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in-person">
+                        In-person
+                      </SelectItem>
+                      <SelectItem value="hybrid">
+                        Hybrid
+                      </SelectItem>
+                      <SelectItem value="remote">
+                        Remote
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Experience */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2>Work Experience</h2>
+                <Button
+                  type="button"
+                  onClick={addExperience}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Experience
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {experiences.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No work experience added yet. Click "Add
+                  Experience" to get started.
+                </p>
+              ) : (
+                experiences.map((experience) => (
+                  <div
+                    key={experience.id}
+                    data-experience-id={experience.id}
+                    className="border-2 border-border bg-accent rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <h4>Experience Entry</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          removeExperience(experience.id)
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Job Title</Label>
+                        <Input
+                          value={experience.title}
+                          onChange={(e) =>
+                            updateExperience(
+                              experience.id,
+                              "title",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g., Software Developer"
+                        />
+                      </div>
+                      <div>
+                        <Label>Company</Label>
+                        <Input
+                          value={experience.company}
+                          onChange={(e) =>
+                            updateExperience(
+                              experience.id,
+                              "company",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g., TechCorp"
                         />
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 4: Application Details */}
-          {currentStep === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Complete Your Application</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                    Cover Letter
-                  </label>
-                  <textarea
-                    value={formData.application.coverLetter}
-                    onChange={(e) => handleInputChange('application', 'coverLetter', e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    placeholder="Tell us why you're interested in this role and how your experience aligns with our requirements..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                    Portfolio/Work Samples (optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.application.portfolio}
-                    onChange={(e) => handleInputChange('application', 'portfolio', e.target.value)}
-                    className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    placeholder="https://your-portfolio.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-2">
-                    Availability
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.application.availability}
-                    onChange={(e) => handleInputChange('application', 'availability', e.target.value)}
-                    className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all"
-                    placeholder="e.g., Immediately, 2 weeks notice, etc."
-                  />
-                </div>
-
-                {/* Summary */}
-                <div className="bg-[#faf9f7] border border-[#e8e6f0] rounded-lg p-4">
-                  <h4 className="font-medium text-[#3a4043] mb-2">Application Summary</h4>
-                  <div className="space-y-1 text-sm text-[#3a4043]">
-                    <p>Name: {formData.personalInfo.firstName} {formData.personalInfo.lastName}</p>
-                    <p>Email: {formData.personalInfo.email}</p>
-                    <p>Communication: {formData.workPreferences.preferredCommunication}</p>
-                    <p>Accommodations requested: {formData.accommodations.needsAccommodations ? 'Yes' : 'No'}</p>
-                    {files.resume && <p>Resume: {files.resume.name}</p>}
+                    <div>
+                      <Label>Duration</Label>
+                      <Input
+                        value={experience.duration}
+                        onChange={(e) =>
+                          updateExperience(
+                            experience.id,
+                            "duration",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="e.g., Jan 2020 - Dec 2022"
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={experience.description}
+                        onChange={(e) =>
+                          updateExperience(
+                            experience.id,
+                            "description",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Describe your responsibilities and achievements..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={prevStep}
-              disabled={currentStep === 1}
-            >
-              Previous
-            </Button>
-            
-            {currentStep < 4 ? (
-              <Button
-                type="button"
-                onClick={nextStep}
-                className="bg-[#6b8a7a] hover:bg-[#5d7c6b]"
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                className="bg-[#6b8a7a] hover:bg-[#5d7c6b]"
-              >
-                Submit Application
-              </Button>
-            )}
+          {/* Education */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2>Education</h2>
+                <Button
+                  type="button"
+                  onClick={addEducation}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Education
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {education.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No education added yet. Click "Add Education"
+                  to get started.
+                </p>
+              ) : (
+                education.map((edu) => (
+                  <div
+                    key={edu.id}
+                    data-education-id={edu.id}
+                    className="border-2 border-border bg-accent rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <h4>Education Entry</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEducation(edu.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Institution</Label>
+                        <Input
+                          value={edu.institution}
+                          onChange={(e) =>
+                            updateEducation(
+                              edu.id,
+                              "institution",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g., University of Malaya"
+                        />
+                      </div>
+                      <div>
+                        <Label>Degree</Label>
+                        <Input
+                          value={edu.degree}
+                          onChange={(e) =>
+                            updateEducation(
+                              edu.id,
+                              "degree",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g., Bachelor of Computer Science"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Year</Label>
+                      <Input
+                        value={edu.year}
+                        onChange={(e) =>
+                          updateEducation(
+                            edu.id,
+                            "year",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="e.g., 2020"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Skills */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2>Skills</h2>
+                <Button
+                  type="button"
+                  onClick={addSkill}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Skill
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {skills.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No skills added yet. Click "Add Skill" to get
+                  started.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {skills.map((skill) => (
+                    <div key={skill.id} className="flex gap-2">
+                      <Input
+                        value={skill.name}
+                        onChange={(e) =>
+                          updateSkill(skill.id, e.target.value)
+                        }
+                        placeholder="e.g., JavaScript, React, etc."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSkill(skill.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Cover Letter */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardHeader>
+              <h2>Cover Letter (Optional)</h2>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={formData.coverLetter}
+                onChange={(e) =>
+                  handleInputChange(
+                    "coverLetter",
+                    e.target.value,
+                  )
+                }
+                placeholder="Tell us why you're interested in this position and what makes you a great fit..."
+                rows={6}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Submit Section */}
+          <Card className="form-section border-2 border-border bg-card">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentPage("job-details")}
+                >
+                  Save as Draft
+                </Button>
+                <Button type="submit" size="lg">
+                  Submit Application
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 text-center">
+                By submitting this application, you acknowledge
+                that the information provided is accurate and
+                complete.
+              </p>
+            </CardContent>
+          </Card>
           </div>
         </form>
       </div>

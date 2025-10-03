@@ -53,7 +53,7 @@ const handler = NextAuth({
 
         // Mock user for development - any email/password combo will work
         // TESTING: Change this line to switch roles easily
-        const role = "EMPLOYER"; // Change to "EMPLOYER" to test employer dashboard
+        const role = "CANDIDATE"; // Change to "EMPLOYER" or "CANDIDATE" to test employer dashboard
         return {
           id: "mock-user-id",
           email: credentials.email || "",

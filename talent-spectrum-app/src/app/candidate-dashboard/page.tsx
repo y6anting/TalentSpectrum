@@ -19,25 +19,76 @@ import {
   Bell,
   Shield,
   Eye,
-  Star
+  Star,
+  Camera,
+  Book,
+  House
 } from "lucide-react";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Mock data
-  const candidateProfile = {
-    name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    location: "Remote",
-    profileCompletion: 85,
-    accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
-    preferences: {
-      workType: "Remote",
-      communication: "Email preferred",
-      schedule: "Flexible hours"
-    }
+
+type CandidateProfile = {
+  name: string;
+  email: string;
+  location: string;
+  profileCompletion: number;  
+  accommodations: string[];
+  preferences: {
+    workType: string;
+    communication: string;
+    schedule: string;
   };
+  personalIdentifiers: {
+    fullName: string;
+    dateOfBirth: string;
+    gender: string;
+    nationality: string;
+    emailAddress: string;
+    phoneNumber: string;
+    residentialAddress: string;
+	nric: string;
+	oku_card: string;
+	linkedin: string;	
+  };
+  jobPreferences: {
+    preferredIndustries: string[];
+    preferredRoles: string[];
+    locationPreference: string;
+    availability: string;
+  };
+  education: {
+    level: string;
+    fieldOfStudy: string;
+    institution: string | null;
+    graduationYear: number | null;
+    cgpa: number | null;
+    grade: string | null;
+    award: string | null;
+  }; 
+	  exp_skill: {
+      employer: string;
+      industry: string;
+      start: string;
+	    end: string;
+      RoleTitle: string;
+  	  YearsInRole: string;
+      SeniorityLevel: string;
+      SkillsToolsUsed: string;
+      ProjectHighlights: string;
+	  HardSkills: string;
+	  SoftSkills: string;
+	  LanguageProficiency: string;
+	  TechnicalKeywords: string;
+	  Achievements: string;
+	  
+
+	  }  
+};
+
+
+  // Mock data
 
   const applications = [
     {
@@ -93,8 +144,75 @@ export default function CandidateDashboard() {
       salary: "$90k - $120k",
       isInclusive: true,
       hasAccommodations: false,
-    }
+    },
+    {
+      id: "6",
+      title: "Kucing Engineer",
+      company: "InnovateCorp",
+      location: "San Francisco, CA",
+      type: "Full-time", 
+      salary: "$90k - $120k",
+      isInclusive: true,
+      hasAccommodations: false,
+    }  
   ];
+
+	const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
+	  name: "",
+	  email: "",
+	  location: "Remote",
+	  profileCompletion: 85,  
+	  accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
+	  preferences: {
+		workType: "Remote",
+		communication: "Email preferred",
+		schedule: "Flexible hours",
+	  },
+	  personalIdentifiers: {
+		fullName: "Alex Johnson",
+		dateOfBirth: "",
+		gender: "",
+		nationality: "",
+		emailAddress: "alex.johnson@email.com",
+		phoneNumber: "",
+		residentialAddress: "",
+		nric: "",
+		oku_card: "",
+		linkedin: "",			
+	  },
+	  jobPreferences: {
+		preferredIndustries: [],
+		preferredRoles: [],
+		locationPreference: "",
+		availability: "",
+	  },
+	  education: {
+      level: "",
+      fieldOfStudy: "",
+      institution: null,
+      graduationYear: null,
+      cgpa: null,
+      grade: null,
+      award: null,
+	  },	
+	  exp_skill: {
+      employer: "",
+      industry: "",
+      start: "",
+	    end: "",
+      RoleTitle: "",
+	    YearsInRole: "",
+      SeniorityLevel: "",
+      SkillsToolsUsed: "",
+      ProjectHighlights: "",
+	  HardSkills: "",
+	  SoftSkills: "",
+	  LanguageProficiency: "",
+	  TechnicalKeywords: "",
+	  Achievements: "",	  
+
+	  },	  
+	});
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -125,34 +243,40 @@ export default function CandidateDashboard() {
         return <Clock className="h-4 w-4" />;
     }
   };
+  
+const currentYear = new Date().getFullYear();
+const grad_year = Array.from(
+  { length: currentYear - 1990 + 1 },
+  (_, i) => currentYear - i
+); // [currentYear, currentYear-1, ..., 1990]  
 
   return (
     <div className="min-h-screen bg-[#faf9f7]">
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+        <div className="grid lg:grid-cols-4 gap-8 ">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 ">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#6b8a7a] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-[#635bff] font-semibold">
                     {candidateProfile.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#3a4043]">{candidateProfile.name}</h3>
+                    <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
                     <p className="text-sm text-gray-600">{candidateProfile.location}</p>
                   </div>
                 </div>
 
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#3a4043]">Profile Completion</span>
-                    <span className="text-sm font-medium text-[#6b8a7a]">{candidateProfile.profileCompletion}%</span>
+                    <span className="text-sm text-[#635bff]">Profile Completion</span>
+                    <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-[#6b8a7a] h-2 rounded-full" 
+                      className="bg-[#635bff] h-2 rounded-full" 
                       style={{ width: `${candidateProfile.profileCompletion}%` }}
                     />
                   </div>
@@ -164,6 +288,10 @@ export default function CandidateDashboard() {
                     { id: "applications", label: "My Applications", icon: Briefcase },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings },
+          					{ id: "education", label: "Education", icon: Book },
+          					{ id: "exp_skill", label: "Experience & Skills", icon: Briefcase },
+							{ id: "environment", label: "Environment Profile", icon: House },
+							
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -172,7 +300,7 @@ export default function CandidateDashboard() {
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
                           activeTab === item.id
-                            ? 'bg-[#6b8a7a] text-white'
+                            ? 'bg-[#635bff] text-white'
                             : 'text-[#3a4043] hover:bg-gray-100'
                         }`}
                       >
@@ -192,21 +320,27 @@ export default function CandidateDashboard() {
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-[#3a4043] mb-2">Welcome back, {candidateProfile.name.split(' ')[0]}!</h1>
+                  <h1 className="text-2xl font-bold text-[#635bff] mb-2">Welcome back, {candidateProfile.name.split(' ')[0]}!</h1>
                   <p className="text-gray-600">Here's your job search activity and recommendations.</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6">
                   <Card>
-                    <CardContent className="p-6 text-center">
-                      <Briefcase className="h-8 w-8 text-[#6b8a7a] mx-auto mb-2" />
+                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
+             								hover:scale-[1.02] transition-all duration-300
+             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
+											p-6 text-center">
+                      <Briefcase className="h-8 w-8 text-[#635bff] mx-auto mb-2" />
                       <h3 className="font-semibold text-[#3a4043] mb-1">{applications.length}</h3>
                       <p className="text-sm text-gray-600">Applications Submitted</p>
                     </CardContent>
                   </Card>
                   
                   <Card>
-                    <CardContent className="p-6 text-center">
+                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
+             								hover:scale-[1.02] transition-all duration-300
+             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
+											p-6 text-center">
                       <Eye className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                       <h3 className="font-semibold text-[#3a4043] mb-1">12</h3>
                       <p className="text-sm text-gray-600">Profile Views</p>
@@ -214,7 +348,10 @@ export default function CandidateDashboard() {
                   </Card>
                   
                   <Card>
-                    <CardContent className="p-6 text-center">
+                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
+             								hover:scale-[1.02] transition-all duration-300
+             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
+											p-6 text-center">
                       <Heart className="h-8 w-8 text-red-500 mx-auto mb-2" />
                       <h3 className="font-semibold text-[#3a4043] mb-1">{savedJobs.length}</h3>
                       <p className="text-sm text-gray-600">Saved Jobs</p>
@@ -230,7 +367,7 @@ export default function CandidateDashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       {applications.slice(0, 3).map((app) => (
-                        <div key={app.id} className="flex items-center justify-between p-4 border border-[#e8e6f0] rounded-lg">
+                        <div key={app.id} className="flex items-center justify-between p-4 border border-[#635bff] rounded-lg ">
                           <div className="flex items-center gap-3">
                             {getStatusIcon(app.status)}
                             <div>
@@ -277,8 +414,8 @@ export default function CandidateDashboard() {
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+                  <h1 className="text-2xl font-bold text-[#635bff]">My Applications</h1>
+                  <Button className="bg-[#635bff] hover:bg-[#5d7c6b]">
                     <Link href="/opportunities">Browse More Jobs</Link>
                   </Button>
                 </div>
@@ -290,7 +427,7 @@ export default function CandidateDashboard() {
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
-                            <p className="text-[#6b8a7a] font-medium mb-2">{app.company}</p>
+                            <p className="text-[#635bff] font-medium mb-2">{app.company}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
@@ -327,7 +464,7 @@ export default function CandidateDashboard() {
                               View Details
                             </Button>
                             {app.status === "interview_scheduled" && (
-                              <Button size="sm" className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+                              <Button size="sm" className="bg-[#635bff] hover:bg-[#5d7c6b]">
                                 Prepare for Interview
                               </Button>
                             )}
@@ -344,7 +481,7 @@ export default function CandidateDashboard() {
             {activeTab === "saved" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
+                  <h1 className="text-2xl font-bold text-[#635bff]">Saved Jobs</h1>
                   <p className="text-gray-600">{savedJobs.length} jobs saved</p>
                 </div>
 
@@ -354,8 +491,8 @@ export default function CandidateDashboard() {
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{job.title}</h3>
-                            <p className="text-[#6b8a7a] font-medium mb-2">{job.company}</p>
+                            <h3 className="text-lg font-semibold text-[#635bff] mb-1">{job.title}</h3>
+                            <p className="text-[#635bff] font-medium mb-2">{job.company}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
@@ -389,7 +526,7 @@ export default function CandidateDashboard() {
                             <Button variant="outline" size="sm">
                               Remove
                             </Button>
-                            <Button size="sm" className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+                            <Button size="sm" className="bg-[#635bff] hover:bg-[#827CFF] text-white">
                               <Link href={`/jobs/${job.id}`}>Apply Now</Link>
                             </Button>
                           </div>
@@ -402,84 +539,740 @@ export default function CandidateDashboard() {
             )}
 
             {/* Profile Settings Tab */}
-            {activeTab === "profile" && (
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
+			{activeTab === "profile" && (
+			  <div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#635bff]">Profile Settings</h1>
 
-                <div className="grid md:grid-cols-2 gap-6">
+				<div className="grid gap-6">
+				  {/* Personal Info */}
+				  <Card>
+					<CardHeader>
+					  <CardTitle>Personal Information</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					  <div className="grid md:grid-cols-2 gap-6">
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Full Name</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.fullName}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  fullName: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">NRIC</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.nric}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  fullName: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>					  
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Email</label>
+						<input 
+						  type="email" 
+						  value={candidateProfile.personalIdentifiers.emailAddress}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  emailAddress: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Phone Number</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.phoneNumber}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  phoneNumber: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Date of Birth</label>
+						<input 
+						  type="date" 
+						  value={candidateProfile.personalIdentifiers.dateOfBirth}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  dateOfBirth: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Gender</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.gender}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  gender: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Nationality</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.nationality}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  nationality: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">OKU Card</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.personalIdentifiers.oku_card}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  nationality: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>					  
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Residential Address</label>
+						<textarea
+						  value={candidateProfile.personalIdentifiers.residentialAddress}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: { 
+							  ...candidateProfile.personalIdentifiers, 
+							  residentialAddress: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				  </Card>
+				</div>
+
+				{/* You can repeat similar structure for Education, Work Experience, Skills, Languages */}
+			  </div>
+			)}
+            {/* Education Settings Tab */}
+			{activeTab === "education" && (
+			  <div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#635bff]">Education Settings</h1>
+
+				<div className="grid gap-6">
+				  {/* Education Info */}
+				  <Card>
+					<CardHeader>
+					  <CardTitle>Education Information</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					  <div className="grid md:grid-cols-2 gap-6">
+					  <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Level</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option>Degree</option>
+                          <option>Master</option>
+                          <option>Phd</option>
+                          <option>Diploma</option>
+						  <option>STPM</option>
+						  <option>PT3/PMR</option>
+                        </select>
+                      </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Univercity/College/School</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.education.institution ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							education: { 
+							  ...candidateProfile.education, 
+							  institution: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Field of Study</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.education.institution ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							education: { 
+							  ...candidateProfile.education, 
+							  institution: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>					  
+					<div>
+					  <label className="block text-sm font-medium text-[#3a4043] mb-1">Graduation Year</label>
+					  <select
+						value={
+						  candidateProfile.education.graduationYear !== null &&
+						  candidateProfile.education.graduationYear !== undefined
+							? String(candidateProfile.education.graduationYear)
+							: ""
+						}
+						onChange={(e) => {
+						  const val = e.target.value;
+						  setCandidateProfile({
+							...candidateProfile,
+							education: {
+							  ...candidateProfile.education,
+							  graduationYear: val === "" ? null : parseInt(val, 10),
+							},
+						  });
+						}}
+						className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+					  >
+						<option value="">Select year</option>
+						{grad_year.map((y) => (
+						  <option key={y} value={String(y)}>
+							{y}
+						  </option>
+						))}
+					  </select>
+					</div>					  
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">CGPA</label>
+						<input 
+						  type="number" 
+						  value={candidateProfile.education.cgpa ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							education: { 
+							  ...candidateProfile.education, 
+                cgpa: e.target.value ? parseFloat(e.target.value) : null, 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Grade</label>
+						<input 
+						  type="string" 
+						  value={candidateProfile.education.grade ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							education: { 
+							  ...candidateProfile.education, 
+							  grade: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>	
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Award</label>
+						<input 
+						  type="string" 
+						  value={candidateProfile.education.award ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							education: { 
+							  ...candidateProfile.education, 
+							  award: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>					  
+					  </div>
+					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				  </Card>	
+				</div>
+			</div>
+			)}
+            {/* Experience & Skill Tab */}
+			{activeTab === "exp_skill" && (
+			  <div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#635bff]">Experiences & Skills</h1>
+
+				<div className="grid gap-6">
+				  {/* Experience & Skill */}
+				  <Card>
+					<CardHeader>
+					  <CardTitle>Experiences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					  <div className="grid md:grid-cols-2 gap-6">
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Employer</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.employer ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  employer: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Industry</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.industry ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  industry: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Start</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.start ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  start: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>			
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">End</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.end ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  end: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>	
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Seniority</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.SeniorityLevel ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  SeniorityLevel: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Tools Used</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.SkillsToolsUsed ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  SkillsToolsUsed: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>		
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Project Highlights</label>
+						<input 
+						  type="text" 
+						  value={candidateProfile.exp_skill.ProjectHighlights ?? ""}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  ProjectHighlights: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>						  				  
+					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				  </Card>
+				  {/* Skills */}
+				  <Card>
+					<CardHeader>
+					  <CardTitle>Skills</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Soft Skills</label>
+						<input
+						  type="text"
+						  value={candidateProfile.exp_skill.SoftSkills}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  SoftSkills: e.target.value
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Hard Skills</label>
+						<input
+						  type="text"
+						  value={candidateProfile.exp_skill.HardSkills}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  HardSkills: e.target.value
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Language Proficiency</label>
+						<input
+						  type="text"
+						  value={candidateProfile.exp_skill.LanguageProficiency}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  LanguageProficiency: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Achievements</label>
+						<input
+						  type="text"
+						  value={candidateProfile.exp_skill.Achievements}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							exp_skill: { 
+							  ...candidateProfile.exp_skill, 
+							  Achievements: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>					  
+					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				  </Card>		  
+				</div>			
+			</div>
+			)}		
+            {/* Experience & Skill Tab */}
+			{activeTab === "environment" && (
+			  <div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#635bff]">Environment & Preferences</h1>
+
+				  {/* Environment */}
+				<div className="grid md:grid-cols-2 gap-6">
+				  {/* Environment */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Personal Information</CardTitle>
+                      <CardTitle>Cognitive & Technical </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Full Name</label>
-                        <input 
-                          type="text" 
-                          value={candidateProfile.name}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Pattern Recognition (Ability to spot patterns)</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Good</option>
+                          <option>Moderate</option>
+                          <option>Fair</option>
+                        </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Email</label>
-                        <input 
-                          type="email" 
-                          value={candidateProfile.email}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Attention (Ability to concentrate)</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Good</option>
+                          <option>Moderate</option>
+                          <option>Fair</option>
+                        </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Location</label>
-                        <input 
-                          type="text" 
-                          value={candidateProfile.location}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Systematic Thinking (Ability to think logically)</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Good</option>
+                          <option>Moderate</option>
+                          <option>Fair</option>
+                        </select>
                       </div>
-                      <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">Save Changes</Button>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Big Picture vs. Detail-Oriented</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Big Picture</option>
+                          <option>Detail-Oriented</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Task-Switching (Ability to think logically)</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>One task at a time </option>
+                          <option>Moderate</option>
+						  <option>Multi Taskting</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Hyperfocus  (Ability to concentrate for extend period)</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Good</option>
+                          <option>Moderate</option>
+                          <option>Fair</option>
+                        </select>
+                      </div>					  
+                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
                     </CardContent>
-                  </Card>
-
+                  </Card>	
                   <Card>
                     <CardHeader>
-                      <CardTitle>Work Preferences</CardTitle>
+                      <CardTitle>Communication & Social Preferences </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Work Type</label>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Communication Medium</label>
                         <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Remote</option>
-                          <option>Hybrid</option>
-                          <option>On-site</option>
+                          <option></option>
+						  <option>Written</option>
+                          <option>Verbal</option>
+                          <option>Mix</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Communication Preference</label>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Clarity of communication</label>
                         <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Email preferred</option>
-                          <option>Phone calls</option>
-                          <option>Video calls</option>
-                          <option>Instant messaging</option>
+                          <option></option>
+						  <option>Prefers clear, literal instructions </option>
+                          <option>Open-ended or indirect language</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Schedule Preference</label>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Team Collaboration Style</label>
                         <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Flexible hours</option>
-                          <option>Standard hours (9-5)</option>
-                          <option>Early start</option>
-                          <option>Late start</option>
+                          <option></option>
+						  <option>Work independently</option>
+                          <option>Small, close-knit team</option>
+                          <option>Large, dynamic team</option>
                         </select>
                       </div>
-                      <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">Update Preferences</Button>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Presentation Comfort</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Comfortable</option>
+                          <option>Not comfortable</option>
+                          <option>Not comfortable, but willing to try</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Check-ins</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Prefers frequent check-ins</option>
+                          <option>Scheduled check-ins</option>
+                          <option>Given a task and left to complete </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Job Coach</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Need</option>
+                          <option>No Need</option>
+                        </select>
+                      </div>						  
+                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+                    </CardContent>
+                  </Card>	
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Environmental & Sensory Needs</CardTitle>
+                    </CardHeader>				  
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Auditory Preferences</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Quiet environment</option>
+                          <option>Can have background noise</option>
+                          <option>Noisy environment</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Visual Preferences</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Bright lighting</option>
+                          <option>Natural lighthing</option>
+						  <option>Dim lighthing</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Workspace Type</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Fixed table</option>
+                          <option>Shared table</option>
+                          <option>Private office</option>
+						  <option>Work from home</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Workday Structure</label>
+                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          <option></option>
+						  <option>Fixed work hour</option>
+                          <option>Flexible work hour</option>
+                          <option>Not comfortable but willing to try</option>
+                        </select>
+                      </div>				  
+                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
                     </CardContent>
                   </Card>
-                </div>
-              </div>
-            )}
+				  {/* Job Preferences */}
+				  <Card>
+					<CardHeader>
+					  <CardTitle>Job Preferences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Industries</label>
+						<input
+						  type="text"
+						  value={candidateProfile.jobPreferences.preferredIndustries.join(", ")}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							jobPreferences: { 
+							  ...candidateProfile.jobPreferences, 
+							  preferredIndustries: e.target.value.split(",").map(s => s.trim()) 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Roles</label>
+						<input
+						  type="text"
+						  value={candidateProfile.jobPreferences.preferredRoles.join(", ")}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							jobPreferences: { 
+							  ...candidateProfile.jobPreferences, 
+							  preferredRoles: e.target.value.split(",").map(s => s.trim()) 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Location Preference</label>
+						<input
+						  type="text"
+						  value={candidateProfile.jobPreferences.locationPreference}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							jobPreferences: { 
+							  ...candidateProfile.jobPreferences, 
+							  locationPreference: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">Availability</label>
+						<input
+						  type="text"
+						  value={candidateProfile.jobPreferences.availability}
+						  onChange={(e) => setCandidateProfile({
+							...candidateProfile,
+							jobPreferences: { 
+							  ...candidateProfile.jobPreferences, 
+							  availability: e.target.value 
+							}
+						  })}
+						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+						/>
+					  </div>
+					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				  </Card>				  
+				</div> 				
+			</div>
+			)}			
           </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -51,6 +51,7 @@ export default function EmployerDashboard() {
       "Equal Opportunity",
       "Accessibility Certified",
     ],
+    size: "1-10 employees"
   };
 
   const jobPostings = [
@@ -66,6 +67,7 @@ export default function EmployerDashboard() {
       applicants: 12,
       views: 234,
       accommodationsFriendly: true,
+      size: "100-500 employees"
     },
     {
       id: "2",
@@ -79,6 +81,7 @@ export default function EmployerDashboard() {
       applicants: 0,
       views: 0,
       accommodationsFriendly: true,
+      size: "11-50 employees"
     },
     {
       id: "3",
@@ -92,6 +95,7 @@ export default function EmployerDashboard() {
       applicants: 25,
       views: 456,
       accommodationsFriendly: false,
+      size: "50-100 employees"
     },
   ];
 
@@ -130,6 +134,11 @@ export default function EmployerDashboard() {
       score: 95,
     },
   ];
+
+  const [companyName, setCompanyName] = useState(companyProfile.name);
+  const [companyIndustry, setCompanyIndustry] = useState(companyProfile.industry)
+  const [companyLocation, setCompanyLocation] = useState(companyProfile.location)
+  const [companySize, setCompanySize] = useState(companyProfile.size)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -188,11 +197,56 @@ export default function EmployerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+          {/* Left section */}
+          <div className="mb-4 sm:mb-0">
+            <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
+              Welcome back, Neuro Tech Inc!
+            </h1>
+            <p className="text-gray-600 mb-4 sm:mb-0">
+              Manage your job postings and find the best neurodivergent talent.
+            </p>
+
+            {/* Button visible only on small screens */}
+            <motion.div
+              whileHover={{
+                scale: 1.05
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="inline-block rounded-lg sm:hidden"
+            >
+              <Button
+                className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200"
+                onClick={() => router.push("/post-job")}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Post New Job
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* Button visible only on larger screens */}
+          <motion.div
+            whileHover={{
+              scale: 1.05,
+            }}
+            className="hidden sm:inline-block rounded-lg"
+          >
+            <Button
+              className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200"
+              onClick={() => router.push("/post-job")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Post New Job
+            </Button>
+          </motion.div>
+      </div>
+
+        <div className="grid lg:grid-cols-4 gap-8 space-y-4">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 mt-4">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -260,140 +314,90 @@ export default function EmployerDashboard() {
               </CardContent>
             </Card>
           </div>
-
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Overview Tab */}
             {activeTab === "overview" && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <div>
-                    <h1 className="text-2xl font-bold text-[#3a4043] mb-2">
-                      Employer Dashboard
-                    </h1>
-                    <p className="text-gray-600">
-                      Manage your job postings and find the best neurodivergent
-                      talent.
-                    </p>
-                  </div>
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow:
-                        "0px 0px 15px rgba(99,91,255,0.6), 0px 0px 30px rgba(99,91,255,0.4)",
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="inline-block rounded-lg" // keeps glow radius smooth
-                  >
-                    <Button
-                      className="bg-[#635bff] hover:bg-[#635bff] text-white"
-                      onClick={() => {
-                        router.push("/post-job");
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Post New Job
-                    </Button>
-                  </motion.div>
                 </div>
 
                 <div className="grid md:grid-cols-4 gap-6">
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
-                    }}
-                    className="rounded-xl overflow-hidden" // keep corners rounded on hover
-                  >
-                    <Card>
-                      <CardContent className="p-6 text-center">
-                        <FileText className="h-8 w-8 text-[#635bff] mx-auto mb-2" />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">
-                          {
-                            jobPostings.filter((j) => j.status === "active")
-                              .length
-                          }
-                        </h3>
-                        <p className="text-sm text-gray-600">Active Jobs</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                {[
+                  {
+                    icon: FileText,
+                    iconColor: "text-[#635bff]",
+                    title: "Active Jobs",
+                    value: jobPostings.filter((j) => j.status === "active").length,
+                  },
+                  {
+                    icon: Users,
+                    iconColor: "text-blue-600",
+                    title: "Total Applications",
+                    value: applications.length,
+                  },
+                  {
+                    icon: Eye,
+                    iconColor: "text-green-600",
+                    title: "Total Views",
+                    value: jobPostings.reduce((sum, job) => sum + job.views, 0),
+                  },
+                  {
+                    icon: Shield,
+                    iconColor: "text-purple-600",
+                    title: "Inclusion Score",
+                    value: `${companyProfile.inclusionScore}%`,
+                  },
+                ].map((card, idx) => {
+                  const Icon = card.icon;
+                  return (
+                    <motion.div
+                      key={idx}
+                      whileHover={{
+                        // scale: 1.05,
+                        // boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
+                      }}
+                      className="rounded-xl overflow-hidden"
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <Card>
+                        <CardContent className="p-6 text-center">
+                          <Icon className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`} />
+                          <h3 className="font-semibold text-[#3a4043] mb-1">{card.value}</h3>
+                          <p className="text-sm text-gray-600">{card.title}</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
-                    }}
-                    className="rounded-xl overflow-hidden" // keep corners rounded on hover
-                  >
-                    <Card>
-                      <CardContent className="p-6 text-center">
-                        <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">
-                          {applications.length}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Total Applications
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
-                    }}
-                    className="rounded-xl overflow-hidden" // keep corners rounded on hover
-                  >
-                    <Card>
-                      <CardContent className="p-6 text-center">
-                        <Eye className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">
-                          {jobPostings.reduce((sum, job) => sum + job.views, 0)}
-                        </h3>
-                        <p className="text-sm text-gray-600">Total Views</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
-                    }}
-                    className="rounded-xl overflow-hidden" // keep corners rounded on hover
-                  >
-                    <Card>
-                      <CardContent className="p-6 text-center">
-                        <Shield className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">
-                          {companyProfile.inclusionScore}%
-                        </h3>
-                        <p className="text-sm text-gray-600">Inclusion Score</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </div>
 
                 {/* Recent Applications */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Applications</CardTitle>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Recent Applications</CardTitle>
+                      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+                        View More
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {applications.slice(0, 3).map((app) => (
-                        <div
+                        <motion.div
                           key={app.id}
-                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-lg"
+                          whileHover={{
+                            boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
+                          }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white"
                         >
                           <div className="flex items-center gap-3">
                             {getStatusIcon(app.status)}
                             <div>
-                              <h4 className="font-medium text-[#3a4043]">
-                                {app.candidateName}
-                              </h4>
+                              <h4 className="font-medium text-[#3a4043]">{app.candidateName}</h4>
                               <p className="text-sm text-gray-600">
                                 {app.jobTitle} • {app.experience} experience
                               </p>
@@ -401,20 +405,19 @@ export default function EmployerDashboard() {
                             {app.accommodationsRequested && (
                               <Badge
                                 variant="secondary"
-                                className="bg-purple-100 text-purple-800"
+                                className="bg-purple-100 text-purple-800 flex items-center gap-1"
                               >
-                                <Shield className="h-3 w-3 mr-1" />
+                                <Shield className="h-3 w-3" />
                                 Accommodations
                               </Badge>
                             )}
                           </div>
+
                           <div className="text-right">
                             {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">
-                              Score: {app.score}%
-                            </p>
+                            <p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </CardContent>
@@ -661,9 +664,12 @@ export default function EmployerDashboard() {
                           Company Name
                         </label>
                         <input
+                          
                           type="text"
-                          value={companyProfile.name}
+                          value={companyName}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="Please enter company name"
                         />
                       </div>
                       <div>
@@ -672,8 +678,10 @@ export default function EmployerDashboard() {
                         </label>
                         <input
                           type="text"
-                          value={companyProfile.industry}
+                          value={companyIndustry}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+                          onChange={(e) => setCompanyIndustry(e.target.value)}
+                          placeholder="Please enter industry"
                         />
                       </div>
                       <div>
@@ -682,19 +690,25 @@ export default function EmployerDashboard() {
                         </label>
                         <input
                           type="text"
-                          value={companyProfile.location}
+                          value={companyLocation}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
+                          onChange={(e) => setCompanyLocation(e.target.value)}
+                          placeholder="Please enter company location"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Company Size
                         </label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                        <select 
+                          value={companyProfile.size}
+                          onChange={(e) => setCompanySize(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
                           <option>1-10 employees</option>
                           <option>11-50 employees</option>
                           <option selected>50-100 employees</option>
-                          <option>100+ employees</option>
+                          <option>100-500 employees</option>
+                          <option>500+ employees</option>
                         </select>
                       </div>
                       <Button className="bg-[#635bff] hover:bg-[#5346e6] text-white">

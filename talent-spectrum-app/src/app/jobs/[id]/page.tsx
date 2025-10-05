@@ -1,24 +1,34 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/app/components/button";
+import { Separator } from "@/app/components/separator";
 import { Badge } from "@/app/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
-import { MapPin, Clock, DollarSign, Heart, Home, Shield, Building, Users, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/app/components/card";
+import {
+  ArrowLeft,
+  MapPin,
+  Clock,
+  DollarSign,
+  Heart,
+  Home,
+  Shield,
+  Building,
+  CheckCircle,
+} from "lucide-react";
 
 interface JobDetailsPageProps {
-  params: {
-    id: string;
-  };
+  params: { id: string };
+  setCurrentPage: (page: string) => void;
 }
 
-export default function JobDetailsPage({ params }: JobDetailsPageProps) {
+export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPageProps) {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const { id } = params;
 
   // Mock job data - in real app, fetch based on params.id
   const job = {
-    id: params.id,
+    id,
     title: "Frontend Developer",
     company: "NeuroTech",
     location: "Remote",
@@ -28,29 +38,15 @@ export default function JobDetailsPage({ params }: JobDetailsPageProps) {
     isFlexible: true,
     hasAccommodations: true,
     isInclusive: true,
-    description: "We are looking for a frontend developer with strong React and Tailwind skills to join our inclusive team.",
+    description:
+      "We are looking for a frontend developer with strong React and Tailwind skills to join our inclusive team.",
     posted: "2 days ago",
-    fullDescription: `We're seeking a passionate Frontend Developer to join our neurodivergent-friendly team. You'll work on building accessible, inclusive web applications that make a real difference in people's lives.
-
-What you'll do:
-• Develop responsive web applications using React and TypeScript
-• Collaborate with our diverse team in a supportive environment
-• Implement accessibility features and inclusive design patterns
-• Work with modern tools like Tailwind CSS, Next.js, and Figma
-• Participate in code reviews and knowledge sharing sessions
-
-What we offer:
-• Flexible working hours and remote-first culture
-• Comprehensive workplace accommodations
-• Mental health support and neurodivergent-friendly policies
-• Professional development opportunities
-• Inclusive team environment that celebrates diversity`,
     requirements: [
       "2+ years experience with React",
       "Strong TypeScript skills",
       "Experience with Tailwind CSS",
       "Understanding of accessibility principles",
-      "Excellent communication skills"
+      "Excellent communication skills",
     ],
     benefits: [
       "Flexible working hours",
@@ -58,7 +54,7 @@ What we offer:
       "Workplace accommodations",
       "Mental health support",
       "Professional development budget",
-      "Inclusive team culture"
+      "Inclusive team culture",
     ],
     accommodationsAvailable: [
       "Flexible start/finish times",
@@ -66,104 +62,124 @@ What we offer:
       "Written communication preferences",
       "Regular check-ins with manager",
       "Sensory-friendly office environment",
-      "Extended time for tasks when needed"
-    ]
+      "Extended time for tasks when needed",
+    ],
+    companyInfo: {
+      size: "200-500 employees",
+      industry: "Technology",
+      founded: "2016",
+      inclusivityScore: "A+",
+    },
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen py-10 px-4 bg-gray-50">
+      <div className="container mx-auto max-w-6xl">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => setCurrentPage("jobs")}
+          className="mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Jobs
+        </Button>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Job Header */}
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-2xl mb-2">{job.title}</CardTitle>
-                    <div className="flex items-center gap-4 text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4" />
-                        {job.company}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {job.location}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {job.type}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-lg font-semibold text-[#6b8a7a]">
-                      <DollarSign className="h-5 w-5" />
-                      {job.salary}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Posted {job.posted}</p>
-                  </div>
+        {/* Job Header */}
+        <Card className="mb-8 shadow-md">
+          <CardHeader className="pb-0">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {job.title}
+                </h1>
+                <div className="flex items-center gap-2 mb-4 text-gray-600">
+                  <Building className="h-5 w-5 text-[#635bff]" />
+                  <span className="text-lg font-medium">{job.company}</span>
                 </div>
-              </CardHeader>
-              <CardContent>
+
+                <div className="flex flex-wrap gap-6 text-gray-600 mb-4">
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-[#635bff]" />
+                    {job.location}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#635bff]" />
+                    {job.type}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-[#635bff]" />
+                    {job.salary}
+                  </span>
+                </div>
+
+                {/* Tags */}
                 <div className="flex flex-wrap gap-2">
                   {job.isRemote && (
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Badge className="bg-blue-100 text-blue-800">
                       <Home className="h-3 w-3 mr-1" />
-                      Remote
+                      Remote Friendly
                     </Badge>
                   )}
                   {job.isFlexible && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Badge className="bg-green-100 text-green-800">
                       <Clock className="h-3 w-3 mr-1" />
                       Flexible Hours
                     </Badge>
                   )}
                   {job.hasAccommodations && (
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                    <Badge className="bg-purple-100 text-purple-800">
                       <Shield className="h-3 w-3 mr-1" />
-                      Accommodations Available
+                      Accommodations
                     </Badge>
                   )}
                   {job.isInclusive && (
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
+                    <Badge className="bg-pink-100 text-pink-800">
                       <Heart className="h-3 w-3 mr-1" />
-                      Neurodivergent Friendly
+                      Inclusive
                     </Badge>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Job Description */}
+              <div className="lg:text-right">
+                <Button
+                  size="lg"
+                  className="w-full lg:w-auto mb-2"
+                  onClick={() => setCurrentPage("job-application")}
+                >
+                  Apply Now
+                </Button>
+                <p className="text-sm text-gray-500">Posted {job.posted}</p>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* About */}
             <Card>
               <CardHeader>
-                <CardTitle>About this role</CardTitle>
+                <h2 className="text-xl font-semibold">About This Role</h2>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  {job.fullDescription.split('\n').map((paragraph, index) => (
-                    <p key={index} className="mb-4 text-[#3a4043] leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
+                <p className="text-gray-700 leading-relaxed">{job.description}</p>
               </CardContent>
             </Card>
 
             {/* Requirements */}
             <Card>
               <CardHeader>
-                <CardTitle>What we're looking for</CardTitle>
+                <h2 className="text-xl font-semibold">What We're Looking For</h2>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {job.requirements.map((req, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-[#6b8a7a] mt-0.5 flex-shrink-0" />
-                      <span className="text-[#3a4043]">{req}</span>
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
+                      <span className="text-gray-700">{req}</span>
                     </li>
                   ))}
                 </ul>
@@ -171,45 +187,57 @@ What we offer:
             </Card>
 
             {/* Accommodations */}
-            <Card>
+            <Card className="border-2 border-[#635bff]/30 bg-blue-50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" />
-                  Workplace Accommodations Available
-                </CardTitle>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-[#635bff]">
+                  <Shield className="h-5 w-5" />
+                  Workplace Accommodations
+                </h2>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {job.accommodationsAvailable.map((accommodation, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-[#3a4043] text-sm">{accommodation}</span>
-                    </div>
+                <ul className="space-y-2">
+                  {job.accommodationsAvailable.map((acc, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#635bff] mt-1" />
+                      <span className="text-gray-700 text-sm">{acc}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Apply Section */}
+            {/* Company Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Ready to apply?</CardTitle>
+                <h3 className="font-semibold text-lg">
+                  About {job.company}
+                </h3>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full bg-[#6b8a7a] hover:bg-[#5d7c6b]"
-                  onClick={() => setShowApplicationForm(true)}
-                >
-                  Apply for this role
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Save for later
-                </Button>
-                <Button variant="ghost" className="w-full">
-                  Share this job
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Company Size</span>
+                  <span>{job.companyInfo.size}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Industry</span>
+                  <span>{job.companyInfo.industry}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Founded</span>
+                  <span>{job.companyInfo.founded}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Inclusivity Score</span>
+                  <Badge className="bg-green-100 text-green-800">
+                    {job.companyInfo.inclusivityScore}
+                  </Badge>
+                </div>
+                <Button variant="outline" className="w-full mt-4">
+                  View Company Profile
                 </Button>
               </CardContent>
             </Card>
@@ -217,73 +245,42 @@ What we offer:
             {/* Benefits */}
             <Card>
               <CardHeader>
-                <CardTitle>Benefits & Perks</CardTitle>
+                <h3 className="font-semibold text-lg">Benefits & Perks</h3>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
                   {job.benefits.map((benefit, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-[#6b8a7a] mt-0.5 flex-shrink-0" />
-                      <span className="text-[#3a4043] text-sm">{benefit}</span>
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                      <span className="text-sm text-gray-700">{benefit}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
 
-            {/* Company Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>About {job.company}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">50-100 employees</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Technology</span>
-                  </div>
-                  <p className="text-sm text-[#3a4043] leading-relaxed">
-                    NeuroTech is committed to creating an inclusive workplace where neurodivergent individuals can thrive and contribute their unique perspectives to innovative technology solutions.
-                  </p>
-                </div>
+            {/* Call to Action */}
+            <Card className="border-2 border-[#635bff]/30 bg-blue-50">
+              <CardContent className="p-6 text-center">
+                <h3 className="text-lg font-semibold mb-4">Ready to Apply?</h3>
+                <Button
+                  size="lg"
+                  className="w-full mb-3"
+                  onClick={() => setCurrentPage("job-application")}
+                >
+                  Apply Now
+                </Button>
+                <Button variant="outline" size="sm" className="w-full">
+                  Save for Later
+                </Button>
+                <p className="text-xs text-gray-500 mt-3">
+                  Application typically takes 5–10 minutes
+                </p>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-
-      {/* Application Modal would go here */}
-      {showApplicationForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Apply for {job.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-[#3a4043] mb-4">
-                Application form will be implemented here with accommodation requests and neurodivergent-friendly features.
-              </p>
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowApplicationForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Link href={`/jobs/${job.id}/apply`}>
-                  <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
-                    Continue to Application
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

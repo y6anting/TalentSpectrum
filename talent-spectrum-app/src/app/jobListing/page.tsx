@@ -1,20 +1,81 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import JobCard from "@/app/components/jobCard";
 import { Button } from "@/app/components/button";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, Grid3X3, List, SlidersHorizontal } from "lucide-react";
+import gsap from "gsap"
 
 const jobs = [
-  {
+   {
     id: "1",
+    title: "UX Designer",
+    company: "Google",
+    location: "Hybrid",
+    type: "Full-time",
+    salary: "RM65k - 85k / annum",
+    logo: "/Google_Logo.png",
+    isRemote: false,
+    isFlexible: true,
+    hasAccommodations: true,
+    isInclusive: true,
+    description: "Join Google's design team to create accessible user experiences.",
+    posted: "1 day ago",
+  },
+  {
+    id: "2",
+    title: "Consultant",
+    company: "PwC",
+    location: "Remote",
+    type: "Full-time",
+    salary: "RM80k - 110k / annum",
+    logo: "/PwC_Logo.png",
+    isRemote: true,
+    isFlexible: true,
+    hasAccommodations: true,
+    isInclusive: true,
+    description: "Consult on neurodivergent inclusion and workplace adaptation strategies.",
+    posted: "3 days ago",
+  },
+  {
+    id: "3",
+    title: "Developer",
+    company: "Gamuda",
+    location: "Remote",
+    type: "Full-time",
+    salary: "RM70k - 90k / annum",
+    logo: "/Gamuda_Logo.png",
+    isRemote: true,
+    isFlexible: true,
+    hasAccommodations: true,
+    isInclusive: true,
+    description: "Develop innovative software for sustainable infrastructure projects.",
+    posted: "2 days ago",
+  },
+  {
+    id: "4",
+    title: "Data Analyst",
+    company: "SLB",
+    location: "Part-time",
+    type: "Part-time",
+    salary: "RM40k - 55k / annum",
+    logo: "/SLB_Logo.png",
+    isRemote: false,
+    isFlexible: true,
+    hasAccommodations: true,
+    isInclusive: true,
+    description: "Analyze datasets to improve energy efficiency and inclusivity.",
+    posted: "5 days ago",
+  },
+  {
+    id: "5",
     title: "Frontend Developer",
     company: "NeuroTech",
     location: "Remote",
     type: "Full-time",
-    salary: "$70k - $90k",
+    salary: "RM70k - 90k / annum",
     isRemote: true,
     isFlexible: true,
     hasAccommodations: true,
@@ -24,12 +85,12 @@ const jobs = [
     posted: "2 days ago",
   },
   {
-    id: "2",
+    id: "6",
     title: "Data Analyst",
     company: "InclusionWorks",
     location: "Singapore",
     type: "Part-time",
-    salary: "$40k - $55k",
+    salary: "RM40k - RM55k / annum",
     isRemote: false,
     isFlexible: true,
     hasAccommodations: false,
@@ -39,12 +100,12 @@ const jobs = [
     posted: "5 days ago",
   },
   {
-    id: "3",
+    id: "7",
     title: "UX Designer",
     company: "DesignForward",
     location: "Hybrid",
     type: "Full-time",
-    salary: "$65k - $85k",
+    salary: "RM65k - RM85k / annum",
     isRemote: false,
     isFlexible: true,
     hasAccommodations: true,
@@ -54,12 +115,12 @@ const jobs = [
     posted: "1 week ago",
   },
   {
-    id: "4",
+    id: "8",
     title: "Software Engineer",
     company: "TechInclusive",
     location: "Remote",
     type: "Full-time",
-    salary: "$80k - $110k",
+    salary: "RM80k - RM110k / annum",
     isRemote: true,
     isFlexible: true,
     hasAccommodations: true,
@@ -74,6 +135,8 @@ export default function OpportunitiesPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const jobsGridRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const handleJobClick = (jobId: string) => {
     router.push(`/jobs/${jobId}`);
@@ -117,15 +180,38 @@ export default function OpportunitiesPage() {
     return true;
   });
 
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    if (prefersReducedMotion || !jobsGridRef.current) return;
+
+    const jobCards = jobsGridRef.current.querySelectorAll('.job-card-item');
+    
+    gsap.fromTo(jobCards, 
+      {
+        opacity: 0,
+        y: 20,
+        scale: 0.95
+      },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.4,
+        stagger: 0.05,
+        ease: 'power2.out'
+      }
+    );
+  }, [filteredJobs, viewMode]);
+
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
-      {/* Main Content */}
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#6b8a7a] mb-4">🚀 Neurodivergent-Friendly Opportunities</h1>
-          <p className="text-xl text-[#3a4043] max-w-3xl mx-auto">
-            Discover inclusive job opportunities from companies that celebrate neurodiversity and provide workplace accommodations.
+          <h1 className="text-4xl font-bold mb-4">Find Your Perfect Job</h1>
+          <p className="text-xl text-[#6f7a80] max-w-3xl mx-auto">
+            Discover opportunities with neurodivergent-friendly employers
           </p>
         </div>
 
@@ -139,11 +225,11 @@ export default function OpportunitiesPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search jobs, companies, or skills..."
-                className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-white shadow-lg"
+                className="w-full px-6 py-4 pr-12 text-lg border border-gray-300 rounded-xl  focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all text-[#3a4043] bg-white shadow-md"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white p-2 rounded-lg transition-colors"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#635bff] hover:bg-[#635bff] text-white p-2 rounded-lg transition-colors"
               >
                 <Search className="w-5 h-5" />
               </button>
@@ -158,8 +244,8 @@ export default function OpportunitiesPage() {
                 onClick={() => toggleFilter(filter.id)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedFilters.includes(filter.id)
-                    ? 'bg-[#6b8a7a] text-white'
-                    : 'bg-white border border-[#e8e6f0] text-[#3a4043] hover:bg-[#6b8a7a] hover:text-white'
+                    ? "bg-[#635bff] text-white"
+                    : "bg-white/60 border border-[#e8e6f0] rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors"
                 }`}
               >
                 {filter.label}
@@ -173,37 +259,60 @@ export default function OpportunitiesPage() {
           <p className="text-[#3a4043]">
             <span className="font-semibold">{filteredJobs.length}</span> neurodivergent-friendly jobs found
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              Sort
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              More Filters
-            </Button>
+
+          {/* View Toggle */}
+          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-1 rounded-lg w-fit shadow-sm">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1 px-3 py-2 rounded-md transition-all ${
+                viewMode === "list"
+                ? "bg-[#635bff] text-white shadow-md px-4 py-2 rounded-lg transition-all duration-200"
+                : "text-gray-600 px-4 py-2 rounded-lg hover:bg-[#635bff]/15 hover:text-[#635bff] transition-all duration-200"
+
+              }`}
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm">List</span>
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center gap-1 px-3 py-2 rounded-md transition-all ${
+                viewMode === "grid"
+                ? "bg-[#635bff] text-white shadow-md px-4 py-2 rounded-lg transition-all duration-200"
+                : "text-gray-600 px-4 py-2 rounded-lg hover:bg-[#635bff]/15 hover:text-[#635bff] transition-all duration-200"
+
+              }`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm">Grid</span>
+            </button>
           </div>
+
         </div>
 
         {/* Job Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+        <div
+          ref={jobsGridRef}
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              : "space-y-4"
+          }
+        >
           {filteredJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onJobClick={handleJobClick}
-              viewMode="grid"
-            />
+            <div key={job.id} className="job-card-item">
+              <JobCard job={job} onJobClick={handleJobClick} viewMode={viewMode} />
+            </div>
           ))}
         </div>
 
         {/* Empty State */}
         {filteredJobs.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No jobs found</h3>
-            <p className="text-gray-600 mb-4">Try adjusting your search or filters to find more opportunities.</p>
-            <Button 
+            <p className="text-muted-foreground mb-4">
+              No jobs found matching your criteria
+            </p>
+            <Button
               onClick={() => {
                 setSearchQuery("");
                 setSelectedFilters([]);
@@ -221,15 +330,22 @@ export default function OpportunitiesPage() {
             Don't see the perfect job yet?
           </h2>
           <p className="text-[#3a4043] mb-6">
-            Create your profile and let neurodivergent-friendly employers find you. Set up job alerts to be notified of new opportunities.
+            Create your profile and let neurodivergent-friendly employers find you. 
+            Set up job alerts to be notified of new opportunities.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/register">
-              <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+            <Link href="/login">
+              <Button
+                className="rounded-full bg-[#635bff] hover:bg-[#5148e5] text-white font-semibold px-6 py-2 shadow-md transition-all duration-200"
+              >
                 Create Profile
               </Button>
             </Link>
-            <Button variant="outline">
+
+            <Button
+              variant="outline"
+              className="rounded-full text-[#635bff] hover:bg-[#635bff]/80 hover:text-white font-semibold px-6 py-2 transition-all duration-200"
+            >
               Set Up Job Alerts
             </Button>
           </div>

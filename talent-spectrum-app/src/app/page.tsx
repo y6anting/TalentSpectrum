@@ -36,7 +36,7 @@ export default function HomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search jobs, inclusive employers, coaches & more..."
-                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-2 focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
+                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
                 />
                 <button
                   type="submit"

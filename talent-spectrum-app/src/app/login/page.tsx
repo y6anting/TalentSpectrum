@@ -36,14 +36,14 @@ interface SignupProgress {
 // Customize labels, titles, descriptions, and dashboard routes for each user type
 const USER_TYPE_CONFIG = {
   candidate: {
-    label: "🌻 Job Seeker",
+    label: "Job Seeker",
     title: "Find Your Perfect Role",
     description:
       "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
     dashboard: "/candidate-dashboard",
   },
   employer: {
-    label: "🏢 Employer",
+    label: "Employer",
     title: "Discover Top Talent",
     description:
       "Build diverse teams with our neurodivergent-friendly hiring platform.",
@@ -72,7 +72,7 @@ const InputField = ({
   placeholder: string;
   required?: boolean;
 }) => (
-  <div className="mb-4">
+  <div className="mb-4 ">
     <label className="block text-sm font-medium text-gray-700 mb-2">
       {label}
     </label>
@@ -390,7 +390,7 @@ const LoginPage = () => {
             LEFT SIDE - ILLUSTRATION PANEL
             To change gradient colors, modify: from-[#color] to-[#color]
             ==================================================================== */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#0e0116] to-[#b53cfc] p-12 flex-col justify-between">
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#3a075a] to-[#635bff] p-12 flex-col justify-between">
           {/* Brand Header */}
           <div>
             <Image
@@ -407,7 +407,7 @@ const LoginPage = () => {
           </div>
 
           {/* Center Content - Dynamic based on signup progress or user type */}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center ">
             {activeTab === "signup" ? (
               // Progressive Signup Steps Display
               <div className="text-center w-full max-w-md">
@@ -447,7 +447,7 @@ const LoginPage = () => {
                 {/* Step-specific content */}
                 {signupProgress.currentStep === "name" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">🌋</div>
+                    {/* <div className="text-7xl mb-6">🌋</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Your Journey Starts Here!
                     </h2>
@@ -459,7 +459,7 @@ const LoginPage = () => {
 
                 {signupProgress.currentStep === "email" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">💫</div>
+                    {/* <div className="text-7xl mb-6">💫</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Great to meet you, {signupData.name}!
                     </h2>
@@ -471,7 +471,7 @@ const LoginPage = () => {
 
                 {signupProgress.currentStep === "password" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">🎉</div>
+                    {/* <div className="text-7xl mb-6">🎉</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Almost Ready to Shine!
                     </h2>
@@ -495,7 +495,7 @@ const LoginPage = () => {
             RIGHT SIDE - FORM CONTAINER
             Change background color with: bg-[#color]
             ==================================================================== */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#faf9f7]">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-b from-violet-50 to-background">
           <div className="max-w-md w-full">
             {/* User Type Badge - Shows current user type (Job Seeker/Employer) */}
             <div className="text-center mb-6">

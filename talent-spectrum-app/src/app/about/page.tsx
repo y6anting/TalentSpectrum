@@ -6,7 +6,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Section 1: Our Story - Hero with Image Grid */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#faf9f7] to-white">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-violet-50 to-background">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>

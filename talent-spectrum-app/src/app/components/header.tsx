@@ -18,19 +18,24 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     { href: "/about", label: "About" },
     { href: "/jobListing", label: "Jobs" },
     // { href: "/JobCoach", label: "Job Coach" },
-    { href: "/JobSeeker", label: "Job Seeker" },
+    { href: "/candidate-dashboard", label: "Job Seeker" },
     // { href: "/contact", label: "Contact" },
-    {href: "Employer", label: "Employer"}
+    {href: "/employer-dashboard", label: "Employer"}
   ];
 
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="w-full bg-[#ecebff] backdrop-blur-md border-b border-[#e8e6f0] sticky top-0 z-100">
+    <header className="w-full sticky top-0 z-50 bg-[#e8e7ff]/80 backdrop-blur-lg border-b border-gray-200 shadow-[0_4px_12px_rgba(99,91,255,0.15)]">
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2" onClick={() => setCurrentPage?.("home")}>
+          <Link
+            href="/"
+            onClick={() => setCurrentPage?.("home")}
+            className="flex items-center gap-2"
+          >
             <Image
               src="/TalentSpectrumLogo.png"
               alt="Talent Spectrum Logo"
@@ -41,17 +46,16 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`transition-colors ${
+                className={`px-5 py-2 rounded-full font-semibold tracking-wide transition-all duration-200 ${
                   isActive(item.href)
-                    ? "text-[#6b8a7a] font-medium"
-                    : "text-[#3a4043] hover:text-[#827CFF]"
+                    ? "bg-[#635bff] text-white shadow hover:bg-[#524aff]"
+                    : "hover:text-[#635bff] text-gray-700  hover:bg-violet-100/70"
                 }`}
-                // onClick={() => setCurrentPage?.(item.page)}
               >
                 {item.label}
               </Link>
@@ -62,71 +66,61 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/login"
-              className="text-[#635bff] hover:text-[#827CFF] font-medium transition-colors"
               onClick={() => setCurrentPage?.("login")}
+              className="text-[#635bff] hover:text-[#524aff] font-semibold transition-all duration-200"
             >
               Sign In
             </Link>
             <Link
               href="/role-selection"
-              className="bg-[#635bff] hover:bg-[#827CFF] text-white px-4 py-2 rounded-lg font-medium transition-colors"
               onClick={() => setCurrentPage?.("role-selection")}
+              className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200"
             >
               Get Started
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-[#3a4043] hover:text-[#6b8a7a] p-2"
-              aria-label="Toggle mobile menu"
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            className="md:hidden text-gray-700 hover:text-[#635bff] p-2"
+            aria-label="Toggle mobile menu"
+            aria-expanded={isMobileMenuOpen}
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-[#e8e6f0] bg-white/95 backdrop-blur-md">
-            <nav className="flex flex-col space-y-3">
+          <div className="md:hidden mt-2 border-t border-violet-100 bg-white/70 backdrop-blur-xl rounded-lg shadow-md">
+            <nav className="flex flex-col space-y-2 p-4">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-4 py-2 transition-colors ${
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
                     isActive(item.href)
-                      ? "text-[#6b8a7a] font-medium bg-[#6b8a7a]/10"
-                      : "text-[#3a4043] hover:text-[#6b8a7a] hover:bg-gray-50"
+                      ? "bg-[#635bff] text-white shadow-sm"
+                      : "text-gray-700 hover:bg-violet-100/70 hover:text-[#635bff]"
                   }`}
-                  onClick={() => {
-                    // setCurrentPage?.(item.page);
-                    setIsMobileMenuOpen(false);
-                  }}
                 >
                   {item.label}
                 </Link>
               ))}
-              <div className="px-4 pt-3 border-t border-[#e8e6f0] space-y-2">
+              <div className="pt-4 border-t border-violet-100 flex flex-col gap-2">
                 <Link
                   href="/login"
-                  className="block w-full text-center text-[#6b8a7a] hover:text-[#5d7c6b] font-medium py-2"
-                  onClick={() => {
-                    setCurrentPage?.("login");
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-center text-[#635bff] hover:text-[#524aff] font-medium py-2 transition-all"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href="/role-selection"
-                  className="block w-full text-center bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                  onClick={() => {
-                    setCurrentPage?.("role-selection");
-                    setIsMobileMenuOpen(false);
-                  }}
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all"
                 >
                   Get Started
                 </Link>

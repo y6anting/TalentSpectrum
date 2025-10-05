@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import JobCard from "@/app/components/jobCard";
 import { Button } from "@/app/components/button";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal/*, ChevronDown, ArrowUp, ArrowDown*/ } from "lucide-react";
 
 const jobs = [
   {
@@ -85,8 +85,8 @@ export default function OpportunitiesPage() {
   };
 
   const toggleFilter = (filter: string) => {
-    setSelectedFilters(prev => 
-      prev.includes(filter) 
+    setSelectedFilters(prev =>
+      prev.includes(filter)
         ? prev.filter(f => f !== filter)
         : [...prev, filter]
     );
@@ -103,17 +103,17 @@ export default function OpportunitiesPage() {
 
   const filteredJobs = jobs.filter(job => {
     if (searchQuery && !job.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !job.company.toLowerCase().includes(searchQuery.toLowerCase())) {
+      !job.company.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    
+
     if (selectedFilters.includes("remote") && !job.isRemote) return false;
     if (selectedFilters.includes("flexible") && !job.isFlexible) return false;
     if (selectedFilters.includes("accommodations") && !job.hasAccommodations) return false;
     if (selectedFilters.includes("inclusive") && !job.isInclusive) return false;
     if (selectedFilters.includes("fulltime") && job.type !== "Full-time") return false;
     if (selectedFilters.includes("parttime") && job.type !== "Part-time") return false;
-    
+
     return true;
   });
 
@@ -123,8 +123,8 @@ export default function OpportunitiesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#6b8a7a] mb-4">🚀 Neurodivergent-Friendly Opportunities</h1>
-          <p className="text-xl text-[#3a4043] max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-5xl mb-6 text-[#635bff] font-bold">🚀 Neurodivergent-Friendly Opportunities</h1>
+          <p className="text-xl text-[#3a4043]/80 max-w-3xl mx-auto">
             Discover inclusive job opportunities from companies that celebrate neurodiversity and provide workplace accommodations.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function OpportunitiesPage() {
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white p-2 rounded-lg transition-colors"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors hover:cursor-pointer"
               >
                 <Search className="w-5 h-5" />
               </button>
@@ -156,11 +156,10 @@ export default function OpportunitiesPage() {
               <button
                 key={filter.id}
                 onClick={() => toggleFilter(filter.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedFilters.includes(filter.id)
-                    ? 'bg-[#6b8a7a] text-white'
-                    : 'bg-white border border-[#e8e6f0] text-[#3a4043] hover:bg-[#6b8a7a] hover:text-white'
-                }`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedFilters.includes(filter.id)
+                    ? 'bg-[#827CFF] text-white'
+                    : 'bg-white border border-[#e8e6f0] text-[#3a4043] hover:bg-[#827CFF] hover:text-white'
+                  }`}
               >
                 {filter.label}
               </button>
@@ -174,13 +173,9 @@ export default function OpportunitiesPage() {
             <span className="font-semibold">{filteredJobs.length}</span> neurodivergent-friendly jobs found
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="hover:cursor-pointer">
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Sort
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              More Filters
             </Button>
           </div>
         </div>
@@ -203,7 +198,7 @@ export default function OpportunitiesPage() {
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No jobs found</h3>
             <p className="text-gray-600 mb-4">Try adjusting your search or filters to find more opportunities.</p>
-            <Button 
+            <Button
               onClick={() => {
                 setSearchQuery("");
                 setSelectedFilters([]);
@@ -225,11 +220,11 @@ export default function OpportunitiesPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register">
-              <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+              <Button className="bg-[#635bff] hover:bg-[#827CFF] hover:text-[#ffffff] hover:cursor-pointer">
                 Create Profile
               </Button>
             </Link>
-            <Button variant="outline">
+            <Button variant="outline" className="hover:cursor-pointer">
               Set Up Job Alerts
             </Button>
           </div>

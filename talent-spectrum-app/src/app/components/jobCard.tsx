@@ -36,7 +36,7 @@ export default function JobCard({
 
   return (
     <Card
-      className={`hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-emerald-200 ${
+      className={`hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#A090FF] ${
         viewMode === "list" ? "mb-4" : ""
       }`}
       onClick={handleClick}
@@ -50,8 +50,8 @@ export default function JobCard({
           }`}
         >
           <div className={viewMode === "list" ? "flex-1" : ""}>
-            <h3 className="mb-1 font-semibold">{job.title}</h3>
-            <p className="text-muted-foreground">{job.company}</p>
+            <h3 className="mb-1 font-semibold text-[#000000]">{job.title}</h3>
+            <p className="text-muted-foreground text-[#000000]">{job.company}</p>
           </div>
 
           {viewMode === "list" && (
@@ -74,22 +74,22 @@ export default function JobCard({
         {viewMode === "grid" && (
           <div className="space-y-3 mb-4">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 text-[#000000]">
                 <MapPin className="h-4 w-4" />
                 {job.location}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 text-[#000000]">
                 <Clock className="h-4 w-4" />
                 {job.type}
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground text-[#000000]">
               <DollarSign className="h-4 w-4" />
               {job.salary}
             </div>
 
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            <p className="text-sm text-muted-foreground line-clamp-2 text-[#000000]">
               {job.description}
             </p>
           </div>
@@ -126,10 +126,10 @@ export default function JobCard({
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground text-[#000000]">
             Posted {job.posted}
           </span>
-          <Button size="sm" onClick={handleClick}>
+          <Button size="sm" onClick={handleClick} className="text-[#000000]">
             View Details
           </Button>
         </div>

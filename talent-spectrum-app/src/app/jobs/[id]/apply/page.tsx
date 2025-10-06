@@ -144,9 +144,9 @@ const MethodSelection: React.FC<{
         <Button
           variant="ghost"
           onClick={() => window.history.back()}
-          className="mb-6 text-[#3a4043] hover:text-[#635bff]"
+          className="mb-6 text-[#3a4043] hover:text-[#635bff] text-base"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mb-1" />
           Back to Job Details
         </Button>
       </div>

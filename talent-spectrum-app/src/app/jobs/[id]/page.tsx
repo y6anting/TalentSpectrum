@@ -146,7 +146,7 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
                 <Button
                   size="lg"
                   className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
-                  onClick={() => (window.location.href = `/jobs/${job.id}/job-application`)}
+                  onClick={() => (window.location.href = `/jobs/${job.id}/apply`)}
                 >
                   Apply Now
                 </Button>
@@ -270,7 +270,7 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
                 >
                   Apply Now
                 </Button>
-                <Button variant="outline" size="sm" className="w-full">
+                <Button variant="outline" size="sm" className="w-fit">
                   Save for Later
                 </Button>
                 <p className="text-xs text-gray-500 mt-3">

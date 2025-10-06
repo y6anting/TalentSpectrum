@@ -6,8 +6,8 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Section 1: Our Story - Hero with Image Grid */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#faf9f7] to-white">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-violet-50 to-background">
+        <div className="max-w-[1400px] mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-[#3a4043] mb-8 leading-[0.95]">
@@ -21,19 +21,19 @@ export default function AboutPage() {
             {/* Image Grid - Inspired by Linktree later phase 2 i add */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
-                  🎯 Discover
+                <div className="bg-gradient-to-br from-orange-200 to-orange-400 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
+                  Discover
                 </div>
-                <div className="bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-3xl h-64 flex items-center justify-center text-gray-800 font-bold text-xl shadow-xl">
-                  ⚡ Connect
+                <div className="bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-3xl h-64 flex items-center justify-center text-gray-800 font-bold text-xl shadow-xl">
+                  Connect
                 </div>
               </div>
               <div className="space-y-4 mt-8">
-                <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-3xl h-64 flex items-center justify-center text-white font-bold text-xl shadow-xl">
-                  🚀 Grow
+                <div className="bg-gradient-to-br from-teal-300 to-teal-600 rounded-3xl h-64 flex items-center justify-center text-white font-bold text-xl shadow-xl">
+                  Grow
                 </div>
-                <div className="bg-gradient-to-br from-purple-400 to-purple-600 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
-                  ✨ Succeed
+                <div className="bg-gradient-to-br from-indigo-300 to-indigo-500 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
+                  Succeed
                 </div>
               </div>
             </div>
@@ -43,7 +43,7 @@ export default function AboutPage() {
 
       {/* Section 2: AI-Powered Matching - Dark Blue Background */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-indigo-900 to-purple-900 text-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-20">
             <p className="text-sm uppercase tracking-widest text-purple-300 mb-6 font-medium">
               AI-POWERED MATCHING
@@ -64,21 +64,21 @@ export default function AboutPage() {
           {/* Visual Representation */}
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              <div className="text-5xl mb-6">📊</div>
+              {/* <div className="text-5xl mb-6">📊</div> */}
               <h3 className="text-2xl font-bold mb-4">Assessment</h3>
               <p className="text-purple-200/90 text-lg">
                 Discover your unique talent spectrum
               </p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              <div className="text-5xl mb-6">🤖</div>
+              {/* <div className="text-5xl mb-6">🤖</div> */}
               <h3 className="text-2xl font-bold mb-4">Match</h3>
               <p className="text-purple-200/90 text-lg">
                 AI finds your perfect opportunities
               </p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              <div className="text-5xl mb-6">🎯</div>
+              {/* <div className="text-5xl mb-6">🎯</div> */}
               <h3 className="text-2xl font-bold mb-4">Connect</h3>
               <p className="text-purple-200/90 text-lg">
                 Get notified instantly
@@ -90,7 +90,7 @@ export default function AboutPage() {
 
       {/* Section 3: Who We Serve - Light Pink/Purple Background */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-pink-50 to-purple-50">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1400px] mx-auto">
           <div className="mb-20">
             <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-6 leading-tight">
               Built for everyone
@@ -139,7 +139,7 @@ export default function AboutPage() {
 
       {/* Section 4: Our Values */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-6 leading-tight">
               What we believe
@@ -148,7 +148,7 @@ export default function AboutPage() {
 
           <div className="grid md:grid-cols-3 gap-12">
             <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8">🌈</div>
+              <div className="text-7xl mb-8"> </div>
               <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
                 Diversity
               </h3>
@@ -158,7 +158,7 @@ export default function AboutPage() {
             </div>
 
             <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8">🔬</div>
+              <div className="text-7xl mb-8"> </div>
               <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
                 Science
               </h3>
@@ -168,7 +168,7 @@ export default function AboutPage() {
             </div>
 
             <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8">💪</div>
+              <div className="text-7xl mb-8"> </div>
               <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
                 Empowerment
               </h3>
@@ -182,7 +182,7 @@ export default function AboutPage() {
 
       {/* Section 5: By The Numbers */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#2665d6] text-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1400px] mx-auto">
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-center mb-24 leading-tight">
             Our impact
           </h2>

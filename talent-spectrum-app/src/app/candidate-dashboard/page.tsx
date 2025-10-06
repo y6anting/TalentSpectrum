@@ -19,26 +19,141 @@ import {
   Bell,
   Shield,
   Eye,
-  Star
+  Star,
+  Camera,
+  Book,
+  House
 } from "lucide-react";
+import { motion } from "motion/react";
+import  {useRouter} from "next/navigation"
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
 
-  // Mock data
-  const candidateProfile = {
-    name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    location: "Remote",
-    profileCompletion: 85,
-    accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
-    preferences: {
-      workType: "Remote",
-      communication: "Email preferred",
-      schedule: "Flexible hours"
-    }
+// Mock Malaysian candidate profile
+const MockCandidateProfile = {
+  id: 1,
+  firstName: "Siti",
+  lastName: "Aminah",
+  email: "siti.aminah@example.com",
+  location: "Kuala Lumpur, Malaysia",
+  phone: "+60 12-345 6789",
+  linkedIn: "https://www.linkedin.com/in/sitiaminah",
+  portfolio: "https://sitiportfolio.com",
+  skills: ["Python", "Data Analysis", "Machine Learning", "NLP"],
+  experience: [
+    {
+      company: "TechMalaysia Sdn Bhd",
+      title: "Data Scientist",
+      duration: "Jan 2023 - Present",
+      description: "Built predictive models and NLP pipelines for local clients.",
+    },
+    {
+      company: "Analytica Solutions",
+      title: "Data Analyst",
+      duration: "Jun 2021 - Dec 2022",
+      description: "Performed data cleaning, visualization, and report generation.",
+    },
+  ],
+  education: [
+    {
+      degree: "MSc in Data Science",
+      school: "University of Malaya",
+      year: 2024,
+    },
+    {
+      degree: "BSc in Computer Science",
+      school: "Universiti Kebangsaan Malaysia",
+      year: 2022,
+    },
+  ],
+  resume: "https://example.com/siti_aminah_resume.pdf",
+  neurodivergentFriendly: true,
+  accommodationsRequested: ["Flexible Hours", "Quiet Workspace"],
+};
+
+type Environment = {
+    // Cognitive & Technical
+    patternRecognition: string;
+    attention: string;
+    systematicThinking: string;
+    bigVsDetail: string;
+    taskSwitching: string;
+    hyperfocus: string;
+    // Communication & Social
+    communicationMedium: string;
+    clarity: string;
+    teamStyle: string;
+    presentationComfort: string;
+    checkIns: string;
+    jobCoach: string;
+    // Environmental & Sensory
+    auditory: string;
+    visual: string;
+    workspace: string;
+    workdayStructure: string;
   };
 
+
+type CandidateProfile = {
+    name: string;
+    email: string;
+    location: string;
+    profileCompletion: number;  
+    accommodations: string[];
+    preferences: {
+      workType: string;
+      communication: string;
+      schedule: string;
+    };
+    personalIdentifiers: {
+      fullName: string;
+      dateOfBirth: string;
+      gender: string;
+      nationality: string;
+      emailAddress: string;
+      phoneNumber: string;
+      residentialAddress: string;
+      nric: string;
+      oku_card: string;
+      linkedin: string;	
+    };
+    jobPreferences: {
+      preferredIndustries: string[];
+      preferredRoles: string[];
+      locationPreference: string;
+      availability: string;
+    };
+    education: {
+      level: string;
+      fieldOfStudy: string;
+      institution: string | null;
+      graduationYear: number | null;
+      cgpa: number | null;
+      grade: string | null;
+      award: string | null;
+    }; 
+    exp_skill: {
+      employer: string;
+      industry: string;
+      start: string;
+      end: string;
+      RoleTitle: string;
+      YearsInRole: string;
+      SeniorityLevel: string;
+      SkillsToolsUsed: string;
+      ProjectHighlights: string;
+      HardSkills: string;
+      SoftSkills: string;
+      LanguageProficiency: string;
+      TechnicalKeywords: string;
+      Achievements: string;
+    };
+    environment: Environment;
+  };
+
+  // Mock data
   const applications = [
     {
       id: "1",
@@ -49,6 +164,7 @@ export default function CandidateDashboard() {
       location: "Remote",
       salary: "$70k - $90k",
       accommodationsRequested: true,
+      score: 78,
     },
     {
       id: "2",
@@ -59,7 +175,8 @@ export default function CandidateDashboard() {
       location: "Hybrid",
       salary: "$65k - $85k",
       accommodationsRequested: false,
-      interviewDate: "2024-01-25"
+      interviewDate: "2024-01-25",
+      score: 92,
     },
     {
       id: "3",
@@ -70,6 +187,7 @@ export default function CandidateDashboard() {
       location: "On-site",
       salary: "$60k - $75k",
       accommodationsRequested: true,
+      score: 65,
     }
   ];
 
@@ -93,8 +211,93 @@ export default function CandidateDashboard() {
       salary: "$90k - $120k",
       isInclusive: true,
       hasAccommodations: false,
-    }
+    },
+    {
+      id: "6",
+      title: "Kucing Engineer",
+      company: "InnovateCorp",
+      location: "San Francisco, CA",
+      type: "Full-time", 
+      salary: "$90k - $120k",
+      isInclusive: true,
+      hasAccommodations: false,
+    }  
   ];
+
+	const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
+    name: "Aminah",
+    email: "",
+    location: "Remote",
+    profileCompletion: 85,  
+    accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
+    preferences: {
+      workType: "Remote",
+      communication: "Email preferred",
+      schedule: "Flexible hours",
+    },
+    personalIdentifiers: {
+      fullName: "Alex Johnson",
+      dateOfBirth: "",
+      gender: "",
+      nationality: "",
+      emailAddress: "alex.johnson@email.com",
+      phoneNumber: "",
+      residentialAddress: "",
+      nric: "",
+      oku_card: "",
+      linkedin: "",			
+    },
+    jobPreferences: {
+      preferredIndustries: [],
+      preferredRoles: [],
+      locationPreference: "",
+      availability: "",
+    },
+    education: {
+      level: "",
+      fieldOfStudy: "",
+      institution: null,
+      graduationYear: null,
+      cgpa: null,
+      grade: null,
+      award: null,
+    },	
+    exp_skill: {
+      employer: "",
+      industry: "",
+      start: "",
+      end: "",
+      RoleTitle: "",
+      YearsInRole: "",
+      SeniorityLevel: "",
+      SkillsToolsUsed: "",
+      ProjectHighlights: "",
+      HardSkills: "",
+      SoftSkills: "",
+      LanguageProficiency: "",
+      TechnicalKeywords: "",
+      Achievements: "",
+    },
+    environment: {
+      patternRecognition: "",
+      attention: "",
+      systematicThinking: "",
+      bigVsDetail: "",
+      taskSwitching: "",
+      hyperfocus: "",
+      communicationMedium: "",
+      clarity: "",
+      teamStyle: "",
+      presentationComfort: "",
+      checkIns: "",
+      jobCoach: "",
+      auditory: "",
+      visual: "",
+      workspace: "",
+      workdayStructure: "",
+    },
+  });
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -125,34 +328,52 @@ export default function CandidateDashboard() {
         return <Clock className="h-4 w-4" />;
     }
   };
+  
+const currentYear = new Date().getFullYear();
+const grad_year = Array.from(
+  { length: currentYear - 1990 + 1 },
+  (_, i) => currentYear - i
+); // [currentYear, currentYear-1, ..., 1990]  
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		
+		<div className="flex flex-col-2 justify-between">
+			<div className="mb-8">
+				<h1 className="text-3xl font-bold text-[#3a4043] mb-1">Welcome back, {MockCandidateProfile.lastName.split(' ')[0]}!</h1>
+				<p className="text-gray-600">Here's your job search activity and recommendations.</p>
+			</div>
+			<div className="mt-3">
+				<Button className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-3 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer">
+				<Link href="/jobListing">Browse More Jobs</Link>
+			</Button>
+			</div>
+		</div>
+        <div className="grid lg:grid-cols-4 gap-8 ">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 ">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#6b8a7a] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-[#635bff] font-semibold">
                     {candidateProfile.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#3a4043]">{candidateProfile.name}</h3>
+                    <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
                     <p className="text-sm text-gray-600">{candidateProfile.location}</p>
                   </div>
                 </div>
 
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#3a4043]">Profile Completion</span>
-                    <span className="text-sm font-medium text-[#6b8a7a]">{candidateProfile.profileCompletion}%</span>
+                    <span className="text-sm text-[#635bff]">Profile Completion</span>
+                    <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-[#6b8a7a] h-2 rounded-full" 
+                      className="bg-[#635bff] h-2 rounded-full" 
                       style={{ width: `${candidateProfile.profileCompletion}%` }}
                     />
                   </div>
@@ -164,6 +385,10 @@ export default function CandidateDashboard() {
                     { id: "applications", label: "My Applications", icon: Briefcase },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings },
+          					{ id: "education", label: "Education", icon: Book },
+          					{ id: "exp_skill", label: "Experience & Skills", icon: Briefcase },
+							{ id: "environment", label: "Environment Profile", icon: House },
+							
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -172,7 +397,7 @@ export default function CandidateDashboard() {
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
                           activeTab === item.id
-                            ? 'bg-[#6b8a7a] text-white'
+                            ? 'bg-[#635bff] text-white'
                             : 'text-[#3a4043] hover:bg-gray-100'
                         }`}
                       >
@@ -191,61 +416,99 @@ export default function CandidateDashboard() {
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-[#3a4043] mb-2">Welcome back, {candidateProfile.name.split(' ')[0]}!</h1>
-                  <p className="text-gray-600">Here's your job search activity and recommendations.</p>
-                </div>
+                
 
-                <div className="grid md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <Briefcase className="h-8 w-8 text-[#6b8a7a] mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">{applications.length}</h3>
-                      <p className="text-sm text-gray-600">Applications Submitted</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <Eye className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">12</h3>
-                      <p className="text-sm text-gray-600">Profile Views</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <Heart className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">{savedJobs.length}</h3>
-                      <p className="text-sm text-gray-600">Saved Jobs</p>
-                    </CardContent>
-                  </Card>
-                </div>
+               <div className="grid md:grid-cols-3 gap-6">
+			{[
+				{
+				icon: Briefcase,
+				iconColor: "text-[#635bff]",
+				title: "Applications Submitted",
+				value: applications.length,
+				},
+				{
+				icon: Eye,
+				iconColor: "text-blue-600",
+				title: "Profile Views",
+				value: 12,
+				},
+				{
+				icon: Heart,
+				iconColor: "text-red-500",
+				title: "Saved Jobs",
+				value: savedJobs.length,
+				},
+			].map((card, idx) => {
+				const Icon = card.icon;
+				return (
+				<motion.div
+					key={idx}
+					whileHover={{
+					// scale: 1.05,
+					boxShadow: "2px 2px 2px rgba(99,91,255,0.3)",
+					}}
+					className="rounded-xl overflow-hidden hover:cursor-pointer"
+					transition={{ type: "spring", stiffness: 300, damping: 20 }}
+					>
+					<Card>
+					<CardContent className="p-6 text-center">
+						<Icon className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`} />
+						<h3 className="font-semibold text-[#3a4043] mb-1">{card.value}</h3>
+						<p className="text-sm text-gray-600">{card.title}</p>
+					</CardContent>
+					</Card>
+				</motion.div>
+				);
+			})}
+			</div>
+
 
                 {/* Recent Applications */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Applications</CardTitle>
+                    <div className="flex justify-between items-center">
+						<CardTitle>Recent Applications</CardTitle>
+						<div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+						View More
+						</div>
+					</div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {applications.slice(0, 3).map((app) => (
-                        <div key={app.id} className="flex items-center justify-between p-4 border border-[#e8e6f0] rounded-lg">
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(app.status)}
-                            <div>
-                              <h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
-                              <p className="text-sm text-gray-600">{app.company} • {app.location}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Applied {app.appliedDate}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
+                   <CardContent>
+					<div className="space-y-4">
+					{applications.slice(0, 3).map((app) => (
+						<motion.div
+						key={app.id}
+						whileHover={{
+							boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
+						}}
+						transition={{ type: "spring", stiffness: 300, damping: 20 }}
+						className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
+						>
+						<div className="flex items-center gap-3">
+							{getStatusIcon(app.status)}
+							<div>
+							<h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
+							<p className="text-sm text-gray-600">{app.company} • {app.location} </p>
+							</div>
+							{app.accommodationsRequested && (
+							<Badge
+								variant="secondary"
+								className="bg-purple-100 text-purple-800 flex items-center gap-1"
+							>
+								<Shield className="h-3 w-3" />
+								Accommodations
+							</Badge>
+							)}
+						</div>
+
+						<div className="text-right">
+							{getStatusBadge(app.status)}
+							<p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
+						</div>
+						</motion.div>
+					))}
+					</div>
+				</CardContent>
                 </Card>
 
                 {/* Accommodations Status */}
@@ -278,9 +541,7 @@ export default function CandidateDashboard() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
-                    <Link href="/opportunities">Browse More Jobs</Link>
-                  </Button>
+                  
                 </div>
 
                 <div className="space-y-4">
@@ -290,7 +551,7 @@ export default function CandidateDashboard() {
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
-                            <p className="text-[#6b8a7a] font-medium mb-2">{app.company}</p>
+                            <p className="text-[#635bff] font-medium mb-2">{app.company}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
@@ -327,7 +588,8 @@ export default function CandidateDashboard() {
                               View Details
                             </Button>
                             {app.status === "interview_scheduled" && (
-                              <Button size="sm" className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+                              <Button size="sm" className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200 hover:cursor-pointer"
+							  onClick={() => router.push("/mock-interview/setup")}>
                                 Prepare for Interview
                               </Button>
                             )}
@@ -354,8 +616,8 @@ export default function CandidateDashboard() {
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{job.title}</h3>
-                            <p className="text-[#6b8a7a] font-medium mb-2">{job.company}</p>
+                            <h3 className="text-lg font-semibold text-[#635bff] mb-1">{job.title}</h3>
+                            <p className="text-[#635bff] font-medium mb-2">{job.company}</p>
                             <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
@@ -389,7 +651,7 @@ export default function CandidateDashboard() {
                             <Button variant="outline" size="sm">
                               Remove
                             </Button>
-                            <Button size="sm" className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">
+                            <Button size="sm" className="bg-[#635bff] hover:bg-[#827CFF] text-white">
                               <Link href={`/jobs/${job.id}`}>Apply Now</Link>
                             </Button>
                           </div>
@@ -402,84 +664,427 @@ export default function CandidateDashboard() {
             )}
 
             {/* Profile Settings Tab */}
-            {activeTab === "profile" && (
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
+			{activeTab === "profile" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Personal Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Full Name</label>
-                        <input 
-                          type="text" 
-                          value={candidateProfile.name}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Email</label>
-                        <input 
-                          type="email" 
-                          value={candidateProfile.email}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Location</label>
-                        <input 
-                          type="text" 
-                          value={candidateProfile.location}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                        />
-                      </div>
-                      <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">Save Changes</Button>
-                    </CardContent>
-                  </Card>
+				<div className="grid gap-6">
+				{/* Personal Info */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Personal Information</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{ label: "Full Name", key: "fullName", type: "text" },
+						{ label: "NRIC", key: "nric", type: "text" },
+						{ label: "Email", key: "emailAddress", type: "email" },
+						{ label: "Phone Number", key: "phoneNumber", type: "text" },
+						{ label: "Date of Birth", key: "dateOfBirth", type: "date" },
+						{ label: "Gender", key: "gender", type: "text" },
+						{ label: "Nationality", key: "nationality", type: "text" },
+						{ label: "OKU Card", key: "oku_card", type: "text" },
+						].map((field) => (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+							{field.label}
+							</label>
+							<input
+							type={field.type}
+							value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers]}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								personalIdentifiers: {
+									...candidateProfile.personalIdentifiers,
+									[field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
+								},
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						))}
+					</div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Work Preferences</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Work Type</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Remote</option>
-                          <option>Hybrid</option>
-                          <option>On-site</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Communication Preference</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Email preferred</option>
-                          <option>Phone calls</option>
-                          <option>Video calls</option>
-                          <option>Instant messaging</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Schedule Preference</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Flexible hours</option>
-                          <option>Standard hours (9-5)</option>
-                          <option>Early start</option>
-                          <option>Late start</option>
-                        </select>
-                      </div>
-                      <Button className="bg-[#6b8a7a] hover:bg-[#5d7c6b]">Update Preferences</Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
+					{/* Residential Address */}
+					<div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">
+						Residential Address
+						</label>
+						<textarea
+						value={candidateProfile.personalIdentifiers.residentialAddress}
+						onChange={(e) =>
+							setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: {
+								...candidateProfile.personalIdentifiers,
+								residentialAddress: e.target.value,
+							},
+							})
+						}
+						className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[#635bff] focus:border-[1px]"
+						/>
+					</div>
+
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">
+						Save Changes
+					</Button>
+					</CardContent>
+				</Card>
+				</div>
+			</div>
+			)}
+
+            {/* Education Settings Tab */}
+			{activeTab === "education" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
+
+				<div className="grid gap-6">
+				{/* Education Info */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Education Information</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{
+							label: "Level",
+							type: "select",
+							key: "level",
+							options: ["Degree", "Master", "PhD", "Diploma", "STPM", "PT3/PMR"],
+						},
+						{ label: "University/College/School", type: "text", key: "institution" },
+						{ label: "Field of Study", type: "text", key: "fieldOfStudy" },
+						{ label: "Graduation Year", type: "select", key: "graduationYear", options: grad_year.map(String) },
+						{ label: "CGPA", type: "number", key: "cgpa" },
+						{ label: "Grade", type: "text", key: "grade" },
+						{ label: "Award", type: "text", key: "award" },
+						].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.education;
+						const value = candidateProfile.education[key] ?? "";
+
+						return (
+							<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+
+							{field.type === "select" ? (
+								<select
+								value={value}
+								onChange={(e) => {
+									const val = field.key === "graduationYear" ? (e.target.value ? parseInt(e.target.value, 10) : null) : e.target.value;
+									setCandidateProfile({
+									...candidateProfile,
+									education: { ...candidateProfile.education, [key]: val },
+									});
+								}}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[1px] focus:border-[#635bff]"
+								>
+								<option value="">{field.label === "Graduation Year" ? "Select year" : "Select"}</option>
+								{field.options?.map((opt) => (
+									<option key={opt} value={opt}>
+									{opt}
+									</option>
+								))}
+								</select>
+							) : (
+								<input
+								type={field.type}
+								value={value}
+								onChange={(e) => {
+									const val = field.type === "number" ? (e.target.value ? parseFloat(e.target.value) : null) : e.target.value;
+									setCandidateProfile({
+									...candidateProfile,
+									education: { ...candidateProfile.education, [key]: val },
+									});
+								}}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+								/>
+							)}
+							</div>
+						);
+						})}
+					</div>
+
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				</Card>
+				</div>
+			</div>
+			)}
+
+			{/* Experience & Skills Tab */}
+			{activeTab === "exp_skill" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Experiences & Skills</h1>
+
+				<div className="grid gap-6">
+				{/* Experience Info */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Experiences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{ label: "Employer", key: "employer" },
+						{ label: "Industry", key: "industry" },
+						{ label: "Start", key: "start" },
+						{ label: "End", key: "end" },
+						{ label: "Seniority", key: "SeniorityLevel" },
+						{ label: "Tools Used", key: "SkillsToolsUsed" },
+						{ label: "Project Highlights", key: "ProjectHighlights" },
+						].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.exp_skill;
+						const value = candidateProfile.exp_skill[key] ?? "";
+
+						return (
+							<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+								{field.label}
+							</label>
+							<input
+								type="text"
+								value={value}
+								onChange={(e) =>
+								setCandidateProfile({
+									...candidateProfile,
+									exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
+								})
+								}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+							</div>
+						);
+						})}
+					</div>
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				</Card>
+
+				{/* Skills Info */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Skills</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Soft Skills", key: "SoftSkills" },
+						{ label: "Hard Skills", key: "HardSkills" },
+						{ label: "Language Proficiency", key: "LanguageProficiency" },
+						{ label: "Achievements", key: "Achievements" },
+					].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.exp_skill;
+						const value = candidateProfile.exp_skill[key] ?? "";
+
+						return (
+						<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+							{field.label}
+							</label>
+							<input
+							type="text"
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+				</div>
+			</div>
+			)}
+	
+			
+				
+           {/* Environment & Preferences Tab */}
+			{activeTab === "environment" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Environment & Preferences</h1>
+
+				<div className="grid md:grid-cols-2 gap-6">
+
+				{/* Cognitive & Technical */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Cognitive & Technical</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Pattern Recognition (Ability to spot patterns)", key: "patternRecognition", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Attention (Ability to concentrate)", key: "attention", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Systematic Thinking (Ability to think logically)", key: "systematicThinking", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Big Picture vs. Detail-Oriented", key: "bigVsDetail", options: ["Big Picture", "Detail-Oriented"] },
+						{ label: "Task-Switching (Ability to think logically)", key: "taskSwitching", options: ["One task at a time", "Moderate", "Multi Tasking"] },
+						{ label: "Hyperfocus (Ability to concentrate for extended period)", key: "hyperfocus", options: ["Good", "Moderate", "Fair"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Communication & Social Preferences */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Communication & Social Preferences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Preferred Communication Medium", key: "communicationMedium", options: ["Written", "Verbal", "Mix"] },
+						{ label: "Clarity of communication", key: "clarity", options: ["Prefers clear, literal instructions", "Open-ended or indirect language"] },
+						{ label: "Team Collaboration Style", key: "teamStyle", options: ["Work independently", "Small, close-knit team", "Large, dynamic team"] },
+						{ label: "Presentation Comfort", key: "presentationComfort", options: ["Comfortable", "Not comfortable", "Not comfortable, but willing to try"] },
+						{ label: "Check-ins", key: "checkIns", options: ["Prefers frequent check-ins", "Scheduled check-ins", "Given a task and left to complete"] },
+						{ label: "Job Coach", key: "jobCoach", options: ["Need", "No Need"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Environmental & Sensory Needs */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Environmental & Sensory Needs</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Auditory Preferences", key: "auditory", options: ["Quiet environment", "Can have background noise", "Noisy environment"] },
+						{ label: "Visual Preferences", key: "visual", options: ["Bright lighting", "Natural lighting", "Dim lighting"] },
+						{ label: "Workspace Type", key: "workspace", options: ["Fixed table", "Shared table", "Private office", "Work from home"] },
+						{ label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour", "Not comfortable but willing to try"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Job Preferences */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Job Preferences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Preferred Industries", key: "preferredIndustries", type: "text", isArray: true },
+						{ label: "Preferred Roles", key: "preferredRoles", type: "text", isArray: true },
+						{ label: "Location Preference", key: "locationPreference", type: "text" },
+						{ label: "Availability", key: "availability", type: "text" },
+					].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.jobPreferences;
+						const value = candidateProfile.jobPreferences[key];
+						return (
+						<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<input
+							type="text"
+							value={
+								field.isArray
+								? (value as string[]).join(", ")
+								: (value as string)
+							}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								jobPreferences: {
+									...candidateProfile.jobPreferences,
+									[key]: field.isArray
+									? e.target.value.split(",").map((s) => s.trim())
+									: e.target.value,
+								},
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				</div>
+			</div>
+			)}
+				
           </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -6,7 +6,7 @@ export default function DiscoverPage() {
   return (
     <div className="min-h-screen bg-[#faf9f7]">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-[#6b8a7a] mb-4">
             🎯 Discover Your Talents

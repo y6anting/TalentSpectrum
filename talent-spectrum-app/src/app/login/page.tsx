@@ -36,14 +36,14 @@ interface SignupProgress {
 // Customize labels, titles, descriptions, and dashboard routes for each user type
 const USER_TYPE_CONFIG = {
   candidate: {
-    label: "🌻 Job Seeker",
+    label: "Job Seeker",
     title: "Find Your Perfect Role",
     description:
       "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
     dashboard: "/candidate-dashboard",
   },
   employer: {
-    label: "🏢 Employer",
+    label: "Employer",
     title: "Discover Top Talent",
     description:
       "Build diverse teams with our neurodivergent-friendly hiring platform.",
@@ -72,7 +72,7 @@ const InputField = ({
   placeholder: string;
   required?: boolean;
 }) => (
-  <div className="mb-4">
+  <div className="mb-4 ">
     <label className="block text-sm font-medium text-gray-700 mb-2">
       {label}
     </label>
@@ -171,10 +171,10 @@ const LoginPage = () => {
       header.style.display = "none";
     }
 
-    // Redirect authenticated users to dashboard
-    getSession().then((session) => {
-      if (session) router.push("/dashboard");
-    });
+    // // Redirect authenticated users to dashboard
+    // getSession().then((session) => {
+    //   if (session) router.push("/dashboard/candidate-dashboard");
+    // });
 
     // Cleanup: restore header when component unmounts
     return () => {
@@ -224,11 +224,27 @@ const LoginPage = () => {
       const result = await signIn("credentials", {
         email: loginData.email,
         password: loginData.password,
-        redirect: false,
+        userType: userType,
+        redirect: false, // we handle redirect manually
       });
-
+  
       if (result?.ok) {
-        redirectToDashboard();
+        // get updated session
+        const session = await getSession();
+  
+        if (!session?.user?.role) {
+          setError("User role not found.");
+          return;
+        }
+  
+        // Redirect based on role
+        if (session.user.role === "EMPLOYER") {
+          router.push("/employer-dashboard");
+        } else if (session.user.role === "CANDIDATE") {
+          router.push("/candidate-dashboard");
+        } else {
+          router.push("/"); // fallback
+        }
       } else {
         setError("Invalid email or password. Please try again.");
       }
@@ -294,7 +310,7 @@ const LoginPage = () => {
   // ----------------------------------------------------------------------------
   // USER TYPE TOGGLE
   // ----------------------------------------------------------------------------
-  const toggleUserType = () => {
+  const toggleUserType = async () => {
     setUserType((prev) => (prev === "candidate" ? "employer" : "candidate"));
   };
 
@@ -390,11 +406,11 @@ const LoginPage = () => {
             LEFT SIDE - ILLUSTRATION PANEL
             To change gradient colors, modify: from-[#color] to-[#color]
             ==================================================================== */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#0e0116] to-[#b53cfc] p-12 flex-col justify-between">
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#3a075a] to-[#635bff] p-12 flex-col justify-between">
           {/* Brand Header */}
           <div>
             <Image
-              src="/TalentSpectrumLogo.png"
+              src="/TalentSpectrumLogoDark.png"
               alt="TalentSpectrum"
               width={300}
               height={100}
@@ -407,7 +423,7 @@ const LoginPage = () => {
           </div>
 
           {/* Center Content - Dynamic based on signup progress or user type */}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center ">
             {activeTab === "signup" ? (
               // Progressive Signup Steps Display
               <div className="text-center w-full max-w-md">
@@ -447,7 +463,7 @@ const LoginPage = () => {
                 {/* Step-specific content */}
                 {signupProgress.currentStep === "name" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">🌋</div>
+                    {/* <div className="text-7xl mb-6">🌋</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Your Journey Starts Here!
                     </h2>
@@ -459,7 +475,7 @@ const LoginPage = () => {
 
                 {signupProgress.currentStep === "email" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">💫</div>
+                    {/* <div className="text-7xl mb-6">💫</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Great to meet you, {signupData.name}!
                     </h2>
@@ -471,7 +487,7 @@ const LoginPage = () => {
 
                 {signupProgress.currentStep === "password" && (
                   <div className="animate-fadeIn">
-                    <div className="text-7xl mb-6">🎉</div>
+                    {/* <div className="text-7xl mb-6">🎉</div> */}
                     <h2 className="text-white text-4xl font-bold mb-4">
                       Almost Ready to Shine!
                     </h2>
@@ -483,25 +499,36 @@ const LoginPage = () => {
               </div>
             ) : (
               // Login View - Simple Welcome Back message
-              <div className="text-center">
-                <div className="text-9xl mb-6">🌻</div>
-                <h2 className="text-white text-4xl font-bold">Welcome Back</h2>
+              // <div className="text-center">
+              //   {/* <div className="text-9xl mb-6">🌻</div> */}
+              //   <h2 className="text-white text-7xl font-bold">Welcome Back</h2>
+              // </div>
+             <div className="relative w-full flex flex-col items-center justify-center text-center">
+                {/* Text Content */}
+                <h2 className="text-white text-7xl font-bold drop-shadow-lg">
+                  Welcome Back
+                </h2>
+                  <img
+                    src="/zzz.gif"
+                    alt="Cute cat"
+                    className="w-[500px] h-auto rounded-2xl"
+                  />
               </div>
-            )}
-          </div>
-        </div>
+                )}
+              </div>
+            </div>
 
         {/* ====================================================================
             RIGHT SIDE - FORM CONTAINER
             Change background color with: bg-[#color]
             ==================================================================== */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#faf9f7]">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-b from-violet-50 to-background">
           <div className="max-w-md w-full">
             {/* User Type Badge - Shows current user type (Job Seeker/Employer) */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-6 text-4xl font-semibold text-gray-600">
               {/* Change badge color here: bg-[#635bff] */}
-              <span className="inline-block px-6 py-2 rounded-full text-sm font-semibold bg-[#0d0d0e] text-white">
-                {currentConfig.label}
+              Hello, <span className="inline-block py-2 rounded-xl text-4xl font-semibold text-[#635bff] mb-10">
+                {currentConfig.label}.
               </span>
             </div>
 
@@ -721,7 +748,7 @@ const LoginPage = () => {
                 Change text/button colors: text-[#color] hover:text-[#color]
                 ================================================================ */}
             <div className="mt-6 pt-6 border-t border-[#e8e6f0]">
-              <p className="text-center text-sm text-gray-600 mb-3">
+              <p className="text-center text-md text-gray-600 mb-3">
                 {userType === "candidate"
                   ? "Are you an employer?"
                   : "Are you a job seeker?"}

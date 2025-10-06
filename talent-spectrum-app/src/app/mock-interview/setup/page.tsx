@@ -137,7 +137,7 @@ const MockInterviewSetupPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background py-8 px-4">
       <div className="max-w-[1400px] mx-auto">
         <div className="w-full min-h-screen">
           {/* Header */}

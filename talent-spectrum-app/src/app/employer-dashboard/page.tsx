@@ -198,12 +198,12 @@ export default function EmployerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           {/* Left section */}
           <div className="mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
-              Welcome back, Neuro Tech Inc!
+              Welcome back, {companyProfile.name}!
             </h1>
             <p className="text-gray-600 mb-4 sm:mb-0">
               Manage your job postings and find the best neurodivergent talent.
@@ -218,7 +218,7 @@ export default function EmployerDashboard() {
               className="inline-block rounded-lg sm:hidden"
             >
               <Button
-                className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200"
+                className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
                 onClick={() => router.push("/post-job")}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -235,7 +235,7 @@ export default function EmployerDashboard() {
             className="hidden sm:inline-block rounded-lg"
           >
             <Button
-              className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200"
+              className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
               onClick={() => router.push("/post-job")}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -355,9 +355,9 @@ export default function EmployerDashboard() {
                       key={idx}
                       whileHover={{
                         // scale: 1.05,
-                        // boxShadow: "4px 4px 2px rgba(99,91,255,0.3)",
+                        boxShadow: "2px 2px 2px rgba(99,91,255,0.3)",
                       }}
-                      className="rounded-xl overflow-hidden"
+                      className="rounded-xl overflow-hidden hover:cursor-pointer"
                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     >
                       <Card>
@@ -392,7 +392,7 @@ export default function EmployerDashboard() {
                             boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
                           }}
                           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white"
+                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             {getStatusIcon(app.status)}
@@ -444,7 +444,7 @@ export default function EmployerDashboard() {
                         </Badge>
                       ))}
                     </div>
-                    <Button variant="outline" className="mt-4">
+                    <Button variant="outline" className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer">
                       View All Certifications
                     </Button>
                   </CardContent>
@@ -454,21 +454,10 @@ export default function EmployerDashboard() {
 
             {/* Job Postings Tab */}
             {activeTab === "jobs" && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">
+              <div className="space-y-4">
+                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
                     Job Postings
                   </h1>
-                  <Button
-                    className="bg-[#635bff] hover:bg-[#5346e6] text-white"
-                    onClick={() => {
-                      router.push("/post-job");
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Job
-                  </Button>
-                </div>
 
                 <div className="space-y-4">
                   {jobPostings.map((job) => (
@@ -551,11 +540,12 @@ export default function EmployerDashboard() {
 
             {/* Applications Tab */}
             {activeTab === "applications" && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">
+                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
                     Applications
                   </h1>
+                 
                   <div className="flex gap-2">
                     <Button variant="outline">Filter</Button>
                     <Button variant="outline">Sort</Button>
@@ -648,8 +638,8 @@ export default function EmployerDashboard() {
 
             {/* Company Settings Tab */}
             {activeTab === "settings" && (
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">
+              <div className="space-y-4">
+                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
                   Company Settings
                 </h1>
 
@@ -667,8 +657,8 @@ export default function EmployerDashboard() {
                           
                           type="text"
                           value={companyName}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                          onChange={(e) => setCompanyName(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							            onChange={(e) => setCompanyName(e.target.value)}
                           placeholder="Please enter company name"
                         />
                       </div>
@@ -679,8 +669,8 @@ export default function EmployerDashboard() {
                         <input
                           type="text"
                           value={companyIndustry}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                          onChange={(e) => setCompanyIndustry(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							            onChange={(e) => setCompanyIndustry(e.target.value)}
                           placeholder="Please enter industry"
                         />
                       </div>
@@ -691,8 +681,8 @@ export default function EmployerDashboard() {
                         <input
                           type="text"
                           value={companyLocation}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                          onChange={(e) => setCompanyLocation(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							            onChange={(e) => setCompanyLocation(e.target.value)}
                           placeholder="Please enter company location"
                         />
                       </div>
@@ -772,8 +762,8 @@ export default function EmployerDashboard() {
                         </label>
                         <textarea
                           rows={3}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-                          placeholder="Describe your workplace accommodation policies..."
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							            placeholder="Describe your workplace accommodation policies..."
                         />
                       </div>
                       <Button className="bg-[#635bff] hover:bg-[#5346e6] text-white">

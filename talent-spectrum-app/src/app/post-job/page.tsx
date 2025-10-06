@@ -130,7 +130,7 @@ export default function PostJob() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Button

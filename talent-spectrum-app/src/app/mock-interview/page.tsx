@@ -259,7 +259,7 @@
 
     // Enhanced Setup Stage with Better Position Selection
     const renderSetup = () => (
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-lg">
@@ -864,7 +864,7 @@
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1400px] mx-auto">
           {session.stage === "setup" && renderSetup()}
           {session.stage === "introduction" && renderIntroduction()}
           {session.stage === "interview" && renderInterview()}

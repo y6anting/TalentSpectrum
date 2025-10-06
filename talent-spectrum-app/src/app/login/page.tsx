@@ -171,10 +171,10 @@ const LoginPage = () => {
       header.style.display = "none";
     }
 
-    // Redirect authenticated users to dashboard
-    getSession().then((session) => {
-      if (session) router.push("/dashboard");
-    });
+    // // Redirect authenticated users to dashboard
+    // getSession().then((session) => {
+    //   if (session) router.push("/dashboard/candidate-dashboard");
+    // });
 
     // Cleanup: restore header when component unmounts
     return () => {
@@ -224,11 +224,27 @@ const LoginPage = () => {
       const result = await signIn("credentials", {
         email: loginData.email,
         password: loginData.password,
-        redirect: false,
+        userType: userType,
+        redirect: false, // we handle redirect manually
       });
-
+  
       if (result?.ok) {
-        redirectToDashboard();
+        // get updated session
+        const session = await getSession();
+  
+        if (!session?.user?.role) {
+          setError("User role not found.");
+          return;
+        }
+  
+        // Redirect based on role
+        if (session.user.role === "EMPLOYER") {
+          router.push("/employer-dashboard");
+        } else if (session.user.role === "CANDIDATE") {
+          router.push("/candidate-dashboard");
+        } else {
+          router.push("/"); // fallback
+        }
       } else {
         setError("Invalid email or password. Please try again.");
       }
@@ -294,7 +310,7 @@ const LoginPage = () => {
   // ----------------------------------------------------------------------------
   // USER TYPE TOGGLE
   // ----------------------------------------------------------------------------
-  const toggleUserType = () => {
+  const toggleUserType = async () => {
     setUserType((prev) => (prev === "candidate" ? "employer" : "candidate"));
   };
 
@@ -394,7 +410,7 @@ const LoginPage = () => {
           {/* Brand Header */}
           <div>
             <Image
-              src="/TalentSpectrumLogo.png"
+              src="/TalentSpectrumLogoDark.png"
               alt="TalentSpectrum"
               width={300}
               height={100}
@@ -483,13 +499,24 @@ const LoginPage = () => {
               </div>
             ) : (
               // Login View - Simple Welcome Back message
-              <div className="text-center">
-                <div className="text-9xl mb-6">🌻</div>
-                <h2 className="text-white text-4xl font-bold">Welcome Back</h2>
+              // <div className="text-center">
+              //   {/* <div className="text-9xl mb-6">🌻</div> */}
+              //   <h2 className="text-white text-7xl font-bold">Welcome Back</h2>
+              // </div>
+             <div className="relative w-full flex flex-col items-center justify-center text-center">
+                {/* Text Content */}
+                <h2 className="text-white text-7xl font-bold drop-shadow-lg">
+                  Welcome Back
+                </h2>
+                  <img
+                    src="/zzz.gif"
+                    alt="Cute cat"
+                    className="w-[500px] h-auto rounded-2xl"
+                  />
               </div>
-            )}
-          </div>
-        </div>
+                )}
+              </div>
+            </div>
 
         {/* ====================================================================
             RIGHT SIDE - FORM CONTAINER
@@ -498,10 +525,10 @@ const LoginPage = () => {
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-b from-violet-50 to-background">
           <div className="max-w-md w-full">
             {/* User Type Badge - Shows current user type (Job Seeker/Employer) */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-6 text-4xl font-semibold text-gray-600">
               {/* Change badge color here: bg-[#635bff] */}
-              <span className="inline-block px-6 py-2 rounded-full text-sm font-semibold bg-[#0d0d0e] text-white">
-                {currentConfig.label}
+              Hello, <span className="inline-block py-2 rounded-xl text-4xl font-semibold text-[#635bff] mb-10">
+                {currentConfig.label}.
               </span>
             </div>
 
@@ -721,7 +748,7 @@ const LoginPage = () => {
                 Change text/button colors: text-[#color] hover:text-[#color]
                 ================================================================ */}
             <div className="mt-6 pt-6 border-t border-[#e8e6f0]">
-              <p className="text-center text-sm text-gray-600 mb-3">
+              <p className="text-center text-md text-gray-600 mb-3">
                 {userType === "candidate"
                   ? "Are you an employer?"
                   : "Are you a job seeker?"}

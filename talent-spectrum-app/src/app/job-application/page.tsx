@@ -1439,10 +1439,10 @@ export default function JobApplicationForm({ setCurrentPage }: JobApplicationFor
 
   useEffect(() => {
     if (fillMethod === null) return;
-  
+
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) return;
-  
+
     const ctx = gsap.context(() => {
       if (backButtonRef.current) {
         gsap.from(backButtonRef.current, {
@@ -1452,7 +1452,6 @@ export default function JobApplicationForm({ setCurrentPage }: JobApplicationFor
           ease: "power2.out",
         });
       }
-  
       if (formHeaderRef.current) {
         gsap.from(formHeaderRef.current, {
           opacity: 0,
@@ -1462,10 +1461,26 @@ export default function JobApplicationForm({ setCurrentPage }: JobApplicationFor
           ease: "power2.out",
         });
       }
+      if (formSectionsRef.current) {
+        const sections = formSectionsRef.current.querySelectorAll(".form-section");
+        sections.forEach((section) => {
+          gsap.from(section, {
+            opacity: 0,
+            y: 40,
+            duration: 0.6,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: section,
+              start: "top 85%",
+              toggleActions: "play none none reverse",
+            },
+          });
+        });
+      }
     });
+
     return () => ctx.revert();
   }, [fillMethod]);
-  
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

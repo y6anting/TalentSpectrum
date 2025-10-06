@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import JobCard from "@/app/components/jobCard";
 import { Button } from "@/app/components/button";
 import { Search, Filter, Grid3X3, List, SlidersHorizontal } from "lucide-react";
@@ -133,7 +133,9 @@ const jobs = [
 
 export default function OpportunitiesPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams?.get("query") || "";
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const jobsGridRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -144,7 +146,9 @@ export default function OpportunitiesPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Searching for:", searchQuery);
+    const q = searchQuery.trim();
+    const url = q ? `/jobListing?query=${encodeURIComponent(q)}` : "/jobListing";
+    router.push(url);
   };
 
   const toggleFilter = (filter: string) => {
@@ -206,10 +210,10 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">Find Your Perfect Job</h1>
+          <h1 className="text-4xl font-bold mb-4 text-gray-700">Find Your Perfect Job</h1>
           <p className="text-xl text-[#6f7a80] max-w-3xl mx-auto">
             Discover opportunities with neurodivergent-friendly employers
           </p>

@@ -19,6 +19,7 @@ const handler = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        userType: { label: "User Type", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -53,7 +54,8 @@ const handler = NextAuth({
 
         // Mock user for development - any email/password combo will work
         // TESTING: Change this line to switch roles easily
-        const role = "CANDIDATE"; // Change to "EMPLOYER" or "CANDIDATE" to test employer dashboard
+        // const role = "CANDIDATE"; // Change to "EMPLOYER" or "CANDIDATE" to test employer dashboard
+        const role = credentials.userType === "employer" ? "EMPLOYER" : "CANDIDATE";
         return {
           id: "mock-user-id",
           email: credentials.email || "",

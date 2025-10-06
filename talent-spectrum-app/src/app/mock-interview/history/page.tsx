@@ -154,7 +154,7 @@ const MockInterviewFeedbackPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Confidence Card */}

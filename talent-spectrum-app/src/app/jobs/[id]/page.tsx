@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, use } from "react";
 import { Button } from "@/app/components/button";
 import { Separator } from "@/app/components/separator";
 import { Badge } from "@/app/components/badge";
@@ -18,13 +18,13 @@ import {
 } from "lucide-react";
 
 interface JobDetailsPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
   setCurrentPage: (page: string) => void;
 }
 
 export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPageProps) {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-  const { id } = params;
+  const { id } = use(params);
 
   // Mock job data - in real app, fetch based on params.id
   const job = {
@@ -73,8 +73,8 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
   };
 
   return (
-    <div className="min-h-screen py-10 px-4 bg-gray-50">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen py-10 px-4 bg-gradient-to-b from-violet-50 to-background">
+      <div className="max-w-[1400px] mx-auto">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -145,12 +145,12 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
               <div className="lg:text-right">
                 <Button
                   size="lg"
-                  className="w-full lg:w-auto mb-2"
-                  onClick={() => setCurrentPage("job-application")}
+                  className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
+                  onClick={() => (window.location.href = `/jobs/${job.id}/job-application`)}
                 >
                   Apply Now
                 </Button>
-                <p className="text-sm text-gray-500">Posted {job.posted}</p>
+                <p className="mt-2 text-sm text-gray-500">Posted {job.posted}</p>
               </div>
             </div>
           </CardHeader>
@@ -266,7 +266,7 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
                 <Button
                   size="lg"
                   className="w-full mb-3"
-                  onClick={() => setCurrentPage("job-application")}
+                  onClick={() => (window.location.href = `/jobs/${job.id}/apply`)}
                 >
                   Apply Now
                 </Button>

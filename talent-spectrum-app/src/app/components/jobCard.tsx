@@ -87,12 +87,29 @@ export default function JobCard({ job, onJobClick, viewMode }: JobCardProps) {
         {/* Footer: Posted + CTA */}
         <div className="flex items-center justify-between mt-auto">
           <p className="text-xs text-gray-400">Posted {job.posted}</p>
-          <Button
-            size="sm"
-            className="bg-[#635bff] hover:bg-indigo-700 text-white"
-          >
-            View Details
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-[#635bff] text-[#635bff] hover:bg-[#635bff] hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                onJobClick(job.id);
+              }}
+            >
+              View Details
+            </Button>
+            <Button
+              size="sm"
+              className="bg-[#635bff] hover:bg-indigo-700 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/jobs/${job.id}/apply`;
+              }}
+            >
+              Apply Now
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

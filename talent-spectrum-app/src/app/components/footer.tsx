@@ -71,7 +71,7 @@ export default function Footer({ setCurrentPage }: FooterProps) {
 
   return (
     <footer className="bg-card border-t-1 border-gray-300 border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {footerLinks.map((section) => (

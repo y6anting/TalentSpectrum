@@ -386,11 +386,22 @@ const grad_year = Array.from(
 				<h1 className="text-3xl font-bold text-[#3a4043] mb-1">Welcome back, {MockCandidateProfile.lastName.split(' ')[0]}!</h1>
 				<p className="text-gray-600">Here's your job search activity and recommendations.</p>
 			</div>
-			<div className="mt-3">
-				<Button className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-3 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer">
-				<Link href="/jobListing">Browse More Jobs</Link>
-			</Button>
-			</div>
+<div className="flex flex-wrap gap-4 justify-center mt-6"> 
+      <Button
+        asChild
+        className="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+      >
+        <Link href="/jobs/${job.id}/apply">Upload Resume</Link>
+      </Button>
+
+      <Button
+        asChild
+        variant="outline"
+        className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+      >
+        <Link href="/jobListing">Browse More Jobs</Link>
+      </Button>
+    </div>
 		</div>
         <div className="grid lg:grid-cols-4 gap-8 ">
           {/* Sidebar */}
@@ -1100,38 +1111,38 @@ const grad_year = Array.from(
 						return (
 						<div key={field.key}>
 							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-              <Select
-                value={value}
-                onValueChange={(val) =>
-                  setCandidateProfile({
-                    ...candidateProfile,
-                    environment: { ...candidateProfile.environment, [field.key]: val },
-                  })
-                }
-              >
-                <SelectTrigger className="w-full border-[#d9d6f3] rounded-xl focus:ring-[#635bff]/40">
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
-                  {field.options.map((opt) => (
-                    <SelectItem
-                      key={opt}
-                      value={opt}
-                      className="
-                        cursor-pointer
-                        text-gray-700
-                        hover:bg-[#635bff]/10
-                        hover:text-[#635bff]
-                        focus:bg-[#635bff]/20
-                        focus:text-[#635bff]
-                        transition-colors
-                      "
-                    >
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Select
+              value={value}
+              onValueChange={(val) =>
+                setCandidateProfile({
+                  ...candidateProfile,
+                  environment: { ...candidateProfile.environment, [field.key]: val },
+                })
+              }
+            >
+              <SelectTrigger className="w-full border-[#d9d6f3] rounded-xl focus:ring-[#635bff]/40">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+                {field.options.map((opt) => (
+                  <SelectItem
+                    key={opt}
+                    value={opt}
+                    className="
+                      cursor-pointer
+                      text-gray-700
+                      hover:bg-[#635bff]/10
+                      hover:text-[#635bff]
+                      focus:bg-[#635bff]/20
+                      focus:text-[#635bff]
+                      transition-colors
+                    "
+                  >
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 						</div>
 						);
 					})}

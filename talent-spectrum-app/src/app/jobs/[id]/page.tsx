@@ -200,15 +200,15 @@ What we offer:
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button 
-                  className="w-full bg-[#6b8a7a] hover:bg-[#5d7c6b]"
+                  className="w-full bg-[#635bff] hover:bg-[#827CFF] text-[#ffffff] hover:shadow-lg hover:cursor-pointer"
                   onClick={() => setShowApplicationForm(true)}
                 >
                   Apply for this role
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full hover:cursor-pointer hover:shadow-lg">
                   Save for later
                 </Button>
-                <Button variant="ghost" className="w-full">
+                <Button variant="ghost" className="w-full hover:cursor-pointer hover:shadow-lg">
                   Share this job
                 </Button>
               </CardContent>

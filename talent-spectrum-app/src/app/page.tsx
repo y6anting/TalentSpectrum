@@ -95,7 +95,7 @@ export default function HomePage() {
         </div>
 
          {/* Features */}
-        <div className="grid md:grid-cols-4 gap-6 mt-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10">
           {[
             {
               id: "1",
@@ -150,11 +150,11 @@ export default function HomePage() {
                 <p>{job.location}</p>
                 <p>{job.schedule}</p>
                 <p>{job.salary}</p>
-                <Link href={`/jobs/${job.id}/apply`} className="inline-block mt-3">
-                  <Button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors">
+                {/* <Link href={`/jobs/${job.id}/apply`} className="inline-block mt-3"> */}
+                  <Button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors mt-3">
                     Apply Now
                   </Button>
-                </Link>
+                {/* </Link> */}
               </CardContent>
             </Card>
           ))}

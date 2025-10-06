@@ -27,7 +27,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const base = [
     { href: "/about", label: "About" },
     { href: "/jobListing", label: "Jobs" },
-    { href: "/job-coach", label: "Job Coach" },
+    // { href: "/job-coach", label: "Job Coach" },
   ];
 
   // Job coach link depends on role
@@ -36,28 +36,28 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   //   label: "Job Coach",
   // };
 
-  const jobCoach =
-    role === "EMPLOYER"
-      ? [{ href: "/job-coach?role=employer", label: "Job Coach" }]
-      : role === "CANDIDATE"
-      ? [{ href: "/job-coach?role=candidate", label: "Job Coach" }]
-      : [];
+  // const jobCoach =
+  //   role === "EMPLOYER"
+  //     ? [{ href: "/job-coach?role=employer", label: "Job Coach" }]
+  //     : role === "CANDIDATE"
+  //     ? [{ href: "/job-coach?role=candidate", label: "Job Coach" }]
+  //     : [];
   
   const dashboards =
     role === "EMPLOYER"
-      ? [{ href: "/employer-dashboard", label: "Employer Dashboard" }]
+      ? [{ href: "/employer-dashboard", label: "Dashboard" }]
       : role === "CANDIDATE"
-      ? [{ href: "/candidate-dashboard", label: "Candidate Dashboard" }]
+      ? [{ href: "/candidate-dashboard", label: "Dashboard" }]
       : [];
 
   // Combine all nav items
-  const navItems = [...base, ...jobCoach, ...dashboards];
+  const navItems = [...base, ...dashboards];
 
   const isActive = (path: string) => pathname === path;
 
   return (
     <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/90 shadow-sm border-b border-indigo-100">
-      <div className="w-full px-6">
+      <div className="w-full px-6 py-2">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link

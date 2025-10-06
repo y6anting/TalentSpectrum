@@ -503,20 +503,23 @@ const LoginPage = () => {
               //   {/* <div className="text-9xl mb-6">🌻</div> */}
               //   <h2 className="text-white text-7xl font-bold">Welcome Back</h2>
               // </div>
-             <div className="relative w-full flex flex-col items-center justify-center text-center">
+            <div className="relative w-full flex flex-col items-center justify-center text-center px-4 pt-20">
                 {/* Text Content */}
-                <h2 className="text-white text-7xl font-bold drop-shadow-lg">
+                <h2 className="text-white text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-bold drop-shadow-lg mb-6">
                   Welcome Back
                 </h2>
-                  <img
-                    src="/zzz.gif"
-                    alt="Cute cat"
-                    className="w-[500px] h-auto rounded-2xl"
-                  />
+
+                <img
+                  src="/zzz.gif"
+                  alt="Cute cat"
+                  className="w-60 sm:w-72 md:w-96 lg:w-[500px] h-auto rounded-2xl object-contain"
+                />
               </div>
                 )}
               </div>
             </div>
+
+            
 
         {/* ====================================================================
             RIGHT SIDE - FORM CONTAINER

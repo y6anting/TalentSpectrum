@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import  {useRouter} from "next/navigation"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select"
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -439,7 +440,7 @@ const grad_year = Array.from(
                           activeTab === item.id
                             ? 'bg-[#635bff] text-white'
                             : 'text-[#3a4043] hover:bg-gray-100'
-                        }`}
+                        } hover:cursor-pointer`}
                       >
                         <Icon className="h-4 w-4" />
                         {item.label}
@@ -1082,21 +1083,36 @@ const grad_year = Array.from(
 						return (
 						<div key={field.key}>
 							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-							<select
-							value={value}
-							onChange={(e) =>
-								setCandidateProfile({
-								...candidateProfile,
-								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
-								})
-							}
-							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							>
-							<option value="">Select</option>
-							{field.options.map((opt) => (
-								<option key={opt} value={opt}>{opt}</option>
-							))}
-							</select>
+<select
+  value={value}
+  onChange={(e) =>
+    setCandidateProfile({
+      ...candidateProfile,
+      environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+    })
+  }
+  className="
+    w-full px-4 py-2.5
+    border border-[#d9d6f3]
+    rounded-xl
+    text-[15px] text-[#2b2f31]
+    bg-gradient-to-r from-white to-[#fafbff]
+    shadow-sm
+    outline-none
+    transition-all duration-200
+    hover:border-[#b5afff]
+    focus:border-[#635bff]
+    focus:ring-2 focus:ring-[#635bff]/30
+    focus:bg-white
+  "
+>
+  <option value="">Select</option>
+  {field.options.map((opt) => (
+    <option key={opt} value={opt}>
+      {opt}
+    </option>
+  ))}
+</select>
 						</div>
 						);
 					})}
@@ -1120,21 +1136,38 @@ const grad_year = Array.from(
 						return (
 						<div key={field.key}>
 							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-							<select
-							value={value}
-							onChange={(e) =>
-								setCandidateProfile({
-								...candidateProfile,
-								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
-								})
-							}
-							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							>
-							<option value="">Select</option>
-							{field.options.map((opt) => (
-								<option key={opt} value={opt}>{opt}</option>
-							))}
-							</select>
+<Select
+  value={value}
+  onValueChange={(val) =>
+    setCandidateProfile({
+      ...candidateProfile,
+      environment: { ...candidateProfile.environment, [field.key]: val },
+    })
+  }
+>
+  <SelectTrigger className="w-full border-[#d9d6f3] rounded-xl focus:ring-[#635bff]/40">
+    <SelectValue placeholder="Select" />
+  </SelectTrigger>
+  <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+    {field.options.map((opt) => (
+      <SelectItem
+        key={opt}
+        value={opt}
+        className="
+          cursor-pointer
+          text-gray-700
+          hover:bg-[#635bff]/10
+          hover:text-[#635bff]
+          focus:bg-[#635bff]/20
+          focus:text-[#635bff]
+          transition-colors
+        "
+      >
+        {opt}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 						</div>
 						);
 					})}

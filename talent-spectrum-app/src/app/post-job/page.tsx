@@ -47,6 +47,7 @@ export default function PostJob() {
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
   const [accommodations, setAccommodations] = useState<string[]>([]);
+  const [clickedCard, setClickedCard] = useState<string | null>(null);
 
   const jobTypes = [
     "Full-time",
@@ -128,8 +129,8 @@ export default function PostJob() {
   const [cultureStatement, setCultureStatement] = useState("");
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background p-4 md:p-6">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -140,54 +141,49 @@ export default function PostJob() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <h1 className="text-2xl font-bold text-[#3a4043] mb-2">
+          <h1 className="text-2xl font-bold text-black mb-2">
             Post a New Job
           </h1>
           <p className="text-gray-600">
-            Create an inclusive job posting that attracts neurodivergent talent
+            Create an inclusive job posting that attracts neurodivergent talent.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Job Information */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-             hover:scale-[1.02] transition-all duration-300
-             hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]
-]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
+            onClick={() => setClickedCard("job-info")}
           >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-[#3a4043]">
-                <Building2 className="h-5 w-5 text-[#635bff]" /> Job Information
-              </CardTitle>
+              <CardTitle className="text-[#3a4043]">Job Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[#3a4043] mb-2">
-                    Job Title *
+                    Job Title <span className="text-red-500">*</span>
                   </label>
                   <Input
-                    placeholder="e.g. Senior Software Engineer"
+                    placeholder="e.g. Software Engineer"
                     required
                     className="border border-gray-300 text-black"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#3a4043] mb-2">
-                    Department
-                  </label>
+                  <label className="block text-[#3a4043] mb-2">Department</label>
                   <Input
                     placeholder="e.g. Engineering"
-                    className=" border border-gray-300 text-[#3a4043]"
+                    className="border border-gray-300 text-[#3a4043]"
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-[#3a4043] mb-2">
-                    Job Type *
+                    Job Type <span className="text-red-500">*</span>
                   </label>
                   <Select value={jobType} onValueChange={setJobType} required>
                     <SelectTrigger className="border border-gray-300 text-[#3a4043]">
@@ -202,10 +198,9 @@ export default function PostJob() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
                   <label className="block text-[#3a4043] mb-2">
-                    Work Mode *
+                    Work Mode <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={workLocation}
@@ -224,11 +219,8 @@ export default function PostJob() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
-                  <label className="block text-[#3a4043] mb-2">
-                    Experience Level
-                  </label>
+                  <label className="block text-[#3a4043] mb-2">Experience Level</label>
                   <Select
                     value={experienceLevel}
                     onValueChange={setExperienceLevel}
@@ -246,7 +238,6 @@ export default function PostJob() {
                   </Select>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[#3a4043] mb-2">Location</label>
@@ -256,11 +247,9 @@ export default function PostJob() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[#3a4043] mb-2">
-                    Salary Range
-                  </label>
+                  <label className="block text-[#3a4043] mb-2">Salary Range</label>
                   <Input
-                    placeholder="e.g. $80,000 - $120,000"
+                    placeholder="e.g. RM80,000 - RM120,000"
                     className="border border-gray-300 text-[#3a4043]"
                   />
                 </div>
@@ -270,9 +259,10 @@ export default function PostJob() {
 
           {/* Job Description */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-             hover:scale-[1.02] transition-all duration-300
-             hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
+            onClick={() => setClickedCard("job-desc")}
           >
             <CardHeader>
               <CardTitle className="text-[#3a4043]">Job Description</CardTitle>
@@ -280,7 +270,7 @@ export default function PostJob() {
             <CardContent className="space-y-6">
               <div>
                 <label className="block text-[#3a4043] mb-2">
-                  Job Summary *
+                  Job Summary <span className="text-red-500">*</span>
                 </label>
                 <Textarea
                   placeholder="Provide a brief overview of the role..."
@@ -294,10 +284,8 @@ export default function PostJob() {
                   Key Responsibilities
                 </label>
                 <Textarea
-                  placeholder="• Develop and maintain software applications
-• Collaborate with cross-functional teams
-• Participate in code reviews..."
-                  rows={6}
+                  placeholder="List key responsibilities..."
+                  rows={4}
                   className="border border-gray-300 text-[#3a4043]"
                 />
               </div>
@@ -306,9 +294,7 @@ export default function PostJob() {
                   Requirements
                 </label>
                 <Textarea
-                  placeholder="• Bachelor's degree in Computer Science or related field
-• 3+ years of experience in software development
-• Strong problem-solving skills..."
+                  placeholder="List requirements..."
                   rows={6}
                   className="border border-gray-300 text-[#3a4043]"
                 />
@@ -316,15 +302,16 @@ export default function PostJob() {
             </CardContent>
           </Card>
 
+
           {/* Skills */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-             hover:scale-[1.02] transition-all duration-300
-             hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
               <CardTitle className="text-[#3a4043]">
-                🧰 Required Skills
+                Required Skills
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -367,13 +354,12 @@ export default function PostJob() {
 
           {/* Neurodivergent-Friendly Features */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-             hover:scale-[1.02] transition-all duration-300
-             hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-[#3a4043]">
-                <Heart className="h-5 w-5 text-[#635bff]" />{" "}
+              <CardTitle className="text-[#3a4043]">
                 Neurodivergent-Friendly Features
               </CardTitle>
               <p className="text-gray-600 mt-1">
@@ -409,13 +395,12 @@ export default function PostJob() {
 
           {/* Role Requirements & Demands */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-   hover:scale-[1.02] transition-all duration-300
-   hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-[#3a4043]">
-                <Briefcase className="h-5 w-5 text-[#635bff]" />
+              <CardTitle className="text-[#3a4043]">
                 Role Requirements & Demands
               </CardTitle>
             </CardHeader>
@@ -554,13 +539,12 @@ export default function PostJob() {
 
           {/* Environmental & Workplace Structure */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-   hover:scale-[1.02] transition-all duration-300
-   hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-[#3a4043]">
-                <Building2 className="h-5 w-5 text-[#635bff]" />
+              <CardTitle className="text-[#3a4043]">
                 Environmental & Workplace Structure
               </CardTitle>
             </CardHeader>
@@ -749,9 +733,9 @@ export default function PostJob() {
 
           {/* Communication & Management Style */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-   hover:scale-[1.02] transition-all duration-300
-   hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#3a4043]">
@@ -855,9 +839,9 @@ export default function PostJob() {
 
           {/* Accommodations & Inclusivity - Enhanced */}
           <Card
-            className="border border-[#d8d4f0] bg-white rounded-2xl 
-   hover:scale-[1.02] transition-all duration-300
-   hover:border-[#635bff] hover:shadow-[0_0_12px_3px_rgba(99,91,255,0.4)]"
+            className={`bg-white rounded-2xl transition-all duration-300 hover:border-[#635bff]/20 hover:shadow-[0_0_0px_2px_rgba(99,91,255,0.4)] ${
+              clickedCard === "job-info" ? "border" : "border-2 border-[#d8d4f0]"
+            }`}
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#3a4043]">

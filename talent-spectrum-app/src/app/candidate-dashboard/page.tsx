@@ -24,72 +24,136 @@ import {
   Book,
   House
 } from "lucide-react";
+import { motion } from "motion/react";
+import  {useRouter} from "next/navigation"
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
+
+// Mock Malaysian candidate profile
+const MockCandidateProfile = {
+  id: 1,
+  firstName: "Siti",
+  lastName: "Aminah",
+  email: "siti.aminah@example.com",
+  location: "Kuala Lumpur, Malaysia",
+  phone: "+60 12-345 6789",
+  linkedIn: "https://www.linkedin.com/in/sitiaminah",
+  portfolio: "https://sitiportfolio.com",
+  skills: ["Python", "Data Analysis", "Machine Learning", "NLP"],
+  experience: [
+    {
+      company: "TechMalaysia Sdn Bhd",
+      title: "Data Scientist",
+      duration: "Jan 2023 - Present",
+      description: "Built predictive models and NLP pipelines for local clients.",
+    },
+    {
+      company: "Analytica Solutions",
+      title: "Data Analyst",
+      duration: "Jun 2021 - Dec 2022",
+      description: "Performed data cleaning, visualization, and report generation.",
+    },
+  ],
+  education: [
+    {
+      degree: "MSc in Data Science",
+      school: "University of Malaya",
+      year: 2024,
+    },
+    {
+      degree: "BSc in Computer Science",
+      school: "Universiti Kebangsaan Malaysia",
+      year: 2022,
+    },
+  ],
+  resume: "https://example.com/siti_aminah_resume.pdf",
+  neurodivergentFriendly: true,
+  accommodationsRequested: ["Flexible Hours", "Quiet Workspace"],
+};
+
+type Environment = {
+    // Cognitive & Technical
+    patternRecognition: string;
+    attention: string;
+    systematicThinking: string;
+    bigVsDetail: string;
+    taskSwitching: string;
+    hyperfocus: string;
+    // Communication & Social
+    communicationMedium: string;
+    clarity: string;
+    teamStyle: string;
+    presentationComfort: string;
+    checkIns: string;
+    jobCoach: string;
+    // Environmental & Sensory
+    auditory: string;
+    visual: string;
+    workspace: string;
+    workdayStructure: string;
+  };
 
 
 type CandidateProfile = {
-  name: string;
-  email: string;
-  location: string;
-  profileCompletion: number;  
-  accommodations: string[];
-  preferences: {
-    workType: string;
-    communication: string;
-    schedule: string;
-  };
-  personalIdentifiers: {
-    fullName: string;
-    dateOfBirth: string;
-    gender: string;
-    nationality: string;
-    emailAddress: string;
-    phoneNumber: string;
-    residentialAddress: string;
-	nric: string;
-	oku_card: string;
-	linkedin: string;	
-  };
-  jobPreferences: {
-    preferredIndustries: string[];
-    preferredRoles: string[];
-    locationPreference: string;
-    availability: string;
-  };
-  education: {
-    level: string;
-    fieldOfStudy: string;
-    institution: string | null;
-    graduationYear: number | null;
-    cgpa: number | null;
-    grade: string | null;
-    award: string | null;
-  }; 
-	  exp_skill: {
+    name: string;
+    email: string;
+    location: string;
+    profileCompletion: number;  
+    accommodations: string[];
+    preferences: {
+      workType: string;
+      communication: string;
+      schedule: string;
+    };
+    personalIdentifiers: {
+      fullName: string;
+      dateOfBirth: string;
+      gender: string;
+      nationality: string;
+      emailAddress: string;
+      phoneNumber: string;
+      residentialAddress: string;
+      nric: string;
+      oku_card: string;
+      linkedin: string;	
+    };
+    jobPreferences: {
+      preferredIndustries: string[];
+      preferredRoles: string[];
+      locationPreference: string;
+      availability: string;
+    };
+    education: {
+      level: string;
+      fieldOfStudy: string;
+      institution: string | null;
+      graduationYear: number | null;
+      cgpa: number | null;
+      grade: string | null;
+      award: string | null;
+    }; 
+    exp_skill: {
       employer: string;
       industry: string;
       start: string;
-	    end: string;
+      end: string;
       RoleTitle: string;
-  	  YearsInRole: string;
+      YearsInRole: string;
       SeniorityLevel: string;
       SkillsToolsUsed: string;
       ProjectHighlights: string;
-	  HardSkills: string;
-	  SoftSkills: string;
-	  LanguageProficiency: string;
-	  TechnicalKeywords: string;
-	  Achievements: string;
-	  
-
-	  }  
-};
-
+      HardSkills: string;
+      SoftSkills: string;
+      LanguageProficiency: string;
+      TechnicalKeywords: string;
+      Achievements: string;
+    };
+    environment: Environment;
+  };
 
   // Mock data
-
   const applications = [
     {
       id: "1",
@@ -100,6 +164,7 @@ type CandidateProfile = {
       location: "Remote",
       salary: "$70k - $90k",
       accommodationsRequested: true,
+      score: 78,
     },
     {
       id: "2",
@@ -110,7 +175,8 @@ type CandidateProfile = {
       location: "Hybrid",
       salary: "$65k - $85k",
       accommodationsRequested: false,
-      interviewDate: "2024-01-25"
+      interviewDate: "2024-01-25",
+      score: 92,
     },
     {
       id: "3",
@@ -121,6 +187,7 @@ type CandidateProfile = {
       location: "On-site",
       salary: "$60k - $75k",
       accommodationsRequested: true,
+      score: 65,
     }
   ];
 
@@ -158,35 +225,35 @@ type CandidateProfile = {
   ];
 
 	const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
-	  name: "",
-	  email: "",
-	  location: "Remote",
-	  profileCompletion: 85,  
-	  accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
-	  preferences: {
-		workType: "Remote",
-		communication: "Email preferred",
-		schedule: "Flexible hours",
-	  },
-	  personalIdentifiers: {
-		fullName: "Alex Johnson",
-		dateOfBirth: "",
-		gender: "",
-		nationality: "",
-		emailAddress: "alex.johnson@email.com",
-		phoneNumber: "",
-		residentialAddress: "",
-		nric: "",
-		oku_card: "",
-		linkedin: "",			
-	  },
-	  jobPreferences: {
-		preferredIndustries: [],
-		preferredRoles: [],
-		locationPreference: "",
-		availability: "",
-	  },
-	  education: {
+    name: "Aminah",
+    email: "",
+    location: "Remote",
+    profileCompletion: 85,  
+    accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
+    preferences: {
+      workType: "Remote",
+      communication: "Email preferred",
+      schedule: "Flexible hours",
+    },
+    personalIdentifiers: {
+      fullName: "Alex Johnson",
+      dateOfBirth: "",
+      gender: "",
+      nationality: "",
+      emailAddress: "alex.johnson@email.com",
+      phoneNumber: "",
+      residentialAddress: "",
+      nric: "",
+      oku_card: "",
+      linkedin: "",			
+    },
+    jobPreferences: {
+      preferredIndustries: [],
+      preferredRoles: [],
+      locationPreference: "",
+      availability: "",
+    },
+    education: {
       level: "",
       fieldOfStudy: "",
       institution: null,
@@ -194,25 +261,43 @@ type CandidateProfile = {
       cgpa: null,
       grade: null,
       award: null,
-	  },	
-	  exp_skill: {
+    },	
+    exp_skill: {
       employer: "",
       industry: "",
       start: "",
-	    end: "",
+      end: "",
       RoleTitle: "",
-	    YearsInRole: "",
+      YearsInRole: "",
       SeniorityLevel: "",
       SkillsToolsUsed: "",
       ProjectHighlights: "",
-	  HardSkills: "",
-	  SoftSkills: "",
-	  LanguageProficiency: "",
-	  TechnicalKeywords: "",
-	  Achievements: "",	  
+      HardSkills: "",
+      SoftSkills: "",
+      LanguageProficiency: "",
+      TechnicalKeywords: "",
+      Achievements: "",
+    },
+    environment: {
+      patternRecognition: "",
+      attention: "",
+      systematicThinking: "",
+      bigVsDetail: "",
+      taskSwitching: "",
+      hyperfocus: "",
+      communicationMedium: "",
+      clarity: "",
+      teamStyle: "",
+      presentationComfort: "",
+      checkIns: "",
+      jobCoach: "",
+      auditory: "",
+      visual: "",
+      workspace: "",
+      workdayStructure: "",
+    },
+  });
 
-	  },	  
-	});
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -251,9 +336,21 @@ const grad_year = Array.from(
 ); // [currentYear, currentYear-1, ..., 1990]  
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		
+		<div className="flex flex-col-2 justify-between">
+			<div className="mb-8">
+				<h1 className="text-3xl font-bold text-[#3a4043] mb-1">Welcome back, {MockCandidateProfile.lastName.split(' ')[0]}!</h1>
+				<p className="text-gray-600">Here's your job search activity and recommendations.</p>
+			</div>
+			<div className="mt-3">
+				<Button className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-3 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer">
+				<Link href="/jobListing">Browse More Jobs</Link>
+			</Button>
+			</div>
+		</div>
         <div className="grid lg:grid-cols-4 gap-8 ">
           {/* Sidebar */}
           <div className="lg:col-span-1 ">
@@ -319,70 +416,99 @@ const grad_year = Array.from(
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-[#635bff] mb-2">Welcome back, {candidateProfile.name.split(' ')[0]}!</h1>
-                  <p className="text-gray-600">Here's your job search activity and recommendations.</p>
-                </div>
+                
 
-                <div className="grid md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
-             								hover:scale-[1.02] transition-all duration-300
-             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
-											p-6 text-center">
-                      <Briefcase className="h-8 w-8 text-[#635bff] mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">{applications.length}</h3>
-                      <p className="text-sm text-gray-600">Applications Submitted</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
-             								hover:scale-[1.02] transition-all duration-300
-             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
-											p-6 text-center">
-                      <Eye className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">12</h3>
-                      <p className="text-sm text-gray-600">Profile Views</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="border border-[#d8d4f0] bg-white rounded-2xl 
-             								hover:scale-[1.02] transition-all duration-300
-             								hover:border-[#635bff] hover:shadow-[0_0_6px_2px_rgba(99,91,255,0.2)] 
-											p-6 text-center">
-                      <Heart className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                      <h3 className="font-semibold text-[#3a4043] mb-1">{savedJobs.length}</h3>
-                      <p className="text-sm text-gray-600">Saved Jobs</p>
-                    </CardContent>
-                  </Card>
-                </div>
+               <div className="grid md:grid-cols-3 gap-6">
+			{[
+				{
+				icon: Briefcase,
+				iconColor: "text-[#635bff]",
+				title: "Applications Submitted",
+				value: applications.length,
+				},
+				{
+				icon: Eye,
+				iconColor: "text-blue-600",
+				title: "Profile Views",
+				value: 12,
+				},
+				{
+				icon: Heart,
+				iconColor: "text-red-500",
+				title: "Saved Jobs",
+				value: savedJobs.length,
+				},
+			].map((card, idx) => {
+				const Icon = card.icon;
+				return (
+				<motion.div
+					key={idx}
+					whileHover={{
+					// scale: 1.05,
+					boxShadow: "2px 2px 2px rgba(99,91,255,0.3)",
+					}}
+					className="rounded-xl overflow-hidden hover:cursor-pointer"
+					transition={{ type: "spring", stiffness: 300, damping: 20 }}
+					>
+					<Card>
+					<CardContent className="p-6 text-center">
+						<Icon className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`} />
+						<h3 className="font-semibold text-[#3a4043] mb-1">{card.value}</h3>
+						<p className="text-sm text-gray-600">{card.title}</p>
+					</CardContent>
+					</Card>
+				</motion.div>
+				);
+			})}
+			</div>
+
 
                 {/* Recent Applications */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Applications</CardTitle>
+                    <div className="flex justify-between items-center">
+						<CardTitle>Recent Applications</CardTitle>
+						<div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+						View More
+						</div>
+					</div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {applications.slice(0, 3).map((app) => (
-                        <div key={app.id} className="flex items-center justify-between p-4 border border-[#635bff] rounded-lg ">
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(app.status)}
-                            <div>
-                              <h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
-                              <p className="text-sm text-gray-600">{app.company} • {app.location}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Applied {app.appliedDate}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
+                   <CardContent>
+					<div className="space-y-4">
+					{applications.slice(0, 3).map((app) => (
+						<motion.div
+						key={app.id}
+						whileHover={{
+							boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
+						}}
+						transition={{ type: "spring", stiffness: 300, damping: 20 }}
+						className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
+						>
+						<div className="flex items-center gap-3">
+							{getStatusIcon(app.status)}
+							<div>
+							<h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
+							<p className="text-sm text-gray-600">{app.company} • {app.location} </p>
+							</div>
+							{app.accommodationsRequested && (
+							<Badge
+								variant="secondary"
+								className="bg-purple-100 text-purple-800 flex items-center gap-1"
+							>
+								<Shield className="h-3 w-3" />
+								Accommodations
+							</Badge>
+							)}
+						</div>
+
+						<div className="text-right">
+							{getStatusBadge(app.status)}
+							<p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
+						</div>
+						</motion.div>
+					))}
+					</div>
+				</CardContent>
                 </Card>
 
                 {/* Accommodations Status */}
@@ -414,10 +540,8 @@ const grad_year = Array.from(
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#635bff]">My Applications</h1>
-                  <Button className="bg-[#635bff] hover:bg-[#5d7c6b]">
-                    <Link href="/opportunities">Browse More Jobs</Link>
-                  </Button>
+                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
+                  
                 </div>
 
                 <div className="space-y-4">
@@ -464,7 +588,8 @@ const grad_year = Array.from(
                               View Details
                             </Button>
                             {app.status === "interview_scheduled" && (
-                              <Button size="sm" className="bg-[#635bff] hover:bg-[#5d7c6b]">
+                              <Button size="sm" className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200 hover:cursor-pointer"
+							  onClick={() => router.push("/mock-interview/setup")}>
                                 Prepare for Interview
                               </Button>
                             )}
@@ -481,7 +606,7 @@ const grad_year = Array.from(
             {activeTab === "saved" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#635bff]">Saved Jobs</h1>
+                  <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
                   <p className="text-gray-600">{savedJobs.length} jobs saved</p>
                 </div>
 
@@ -540,735 +665,422 @@ const grad_year = Array.from(
 
             {/* Profile Settings Tab */}
 			{activeTab === "profile" && (
-			  <div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#635bff]">Profile Settings</h1>
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
 
 				<div className="grid gap-6">
-				  {/* Personal Info */}
-				  <Card>
+				{/* Personal Info */}
+				<Card>
 					<CardHeader>
-					  <CardTitle>Personal Information</CardTitle>
+					<CardTitle>Personal Information</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-					  <div className="grid md:grid-cols-2 gap-6">
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Full Name</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.fullName}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  fullName: e.target.value 
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{ label: "Full Name", key: "fullName", type: "text" },
+						{ label: "NRIC", key: "nric", type: "text" },
+						{ label: "Email", key: "emailAddress", type: "email" },
+						{ label: "Phone Number", key: "phoneNumber", type: "text" },
+						{ label: "Date of Birth", key: "dateOfBirth", type: "date" },
+						{ label: "Gender", key: "gender", type: "text" },
+						{ label: "Nationality", key: "nationality", type: "text" },
+						{ label: "OKU Card", key: "oku_card", type: "text" },
+						].map((field) => (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+							{field.label}
+							</label>
+							<input
+							type={field.type}
+							value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers]}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								personalIdentifiers: {
+									...candidateProfile.personalIdentifiers,
+									[field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
+								},
+								})
 							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">NRIC</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.nric}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  fullName: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>					  
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Email</label>
-						<input 
-						  type="email" 
-						  value={candidateProfile.personalIdentifiers.emailAddress}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  emailAddress: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Phone Number</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.phoneNumber}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  phoneNumber: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Date of Birth</label>
-						<input 
-						  type="date" 
-						  value={candidateProfile.personalIdentifiers.dateOfBirth}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  dateOfBirth: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Gender</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.gender}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  gender: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Nationality</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.nationality}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  nationality: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">OKU Card</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.personalIdentifiers.oku_card}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  nationality: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>					  
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Residential Address</label>
-						<textarea
-						  value={candidateProfile.personalIdentifiers.residentialAddress}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							personalIdentifiers: { 
-							  ...candidateProfile.personalIdentifiers, 
-							  residentialAddress: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
-					</CardContent>
-				  </Card>
-				</div>
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						))}
+					</div>
 
-				{/* You can repeat similar structure for Education, Work Experience, Skills, Languages */}
-			  </div>
+					{/* Residential Address */}
+					<div>
+						<label className="block text-sm font-medium text-[#3a4043] mb-1">
+						Residential Address
+						</label>
+						<textarea
+						value={candidateProfile.personalIdentifiers.residentialAddress}
+						onChange={(e) =>
+							setCandidateProfile({
+							...candidateProfile,
+							personalIdentifiers: {
+								...candidateProfile.personalIdentifiers,
+								residentialAddress: e.target.value,
+							},
+							})
+						}
+						className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[#635bff] focus:border-[1px]"
+						/>
+					</div>
+
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">
+						Save Changes
+					</Button>
+					</CardContent>
+				</Card>
+				</div>
+			</div>
 			)}
+
             {/* Education Settings Tab */}
 			{activeTab === "education" && (
-			  <div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#635bff]">Education Settings</h1>
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
 
 				<div className="grid gap-6">
-				  {/* Education Info */}
-				  <Card>
+				{/* Education Info */}
+				<Card>
 					<CardHeader>
-					  <CardTitle>Education Information</CardTitle>
+					<CardTitle>Education Information</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-					  <div className="grid md:grid-cols-2 gap-6">
-					  <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Level</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option>Degree</option>
-                          <option>Master</option>
-                          <option>Phd</option>
-                          <option>Diploma</option>
-						  <option>STPM</option>
-						  <option>PT3/PMR</option>
-                        </select>
-                      </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Univercity/College/School</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.education.institution ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							education: { 
-							  ...candidateProfile.education, 
-							  institution: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Field of Study</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.education.institution ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							education: { 
-							  ...candidateProfile.education, 
-							  institution: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>					  
-					<div>
-					  <label className="block text-sm font-medium text-[#3a4043] mb-1">Graduation Year</label>
-					  <select
-						value={
-						  candidateProfile.education.graduationYear !== null &&
-						  candidateProfile.education.graduationYear !== undefined
-							? String(candidateProfile.education.graduationYear)
-							: ""
-						}
-						onChange={(e) => {
-						  const val = e.target.value;
-						  setCandidateProfile({
-							...candidateProfile,
-							education: {
-							  ...candidateProfile.education,
-							  graduationYear: val === "" ? null : parseInt(val, 10),
-							},
-						  });
-						}}
-						className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-					  >
-						<option value="">Select year</option>
-						{grad_year.map((y) => (
-						  <option key={y} value={String(y)}>
-							{y}
-						  </option>
-						))}
-					  </select>
-					</div>					  
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">CGPA</label>
-						<input 
-						  type="number" 
-						  value={candidateProfile.education.cgpa ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							education: { 
-							  ...candidateProfile.education, 
-                cgpa: e.target.value ? parseFloat(e.target.value) : null, 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Grade</label>
-						<input 
-						  type="string" 
-						  value={candidateProfile.education.grade ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							education: { 
-							  ...candidateProfile.education, 
-							  grade: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>	
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Award</label>
-						<input 
-						  type="string" 
-						  value={candidateProfile.education.award ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							education: { 
-							  ...candidateProfile.education, 
-							  award: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>					  
-					  </div>
-					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{
+							label: "Level",
+							type: "select",
+							key: "level",
+							options: ["Degree", "Master", "PhD", "Diploma", "STPM", "PT3/PMR"],
+						},
+						{ label: "University/College/School", type: "text", key: "institution" },
+						{ label: "Field of Study", type: "text", key: "fieldOfStudy" },
+						{ label: "Graduation Year", type: "select", key: "graduationYear", options: grad_year.map(String) },
+						{ label: "CGPA", type: "number", key: "cgpa" },
+						{ label: "Grade", type: "text", key: "grade" },
+						{ label: "Award", type: "text", key: "award" },
+						].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.education;
+						const value = candidateProfile.education[key] ?? "";
+
+						return (
+							<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+
+							{field.type === "select" ? (
+								<select
+								value={value}
+								onChange={(e) => {
+									const val = field.key === "graduationYear" ? (e.target.value ? parseInt(e.target.value, 10) : null) : e.target.value;
+									setCandidateProfile({
+									...candidateProfile,
+									education: { ...candidateProfile.education, [key]: val },
+									});
+								}}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[1px] focus:border-[#635bff]"
+								>
+								<option value="">{field.label === "Graduation Year" ? "Select year" : "Select"}</option>
+								{field.options?.map((opt) => (
+									<option key={opt} value={opt}>
+									{opt}
+									</option>
+								))}
+								</select>
+							) : (
+								<input
+								type={field.type}
+								value={value}
+								onChange={(e) => {
+									const val = field.type === "number" ? (e.target.value ? parseFloat(e.target.value) : null) : e.target.value;
+									setCandidateProfile({
+									...candidateProfile,
+									education: { ...candidateProfile.education, [key]: val },
+									});
+								}}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+								/>
+							)}
+							</div>
+						);
+						})}
+					</div>
+
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
 					</CardContent>
-				  </Card>	
+				</Card>
 				</div>
 			</div>
 			)}
-            {/* Experience & Skill Tab */}
+
+			{/* Experience & Skills Tab */}
 			{activeTab === "exp_skill" && (
-			  <div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#635bff]">Experiences & Skills</h1>
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Experiences & Skills</h1>
 
 				<div className="grid gap-6">
-				  {/* Experience & Skill */}
-				  <Card>
+				{/* Experience Info */}
+				<Card>
 					<CardHeader>
-					  <CardTitle>Experiences</CardTitle>
+					<CardTitle>Experiences</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-					  <div className="grid md:grid-cols-2 gap-6">
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Employer</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.employer ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  employer: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Industry</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.industry ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  industry: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Start</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.start ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  start: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>			
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">End</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.end ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  end: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>	
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Seniority</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.SeniorityLevel ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  SeniorityLevel: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Tools Used</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.SkillsToolsUsed ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  SkillsToolsUsed: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>		
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Project Highlights</label>
-						<input 
-						  type="text" 
-						  value={candidateProfile.exp_skill.ProjectHighlights ?? ""}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  ProjectHighlights: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>						  				  
-					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
-					</CardContent>
-				  </Card>
-				  {/* Skills */}
-				  <Card>
-					<CardHeader>
-					  <CardTitle>Skills</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Soft Skills</label>
-						<input
-						  type="text"
-						  value={candidateProfile.exp_skill.SoftSkills}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  SoftSkills: e.target.value
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Hard Skills</label>
-						<input
-						  type="text"
-						  value={candidateProfile.exp_skill.HardSkills}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  HardSkills: e.target.value
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Language Proficiency</label>
-						<input
-						  type="text"
-						  value={candidateProfile.exp_skill.LanguageProficiency}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  LanguageProficiency: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Achievements</label>
-						<input
-						  type="text"
-						  value={candidateProfile.exp_skill.Achievements}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							exp_skill: { 
-							  ...candidateProfile.exp_skill, 
-							  Achievements: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>					  
-					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
-					</CardContent>
-				  </Card>		  
-				</div>			
-			</div>
-			)}		
-            {/* Experience & Skill Tab */}
-			{activeTab === "environment" && (
-			  <div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#635bff]">Environment & Preferences</h1>
+					<div className="grid md:grid-cols-2 gap-6">
+						{[
+						{ label: "Employer", key: "employer" },
+						{ label: "Industry", key: "industry" },
+						{ label: "Start", key: "start" },
+						{ label: "End", key: "end" },
+						{ label: "Seniority", key: "SeniorityLevel" },
+						{ label: "Tools Used", key: "SkillsToolsUsed" },
+						{ label: "Project Highlights", key: "ProjectHighlights" },
+						].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.exp_skill;
+						const value = candidateProfile.exp_skill[key] ?? "";
 
-				  {/* Environment */}
-				<div className="grid md:grid-cols-2 gap-6">
-				  {/* Environment */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Cognitive & Technical </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Pattern Recognition (Ability to spot patterns)</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Good</option>
-                          <option>Moderate</option>
-                          <option>Fair</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Attention (Ability to concentrate)</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Good</option>
-                          <option>Moderate</option>
-                          <option>Fair</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Systematic Thinking (Ability to think logically)</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Good</option>
-                          <option>Moderate</option>
-                          <option>Fair</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Big Picture vs. Detail-Oriented</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Big Picture</option>
-                          <option>Detail-Oriented</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Task-Switching (Ability to think logically)</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>One task at a time </option>
-                          <option>Moderate</option>
-						  <option>Multi Taskting</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Hyperfocus  (Ability to concentrate for extend period)</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Good</option>
-                          <option>Moderate</option>
-                          <option>Fair</option>
-                        </select>
-                      </div>					  
-                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
-                    </CardContent>
-                  </Card>	
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Communication & Social Preferences </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Communication Medium</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Written</option>
-                          <option>Verbal</option>
-                          <option>Mix</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Clarity of communication</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Prefers clear, literal instructions </option>
-                          <option>Open-ended or indirect language</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Team Collaboration Style</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Work independently</option>
-                          <option>Small, close-knit team</option>
-                          <option>Large, dynamic team</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Presentation Comfort</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Comfortable</option>
-                          <option>Not comfortable</option>
-                          <option>Not comfortable, but willing to try</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Check-ins</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Prefers frequent check-ins</option>
-                          <option>Scheduled check-ins</option>
-                          <option>Given a task and left to complete </option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Job Coach</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Need</option>
-                          <option>No Need</option>
-                        </select>
-                      </div>						  
-                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
-                    </CardContent>
-                  </Card>	
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Environmental & Sensory Needs</CardTitle>
-                    </CardHeader>				  
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Auditory Preferences</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Quiet environment</option>
-                          <option>Can have background noise</option>
-                          <option>Noisy environment</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Visual Preferences</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Bright lighting</option>
-                          <option>Natural lighthing</option>
-						  <option>Dim lighthing</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Workspace Type</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Fixed table</option>
-                          <option>Shared table</option>
-                          <option>Private office</option>
-						  <option>Work from home</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Workday Structure</label>
-                        <select className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
-                          <option></option>
-						  <option>Fixed work hour</option>
-                          <option>Flexible work hour</option>
-                          <option>Not comfortable but willing to try</option>
-                        </select>
-                      </div>				  
-                      <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
-                    </CardContent>
-                  </Card>
-				  {/* Job Preferences */}
-				  <Card>
+						return (
+							<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+								{field.label}
+							</label>
+							<input
+								type="text"
+								value={value}
+								onChange={(e) =>
+								setCandidateProfile({
+									...candidateProfile,
+									exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
+								})
+								}
+								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+							</div>
+						);
+						})}
+					</div>
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
+					</CardContent>
+				</Card>
+
+				{/* Skills Info */}
+				<Card>
 					<CardHeader>
-					  <CardTitle>Job Preferences</CardTitle>
+					<CardTitle>Skills</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Industries</label>
-						<input
-						  type="text"
-						  value={candidateProfile.jobPreferences.preferredIndustries.join(", ")}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							jobPreferences: { 
-							  ...candidateProfile.jobPreferences, 
-							  preferredIndustries: e.target.value.split(",").map(s => s.trim()) 
+					{[
+						{ label: "Soft Skills", key: "SoftSkills" },
+						{ label: "Hard Skills", key: "HardSkills" },
+						{ label: "Language Proficiency", key: "LanguageProficiency" },
+						{ label: "Achievements", key: "Achievements" },
+					].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.exp_skill;
+						const value = candidateProfile.exp_skill[key] ?? "";
+
+						return (
+						<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">
+							{field.label}
+							</label>
+							<input
+							type="text"
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
+								})
 							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Preferred Roles</label>
-						<input
-						  type="text"
-						  value={candidateProfile.jobPreferences.preferredRoles.join(", ")}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							jobPreferences: { 
-							  ...candidateProfile.jobPreferences, 
-							  preferredRoles: e.target.value.split(",").map(s => s.trim()) 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Location Preference</label>
-						<input
-						  type="text"
-						  value={candidateProfile.jobPreferences.locationPreference}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							jobPreferences: { 
-							  ...candidateProfile.jobPreferences, 
-							  locationPreference: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <div>
-						<label className="block text-sm font-medium text-[#3a4043] mb-1">Availability</label>
-						<input
-						  type="text"
-						  value={candidateProfile.jobPreferences.availability}
-						  onChange={(e) => setCandidateProfile({
-							...candidateProfile,
-							jobPreferences: { 
-							  ...candidateProfile.jobPreferences, 
-							  availability: e.target.value 
-							}
-						  })}
-						  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg"
-						/>
-					  </div>
-					  <Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
 					</CardContent>
-				  </Card>				  
-				</div> 				
+				</Card>
+				</div>
 			</div>
-			)}			
+			)}
+	
+			
+				
+           {/* Environment & Preferences Tab */}
+			{activeTab === "environment" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-[#3a4043]">Environment & Preferences</h1>
+
+				<div className="grid md:grid-cols-2 gap-6">
+
+				{/* Cognitive & Technical */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Cognitive & Technical</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Pattern Recognition (Ability to spot patterns)", key: "patternRecognition", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Attention (Ability to concentrate)", key: "attention", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Systematic Thinking (Ability to think logically)", key: "systematicThinking", options: ["Good", "Moderate", "Fair"] },
+						{ label: "Big Picture vs. Detail-Oriented", key: "bigVsDetail", options: ["Big Picture", "Detail-Oriented"] },
+						{ label: "Task-Switching (Ability to think logically)", key: "taskSwitching", options: ["One task at a time", "Moderate", "Multi Tasking"] },
+						{ label: "Hyperfocus (Ability to concentrate for extended period)", key: "hyperfocus", options: ["Good", "Moderate", "Fair"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Communication & Social Preferences */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Communication & Social Preferences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Preferred Communication Medium", key: "communicationMedium", options: ["Written", "Verbal", "Mix"] },
+						{ label: "Clarity of communication", key: "clarity", options: ["Prefers clear, literal instructions", "Open-ended or indirect language"] },
+						{ label: "Team Collaboration Style", key: "teamStyle", options: ["Work independently", "Small, close-knit team", "Large, dynamic team"] },
+						{ label: "Presentation Comfort", key: "presentationComfort", options: ["Comfortable", "Not comfortable", "Not comfortable, but willing to try"] },
+						{ label: "Check-ins", key: "checkIns", options: ["Prefers frequent check-ins", "Scheduled check-ins", "Given a task and left to complete"] },
+						{ label: "Job Coach", key: "jobCoach", options: ["Need", "No Need"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Environmental & Sensory Needs */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Environmental & Sensory Needs</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Auditory Preferences", key: "auditory", options: ["Quiet environment", "Can have background noise", "Noisy environment"] },
+						{ label: "Visual Preferences", key: "visual", options: ["Bright lighting", "Natural lighting", "Dim lighting"] },
+						{ label: "Workspace Type", key: "workspace", options: ["Fixed table", "Shared table", "Private office", "Work from home"] },
+						{ label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour", "Not comfortable but willing to try"] },
+					].map((field) => {
+						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
+						return (
+						<div key={field.key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<select
+							value={value}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								environment: { ...candidateProfile.environment, [field.key]: e.target.value },
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							>
+							<option value="">Select</option>
+							{field.options.map((opt) => (
+								<option key={opt} value={opt}>{opt}</option>
+							))}
+							</select>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				{/* Job Preferences */}
+				<Card>
+					<CardHeader>
+					<CardTitle>Job Preferences</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+					{[
+						{ label: "Preferred Industries", key: "preferredIndustries", type: "text", isArray: true },
+						{ label: "Preferred Roles", key: "preferredRoles", type: "text", isArray: true },
+						{ label: "Location Preference", key: "locationPreference", type: "text" },
+						{ label: "Availability", key: "availability", type: "text" },
+					].map((field) => {
+						const key = field.key as keyof typeof candidateProfile.jobPreferences;
+						const value = candidateProfile.jobPreferences[key];
+						return (
+						<div key={key}>
+							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+							<input
+							type="text"
+							value={
+								field.isArray
+								? (value as string[]).join(", ")
+								: (value as string)
+							}
+							onChange={(e) =>
+								setCandidateProfile({
+								...candidateProfile,
+								jobPreferences: {
+									...candidateProfile.jobPreferences,
+									[key]: field.isArray
+									? e.target.value.split(",").map((s) => s.trim())
+									: e.target.value,
+								},
+								})
+							}
+							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+							/>
+						</div>
+						);
+					})}
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					</CardContent>
+				</Card>
+
+				</div>
+			</div>
+			)}
+				
           </div>
         </div>
       </div>

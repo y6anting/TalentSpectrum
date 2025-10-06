@@ -298,6 +298,46 @@ type CandidateProfile = {
     },
   });
 
+  const [educations, setEducations] = useState([
+  {
+    id: Date.now(),
+    level: "",
+    fieldOfStudy: "",
+    institution: "",
+    graduationYear: null,
+    cgpa_grade: "",
+    award: "",
+  },
+]);
+
+// Update individual education record
+const updateEducation = (id: number, updatedFields: any) => {
+  setEducations((prev) =>
+    prev.map((edu) =>
+      edu.id === id ? { ...edu, ...updatedFields } : edu
+    )
+  );
+};
+
+const [experiences, setExperiences] = useState([
+  {
+    id: Date.now(),
+    employer: "",
+    industry: "",
+    start: "",
+    end: "",
+    seniorityLevel: "",
+    skillsToolsUsed: "",
+    projectHighlights: "",
+  },
+]);
+
+const updateExperience = (id: number, updates: Partial<typeof experiences[0]>) => {
+  setExperiences((prev) =>
+    prev.map((exp) => (exp.id === id ? { ...exp, ...updates } : exp))
+  );
+};
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -464,52 +504,57 @@ const grad_year = Array.from(
 
 
                 {/* Recent Applications */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-						<CardTitle>Recent Applications</CardTitle>
-						<div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
-						View More
-						</div>
-					</div>
-                  </CardHeader>
-                   <CardContent>
-					<div className="space-y-4">
-					{applications.slice(0, 3).map((app) => (
-						<motion.div
-						key={app.id}
-						whileHover={{
-							boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
-						}}
-						transition={{ type: "spring", stiffness: 300, damping: 20 }}
-						className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
-						>
-						<div className="flex items-center gap-3">
-							{getStatusIcon(app.status)}
-							<div>
-							<h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
-							<p className="text-sm text-gray-600">{app.company} • {app.location} </p>
-							</div>
-							{app.accommodationsRequested && (
-							<Badge
-								variant="secondary"
-								className="bg-purple-100 text-purple-800 flex items-center gap-1"
-							>
-								<Shield className="h-3 w-3" />
-								Accommodations
-							</Badge>
-							)}
-						</div>
+<Card>
+  <CardHeader>
+    <div className="flex justify-between items-center">
+      <CardTitle>Recent Applications</CardTitle>
+      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+        View More
+      </div>
+    </div>
+  </CardHeader>
 
-						<div className="text-right">
-							{getStatusBadge(app.status)}
-							<p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
-						</div>
-						</motion.div>
-					))}
-					</div>
-				</CardContent>
-                </Card>
+  <CardContent>
+    <div className="divide-y divide-gray-200">
+      {applications.slice(0, 3).map((app, index) => (
+        <motion.div
+          key={app.id}
+          whileHover={{
+            backgroundColor: "rgba(99,91,255,0.04)",
+          }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className={`flex items-center justify-between py-3 ${
+            index === 0 ? "" : ""
+          } hover:cursor-pointer`}
+        >
+          <div className="flex items-center gap-3">
+            {getStatusIcon(app.status)}
+            <div>
+              <h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
+              <p className="text-sm text-gray-600">
+                {app.company} • {app.location}
+              </p>
+            </div>
+            {app.accommodationsRequested && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-100 text-purple-800 flex items-center gap-1"
+              >
+                <Shield className="h-3 w-3" />
+                Accommodations
+              </Badge>
+            )}
+          </div>
+
+          <div className="text-right">
+            {getStatusBadge(app.status)}
+            <p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  </CardContent>
+</Card>
 
                 {/* Accommodations Status */}
                 <Card>
@@ -737,84 +782,120 @@ const grad_year = Array.from(
 			</div>
 			)}
 
-            {/* Education Settings Tab */}
-			{activeTab === "education" && (
-			<div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
+{activeTab === "education" && (
+  <div className="space-y-6">
+    <h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
 
-				<div className="grid gap-6">
-				{/* Education Info */}
-				<Card>
-					<CardHeader>
-					<CardTitle>Education Information</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-					<div className="grid md:grid-cols-2 gap-6">
-						{[
-						{
-							label: "Level",
-							type: "select",
-							key: "level",
-							options: ["Degree", "Master", "PhD", "Diploma", "STPM", "PT3/PMR"],
-						},
-						{ label: "University/College/School", type: "text", key: "institution" },
-						{ label: "Field of Study", type: "text", key: "fieldOfStudy" },
-						{ label: "Graduation Year", type: "select", key: "graduationYear", options: grad_year.map(String) },
-						{ label: "CGPA", type: "number", key: "cgpa" },
-						{ label: "Grade", type: "text", key: "grade" },
-						{ label: "Award", type: "text", key: "award" },
-						].map((field) => {
-						const key = field.key as keyof typeof candidateProfile.education;
-						const value = candidateProfile.education[key] ?? "";
+    {/* Render all education cards */}
+    <div className="grid gap-6">
+      {educations.map((edu, index) => (
+<Card key={edu.id}>
+  <CardHeader className="flex justify-between items-center">
+    <CardTitle>Education {index + 1}</CardTitle>
+    {index > 0 && (
+      <button
+        onClick={() => setEducations(educations.filter((e) => e.id !== edu.id))}
+        className="text-red-600 hover:text-red-800"
+      >
+        ✕
+      </button>
+    )}
+  </CardHeader>
 
-						return (
-							<div key={key}>
-							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
+  <CardContent className="space-y-4">
+    <div className="grid md:grid-cols-2 gap-6">
+      {[
+        {
+          label: "Level",
+          key: "level",
+          type: "select",
+          options: ["Degree", "Master", "PhD", "Diploma", "STPM", "SPM/PT3"],
+        },
+        { label: "University/College/School", key: "institution", type: "text" },
+        { label: "Field of Study", key: "fieldOfStudy", type: "text" },
+        {
+          label: "Graduation Year",
+          key: "graduationYear",
+          type: "select",
+          options: grad_year.map(String),
+        },
+        { label: "CGPA / Grade", key: "cgpa_grade", type: "text" },
+        { label: "Award", key: "award", type: "text" },
+      ].map((field) => (
+        <div key={field.key}>
+          <label className="block text-sm font-medium text-[#3a4043] mb-1">
+            {field.label}
+          </label>
 
-							{field.type === "select" ? (
-								<select
-								value={value}
-								onChange={(e) => {
-									const val = field.key === "graduationYear" ? (e.target.value ? parseInt(e.target.value, 10) : null) : e.target.value;
-									setCandidateProfile({
-									...candidateProfile,
-									education: { ...candidateProfile.education, [key]: val },
-									});
-								}}
-								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[1px] focus:border-[#635bff]"
-								>
-								<option value="">{field.label === "Graduation Year" ? "Select year" : "Select"}</option>
-								{field.options?.map((opt) => (
-									<option key={opt} value={opt}>
-									{opt}
-									</option>
-								))}
-								</select>
-							) : (
-								<input
-								type={field.type}
-								value={value}
-								onChange={(e) => {
-									const val = field.type === "number" ? (e.target.value ? parseFloat(e.target.value) : null) : e.target.value;
-									setCandidateProfile({
-									...candidateProfile,
-									education: { ...candidateProfile.education, [key]: val },
-									});
-								}}
-								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-								/>
-							)}
-							</div>
-						);
-						})}
-					</div>
-
-					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
-					</CardContent>
-				</Card>
-				</div>
-			</div>
-			)}
+          {field.type === "select" ? (
+            <select
+              value={
+                field.key === "graduationYear"
+                  ? edu[field.key] ?? ""
+                  : edu[field.key as keyof typeof edu] || ""
+              }
+              onChange={(e) =>
+                updateEducation(edu.id, {
+                  [field.key]:
+                    field.key === "graduationYear"
+                      ? e.target.value
+                        ? parseInt(e.target.value)
+                        : null
+                      : e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+            >
+              <option value="">
+                {field.key === "graduationYear" ? "Select year" : "Select"}
+              </option>
+              {field.options?.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={field.type}
+              value={edu[field.key as keyof typeof edu] || ""}
+              onChange={(e) =>
+                updateEducation(edu.id, { [field.key]: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  </CardContent>
+</Card>
+      ))}
+    {/* Manage Multiple Education Cards */}
+    <div className="flex justify-end mb-4">
+      <Button
+        onClick={() =>
+          setEducations([
+            ...educations,
+            {
+              id: Date.now(),
+              level: "",
+              fieldOfStudy: "",
+              institution: "",
+              graduationYear: null,
+              cgpa_grade: "",
+              award:""
+            },
+          ])
+        }
+        className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+      >
+        + Add Education
+      </Button>
+    </div>      
+    </div>
+  </div>
+)}
 
 			{/* Experience & Skills Tab */}
 			{activeTab === "exp_skill" && (
@@ -823,47 +904,75 @@ const grad_year = Array.from(
 
 				<div className="grid gap-6">
 				{/* Experience Info */}
-				<Card>
-					<CardHeader>
-					<CardTitle>Experiences</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-					<div className="grid md:grid-cols-2 gap-6">
-						{[
-						{ label: "Employer", key: "employer" },
-						{ label: "Industry", key: "industry" },
-						{ label: "Start", key: "start" },
-						{ label: "End", key: "end" },
-						{ label: "Seniority", key: "SeniorityLevel" },
-						{ label: "Tools Used", key: "SkillsToolsUsed" },
-						{ label: "Project Highlights", key: "ProjectHighlights" },
-						].map((field) => {
-						const key = field.key as keyof typeof candidateProfile.exp_skill;
-						const value = candidateProfile.exp_skill[key] ?? "";
+{experiences.map((exp, index) => (
+  <Card key={exp.id}>
+    <CardHeader className="flex justify-between items-center">
+      <CardTitle>Experience {index + 1}</CardTitle>
+      {index > 0 && (
+        <button
+          onClick={() =>
+            setExperiences(experiences.filter((e) => e.id !== exp.id))
+          }
+          className="text-red-600 hover:text-red-800"
+        >
+          ✕
+        </button>
+      )}
+    </CardHeader>
 
-						return (
-							<div key={key}>
-							<label className="block text-sm font-medium text-[#3a4043] mb-1">
-								{field.label}
-							</label>
-							<input
-								type="text"
-								value={value}
-								onChange={(e) =>
-								setCandidateProfile({
-									...candidateProfile,
-									exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
-								})
-								}
-								className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							/>
-							</div>
-						);
-						})}
-					</div>
-					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
-					</CardContent>
-				</Card>
+    <CardContent className="space-y-4">
+      <div className="grid md:grid-cols-2 gap-6">
+        {[
+          { label: "Employer", key: "employer" },
+          { label: "Industry", key: "industry" },
+          { label: "Start", key: "start" },
+          { label: "End", key: "end" },
+          { label: "Seniority", key: "seniorityLevel" },
+          { label: "Tools Used", key: "skillsToolsUsed" },
+          { label: "Project Highlights", key: "projectHighlights" },
+        ].map((field) => (
+          <div key={field.key}>
+            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+              {field.label}
+            </label>
+            <input
+              type="text"
+              value={exp[field.key as keyof typeof exp] || ""}
+              onChange={(e) =>
+                updateExperience(exp.id, { [field.key]: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+            />
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+))}
+
+{/* Add Experience Button */}
+<div className="flex justify-end mt-4">
+  <Button
+    onClick={() =>
+      setExperiences([
+        ...experiences,
+        {
+          id: Date.now(),
+          employer: "",
+          industry: "",
+          start: "",
+          end: "",
+          seniorityLevel: "",
+          skillsToolsUsed: "",
+          projectHighlights: "",
+        },
+      ])
+    }
+    className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+  >
+    + Add Experience
+  </Button>
+</div>
 
 				{/* Skills Info */}
 				<Card>

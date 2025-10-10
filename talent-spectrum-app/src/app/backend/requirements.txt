@@ -4,6 +4,8 @@ pypdf
 langchain
 langchain-core
 langchain-text-splitters
+langchain
+langchain-community
 langchain-google-genai
 google-generativeai
 python-dotenv

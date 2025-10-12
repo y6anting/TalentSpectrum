@@ -1,39 +1,140 @@
 "use client";
-
+import { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import About_Us from "@/../public/About_Us.png";
 
 export default function AboutPage() {
+
+  const slides = [
+    {
+      title: "Motives and Aims",
+      text: "Why we decided to do this as our Capstone Project",
+      bg: "/About_Motivations_Aims.jpg",
+    },
+    {
+      title: "AI-Matching and CV Parsing",
+      text: "How our AI works",
+      bg: "/About_AI.jpg",
+    },
+    {
+      title: "Methodologies",
+      text: "Languages, apps, and other software used for this site",
+      bg: "/About_Methodologies.jpg",
+    },
+  ];
+
+  // Clone first and last slides for seamless looping
+  const loopedSlides = [slides[slides.length - 1], ...slides, slides[0]];
+
+  const [current, setCurrent] = useState(1); // Start on first real slide
+  const [transitioning, setTransitioning] = useState(true);
+  const [isCooldown, setIsCooldown] = useState(false);
+
+  const transitionDuration = 400; // ms
+  const cooldownTimerRef = useRef<any>(null);
+
+  // === Handle transition end for seamless looping ===
+  const handleTransitionEnd = () => {
+    setIsCooldown(false); // allow next press after transition completes
+
+    if (current === loopedSlides.length - 1) {
+      setTransitioning(false);
+      setCurrent(1);
+    } else if (current === 0) {
+      setTransitioning(false);
+      setCurrent(loopedSlides.length - 2);
+    }
+  };
+
+  // Reactivate transitions after snap
+  useEffect(() => {
+    if (!transitioning) {
+      const timeout = setTimeout(() => setTransitioning(true), 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [transitioning]);
+
+  // === Cooldown logic ===
+  const startCooldown = () => {
+    setIsCooldown(true);
+    clearTimeout(cooldownTimerRef.current);
+    cooldownTimerRef.current = setTimeout(
+      () => setIsCooldown(false),
+      transitionDuration
+    );
+  };
+
+  const nextSlide = () => {
+    if (isCooldown) return;
+    setTransitioning(true);
+    setCurrent((prev) => prev + 1);
+    startCooldown();
+  };
+
+  const prevSlide = () => {
+    if (isCooldown) return;
+    setTransitioning(true);
+    setCurrent((prev) => prev - 1);
+    startCooldown();
+  };
+
+  // === Transition styling ===
+  const transitionStyle = {
+    transform: `translateX(-${current * 100}%)`,
+    transition: transitioning ? `transform ${transitionDuration}ms ease-in-out` : "none",
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className="min-h-screen bg-fixed bg-center bg-cover"
+      style={{
+        backgroundImage: "url('/About_Us.png')",
+      }}
+    >
+
       {/* Section 1: Our Story - Hero with Image Grid */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-violet-50 to-background">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
         <div className="max-w-[1400px] mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-[#3a4043] mb-8 leading-[0.95]">
-                Where talent meets opportunity
+                <i> Where talents find their ideal setting</i>
               </h1>
               <p className="text-xl md:text-2xl text-[#3a4043]/80 leading-relaxed">
-                Making career discovery simple, authentic, and transformative.
+                Talent Spectrum aims to support challenged individuals to find employment in workspaces they belong, and for employers to recruit unsung talent that can thrive in their environment.
               </p>
             </div>
 
             {/* Image Grid - Inspired by Linktree later phase 2 i add */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-orange-200 to-orange-400 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
+                <div className="bg-gradient-to-br from-orange-200 to-orange-400 rounded-3xl h-48 flex items-center  justify-center text-black font-bold text-xl shadow-xl bg-cover"
+                  style={{
+                    backgroundImage: "url('/About_Discover.jpg')",
+                  }}>
                   Discover
                 </div>
-                <div className="bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-3xl h-64 flex items-center justify-center text-gray-800 font-bold text-xl shadow-xl">
+                <div className="bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-3xl h-64 flex items-center justify-center text-gray-800 font-bold text-xl shadow-xl bg-cover"
+                  style={{
+                    backgroundImage: "url('/About_Connect.jpg')",
+                  }}>
                   Connect
                 </div>
               </div>
               <div className="space-y-4 mt-8">
-                <div className="bg-gradient-to-br from-teal-300 to-teal-600 rounded-3xl h-64 flex items-center justify-center text-white font-bold text-xl shadow-xl">
-                  Grow
+                <div className="rounded-3xl h-64 flex items-center justify-center text-black font-bold text-xl shadow-xl bg-cover"
+                  style={{
+                    backgroundImage: "url('/About_Express.jpg')",
+                  }}>
+                  Express
                 </div>
-                <div className="bg-gradient-to-br from-indigo-300 to-indigo-500 rounded-3xl h-48 flex items-center justify-center text-white font-bold text-xl shadow-xl">
-                  Succeed
+                <div className="bg-gradient-to-br from-indigo-300 to-indigo-500 rounded-3xl h-48 flex items-center justify-center text-black font-bold text-xl shadow-xl bg-cover"
+                  style={{
+                    backgroundImage: "url('/About_Employ.jpg')",
+                  }}>
+                  Employ
                 </div>
               </div>
             </div>
@@ -41,47 +142,60 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Section 2: AI-Powered Matching - Dark Blue Background */}
+
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-indigo-900 to-purple-900 text-white">
         <div className="max-w-[1400px] mx-auto">
-          <div className="text-center mb-20">
-            <p className="text-sm uppercase tracking-widest text-purple-300 mb-6 font-medium">
-              AI-POWERED MATCHING
-            </p>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight">
-              Intelligent matching.
-              <br />
-              Zero effort.
+          <div className="mb-20 text-center">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#ffffff] mb-8 leading-[0.95]">
+              Our Team
             </h2>
-            <p className="text-xl md:text-2xl text-purple-200 max-w-2xl mx-auto mb-12">
-              Your perfect opportunity finds you.
-            </p>
-            <button className="bg-white text-[#635bff] px-10 py-5 rounded-full font-semibold text-lg hover:text-[#4f46e5] hover:bg-gray-50 transition-all shadow-2xl">
-              Start Now
-            </button>
           </div>
+          <div className="grid md:grid-cols-3 gap-8 mb-10">
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                <img src="/LeeCheeTat.png"
+                  alt="Profile photo of Lee Chee Tat"
+                  className="w-full h-full object-cover" />
+              </div>
+              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Lee Chee Tat</h3>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>Autism Spectrum Condition</p>
+              <p className="text-sm text-[#3a4043] mb-3">
+                <em>Certified Professional Coach, Neurodiversity-Affirming Coach.</em>
+              </p>
+              <p className="text-sm text-[#3a4043]">
+                Guiding autistic adults through job search, interview preparation, and workplace communication for over 10 years, focusing on building sustainable careers.
+              </p>
+            </div>
 
-          {/* Visual Representation */}
-          <div className="grid md:grid-cols-3 gap-8 mt-20">
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              {/* <div className="text-5xl mb-6">📊</div> */}
-              <h3 className="text-2xl font-bold mb-4">Assessment</h3>
-              <p className="text-purple-200/90 text-lg">
-                Discover your unique talent spectrum
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                <img src="/JohnStefan.png"
+                  alt="Profile photo of John Stefan"
+                  className="w-full h-full object-cover" />
+              </div>
+              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">John Stefan</h3>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>ADHD and Dyslexia</p>
+              <p className="text-sm text-[#3a4043] mb-3">
+                <em>ADHD Coach Practitioner, Certified Career Services Provider.</em>
+              </p>
+              <p className="text-sm text-[#3a4043]">
+                8 years of experience leveraging neurodivergent strengths to passionately connect clients with roles that embrace unique cognitive styles.
               </p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              {/* <div className="text-5xl mb-6">🤖</div> */}
-              <h3 className="text-2xl font-bold mb-4">Match</h3>
-              <p className="text-purple-200/90 text-lg">
-                AI finds your perfect opportunities
+
+            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                <img src="/DrIsaacEbi.png"
+                  alt="Profile photo of Dr. Isaac Ebi"
+                  className="w-full h-full object-cover" />
+              </div>
+              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Dr. Isaac Ebi</h3>
+              <p className="text-[#635bff] mb-3">Expert in <br></br>Dyslexia and Dyspraxia</p>
+              <p className="text-sm text-[#3a4043] mb-3">
+                <em>Ph.D. in Occupational Psychology, ICF Professional Certified Coach.</em>
               </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all">
-              {/* <div className="text-5xl mb-6">🎯</div> */}
-              <h3 className="text-2xl font-bold mb-4">Connect</h3>
-              <p className="text-purple-200/90 text-lg">
-                Get notified instantly
+              <p className="text-sm text-[#3a4043]">
+                Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.
               </p>
             </div>
           </div>
@@ -89,11 +203,11 @@ export default function AboutPage() {
       </section>
 
       {/* Section 3: Who We Serve - Light Pink/Purple Background */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-pink-50 to-purple-50">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
         <div className="max-w-[1400px] mx-auto">
-          <div className="mb-20">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-6 leading-tight">
-              Built for everyone
+          <div className="mb-20 text-center">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-8 leading-[0.95]">
+              <i>Built to find the best connections</i>
             </h2>
           </div>
 
@@ -106,7 +220,7 @@ export default function AboutPage() {
                 Job Seekers
               </h3>
               <p className="text-[#3a4043]/70 text-lg">
-                Find roles that match your natural talents
+                Find roles that match your talents, with the right environment for an optimally comfortable work life
               </p>
             </div>
 
@@ -118,7 +232,7 @@ export default function AboutPage() {
                 Employers
               </h3>
               <p className="text-[#3a4043]/70 text-lg">
-                Hire people who truly fit your culture
+                Hire people who fit your work environment, and provide transparency to interest willing applicants
               </p>
             </div>
 
@@ -127,10 +241,10 @@ export default function AboutPage() {
                 <span className="text-4xl">🎓</span>
               </div>
               <h3 className="text-3xl font-bold text-[#3a4043] mb-4">
-                Counselors
+                Job Coaches
               </h3>
               <p className="text-[#3a4043]/70 text-lg">
-                Guide clients with powerful insights
+                Guide clients with powerful insights, with their needs and preferences as a addressable priority
               </p>
             </div>
           </div>
@@ -138,97 +252,87 @@ export default function AboutPage() {
       </section>
 
       {/* Section 4: Our Values */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-6 leading-tight">
-              What we believe
-            </h2>
-          </div>
+      <section className="relative w-full h-[600px] overflow-hidden text-white select-none">
+        {/* Slides Container */}
+        <div
+          className="flex h-full"
+          style={transitionStyle}
+          onTransitionEnd={handleTransitionEnd}
+        >
+          {loopedSlides.map((slide, i) => (
+            <div
+              key={i}
+              className="w-full h-full flex-shrink-0 relative flex items-center justify-center text-center text-white bg-cover"
+              style={{
+                backgroundImage: `url(${slide.bg})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              {/* Overlay for readability */}
+              <div className="absolute inset-0 bg-black/50" />
 
-          <div className="grid md:grid-cols-3 gap-12">
-            <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8"> </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
-                Diversity
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Every talent is unique and valuable
-              </p>
+              {/* Text content */}
+              <div className="relative z-10 px-8">
+                <h3 className="text-5xl font-bold mb-4 drop-shadow-lg">
+                  {slide.title}
+                </h3>
+                <p className="text-lg text-white/90 max-w-2xl mx-auto drop-shadow-md">
+                  {slide.text}
+                </p>
+              </div>
             </div>
+          ))}
+        </div>
 
-            <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8"> </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
-                Science
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Research-backed, validated assessments
-              </p>
-            </div>
+        {/* Navigation Buttons */}
+        <button
+          onMouseDown={prevSlide}
+          className="absolute left-0 top-0 h-full w-[10%] flex items-center justify-center bg-black/10 hover:bg-black/20 transition"
+        >
+          <ChevronLeft size={40} />
+        </button>
+        <button
+          onMouseDown={nextSlide}
+          className="absolute right-0 top-0 h-full w-[10%] flex items-center justify-center bg-black/10 hover:bg-black/20 transition"
+        >
+          <ChevronRight size={40} />
+        </button>
 
-            <div className="text-center p-10 rounded-3xl bg-gradient-to-b from-[#faf9f7] to-white border border-gray-100 hover:shadow-xl transition-all">
-              <div className="text-7xl mb-8"> </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-5">
-                Empowerment
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Knowledge that transforms careers
-              </p>
-            </div>
-          </div>
+        {/* Dots */}
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onMouseDown={() => setCurrent(i + 1)} // +1 because of the clone offset
+              className={`w-3 h-3 rounded-full transition ${i + 1 === current ? "bg-white scale-125" : "bg-white/40"
+                }`}
+            />
+          ))}
         </div>
       </section>
 
-      {/* Section 5: By The Numbers */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#2665d6] text-white">
-        <div className="max-w-[1400px] mx-auto">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-center mb-24 leading-tight">
-            Our impact
-          </h2>
-
-          <div className="grid md:grid-cols-4 gap-12 text-center">
-            <div className="space-y-3">
-              <div className="text-6xl md:text-7xl font-bold">50K+</div>
-              <p className="text-xl md:text-2xl text-white/80">Assessments</p>
-            </div>
-            <div className="space-y-3">
-              <div className="text-6xl md:text-7xl font-bold">5K+</div>
-              <p className="text-xl md:text-2xl text-white/80">Matches</p>
-            </div>
-            <div className="space-y-3">
-              <div className="text-6xl md:text-7xl font-bold">500+</div>
-              <p className="text-xl md:text-2xl text-white/80">Companies</p>
-            </div>
-            <div className="space-y-3">
-              <div className="text-6xl md:text-7xl font-bold">95%</div>
-              <p className="text-xl md:text-2xl text-white/80">Satisfaction</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 6: CTA Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-[#faf9f7]">
+      {/* Section 5: CTA Section */}
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-10 leading-tight">
-            Start your journey
+            <i>Start your journey today!</i>
           </h2>
           <p className="text-2xl md:text-3xl text-[#3a4043]/60 mb-14">
-            Discover what makes you exceptional
+            Find the perfect job for you
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link
               href="/register"
               className="bg-[#635bff] hover:bg-[#4f46e5] text-white px-12 py-5 rounded-full font-semibold text-xl transition-all shadow-2xl hover:shadow-[#635bff]/50 hover:scale-105"
             >
-              Get Started Free
+              Register Now
             </Link>
             <Link
-              href="/contact"
-              className="bg-white hover:bg-gray-50 text-[#635bff] border-2 border-[#635bff] px-12 py-5 rounded-full font-semibold text-xl transition-all shadow-xl hover:shadow-2xl hover:scale-105 hover:text-[#4f46e5] hover:border-[#4f46e5]"
+              href="/jobListing"
+              className="bg-white hover:bg-[#635bff] text-[#635bff] border-2 border-[#635bff] px-12 py-5 rounded-full font-semibold text-xl transition-all shadow-xl hover:shadow-2xl hover:scale-105 hover:text-white hover:border-[#4f46e5]"
             >
-              Contact Us
+              Search For Jobs
             </Link>
           </div>
         </div>

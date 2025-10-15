@@ -391,7 +391,7 @@ const grad_year = Array.from(
         asChild
         className="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
       >
-        <Link href="/jobs/${job.id}/apply">Upload Resume</Link>
+        <Link href="candidate-dashboard/resume_extract">Upload Resume</Link>
       </Button>
 
       <Button

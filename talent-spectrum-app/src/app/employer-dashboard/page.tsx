@@ -29,6 +29,7 @@ import {
   Heart,
   Star,
   BarChart3,
+  Calculator
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -196,8 +197,60 @@ export default function EmployerDashboard() {
     }
   };
 
+  const FIXED_EPF_RATE = 13; // Example: 13%
+  const FIXED_SOCSO_RATE = 1.75;
+  const FIXED_EIS_RATE = 0.2;
+  const FIXED_CORPORATE_TAX_RATE = 24;
+
+  const [inputs, setInputs] = useState({
+    baseSalary: 10000,
+  });
+
+  const handleChange = (field: string, value: number | string) => {
+    setInputs((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // --- Tax Relief Calculator Logic ---
+  const calc = () => {
+    const baseSalary = Number(inputs.baseSalary) || 0;
+
+    const epfCost = (baseSalary * FIXED_EPF_RATE) / 100;
+    const socsoCost = (baseSalary * FIXED_SOCSO_RATE) / 100;
+    const eisCost = (baseSalary * FIXED_EIS_RATE) / 100;
+
+    const monthlyEmployerCost = baseSalary + epfCost + socsoCost + eisCost;
+    const annualCost = monthlyEmployerCost * 12;
+
+    // For OKU, double deduction
+    const neuroDeductible = annualCost;
+    const okuDeductible = annualCost * 2;
+
+    const neuroTaxSavings = (neuroDeductible * FIXED_CORPORATE_TAX_RATE) / 100;
+    const okuTaxSavings = (okuDeductible * FIXED_CORPORATE_TAX_RATE) / 100;
+
+    const neuroAfterTax = annualCost - neuroTaxSavings;
+    const okuAfterTax = annualCost - okuTaxSavings;
+    const annualSavings = neuroAfterTax - okuAfterTax;
+
+    return {
+      baseSalary,
+      epfCost,
+      socsoCost,
+      eisCost,
+      monthlyEmployerCost,
+      annualCost,
+      neuroTaxSavings,
+      okuTaxSavings,
+      neuroAfterTax,
+      okuAfterTax,
+      annualSavings,
+    };
+  };
+
+  const result = calc();
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
+    <div className="min-h-screen bg-gradient-to-b from--50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           {/* Left section */}
@@ -228,21 +281,16 @@ export default function EmployerDashboard() {
           </div>
 
           {/* Button visible only on larger screens */}
-          <motion.div
-            whileHover={{
-              scale: 1.05,
-            }}
-            className="hidden sm:inline-block rounded-lg"
+        <motion.div>
+          <Button
+            className="bg-gradient-to-r from-[#ff1b6b] to-[#45caff] hover:from-[#e6185f] hover:to-[#3eb8e6] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
+            onClick={() => router.push("/post-job")}
           >
-            <Button
-              className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
-              onClick={() => router.push("/post-job")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Post New Job
-            </Button>
-          </motion.div>
-      </div>
+            <Plus className="h-4 w-4 mr-2" />
+            Post New Job
+          </Button>
+        </motion.div>
+      </div>  
 
         <div className="grid lg:grid-cols-4 gap-8 space-y-4">
           {/* Sidebar */}
@@ -250,7 +298,7 @@ export default function EmployerDashboard() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-12 h-12 bg-gradient-to-r from-[#ff1b6b] to-[#45caff] rounded-full flex items-center justify-center text-white font-semibold">
                     <Building className="h-6 w-6" />
                   </div>
                   <div>
@@ -274,7 +322,7 @@ export default function EmployerDashboard() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-[#635bff] h-2 rounded-full"
+                      className="bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] h-2 rounded-full"
                       style={{ width: `${companyProfile.inclusionScore}%` }}
                     />
                   </div>
@@ -293,6 +341,11 @@ export default function EmployerDashboard() {
                       label: "Company Settings",
                       icon: Settings,
                     },
+                    {
+                      id: "tax-calculator",
+                      label: "Calculator",
+                      icon: Calculator,
+                    },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -301,7 +354,7 @@ export default function EmployerDashboard() {
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
                           activeTab === item.id
-                            ? "bg-[#635bff] text-white"
+                            ? "bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] text-white"
                             : "text-[#3a4043] hover:bg-gray-100"
                         }`}
                       >
@@ -319,7 +372,54 @@ export default function EmployerDashboard() {
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center"></div>
+
+                <div className="grid md:grid-cols-4 gap-6">
+                  {[
+                    {
+                      icon: FileText,
+                      iconColor: "text-[#635bff]",
+                      title: "Active Jobs",
+                      value: jobPostings.filter((j) => j.status === "active")
+                        .length,
+                    },
+                    {
+                      icon: Users,
+                      iconColor: "text-blue-600",
+                      title: "Total Applications",
+                      value: applications.length,
+                    },
+                    {
+                      icon: Eye,
+                      iconColor: "text-green-600",
+                      title: "Total Views",
+                      value: jobPostings.reduce(
+                        (sum, job) => sum + job.views,
+                        0
+                      ),
+                    },
+                    {
+                      icon: Shield,
+                      iconColor: "text-purple-600",
+                      title: "Inclusion Score",
+                      value: `${companyProfile.inclusionScore}%`,
+                    },
+                  ].map((card, idx) => {
+                    const Icon = card.icon;
+                    return (
+                      <Card>
+                        <CardContent className="p-6 text-center">
+                          <Icon
+                            className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`}
+                          />
+                          <h3 className="font-semibold text-[#3a4043] mb-1">
+                            {card.value}
+                          </h3>
+                          <p className="text-sm text-gray-600">{card.title}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
 
                 <div className="grid md:grid-cols-4 gap-6">
@@ -772,6 +872,223 @@ export default function EmployerDashboard() {
                     </CardContent>
                   </Card>
                 </div>
+              </div>
+            )}
+
+            {/* Tax Calculator Tab */}
+            {activeTab === "tax-calculator" && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                  Double Tax Relief Calculator
+                </h1>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Enter Employer Cost Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid md:grid-cols-2 gap-4">
+                    {[{ label: "Base Salary (RM)", field: "baseSalary" }].map(
+                      (item) => (
+                        <div key={item.field}>
+                          <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                            {item.label}
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={
+                              inputs[item.field as keyof typeof inputs] ?? ""
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") {
+                                handleChange(item.field, "");
+                                return;
+                              }
+                              if (!/^\d+$/.test(val)) return;
+                              if (val.length > 1 && val.startsWith("0")) return;
+                              handleChange(item.field, Number(val));
+                            }}
+                            placeholder="Enter amount"
+                            className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-[#635bff] focus-visible:ring-[#635bff]/30 focus-visible:ring-[1px]"
+                          />
+                        </div>
+                      )
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Comparison: Neurotypical vs OKU Cardholder
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <table className="w-full border border-[#e8e6f0] text-sm">
+                      <thead className="bg-[#f9f9ff] text-[#3a4043]">
+                        <tr>
+                          <th className="p-2 text-left">Category</th>
+                          <th className="p-2 text-left">
+                            Neurotypical Staff (RM)
+                          </th>
+                          <th className="p-2 text-left">OKU Cardholder (RM)</th>
+                          <th className="p-2 text-left">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t">
+                          <td className="p-2 min-h-[120px]">Base Salary</td>
+                          <td className="p-2">
+                            {result.baseSalary.toFixed(2)}
+                          </td>
+                          <td className="p-2">
+                            {result.monthlyEmployerCost.toFixed(2)}
+                          </td>
+                          <td>Same gross salary (Monthly)</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">EPF </td>
+                          <td className="p-2">{result.epfCost.toFixed(2)}</td>
+                          <td className="p-2">{result.epfCost.toFixed(2)}</td>
+                          <td>
+                            Mandatory employer contribution (Employer 13%)
+                          </td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">SOCSO </td>
+                          <td className="p-2">{result.socsoCost.toFixed(2)}</td>
+                          <td className="p-2">{result.socsoCost.toFixed(2)}</td>
+                          <td>
+                            Based on SOCSO rate for Employment Injury Scheme
+                            (Employer ~1.75%)
+                          </td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">EIS </td>
+                          <td className="p-2">{result.eisCost.toFixed(2)}</td>
+                          <td className="p-2">{result.eisCost.toFixed(2)}</td>
+                          <td>
+                            Employment Insurance System contribution (Employer
+                            0.2%)
+                          </td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">Total monthly Employer Cost</td>
+                          <td className="p-2">
+                            {result.monthlyEmployerCost.toFixed(2)}
+                          </td>
+                          <td className="p-2">
+                            {result.monthlyEmployerCost.toFixed(2)}
+                          </td>
+                          <td>Same total cash flow (Before Tax Relief)</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">Annual Employer Cost</td>
+                          <td className="p-2">
+                            {result.annualCost.toFixed(2)}
+                          </td>
+                          <td className="p-2">
+                            {result.annualCost.toFixed(2)}
+                          </td>
+                          <td>
+                            RM{result.monthlyEmployerCost} x 12 months (Before
+                            Tax Relief)
+                          </td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">Tax Relief </td>
+                          <td className="p-2">❌ not applicable</td>
+                          <td className="p-2">
+                            ✅ Eligible for Double Tax Deduction on remuneration
+                            paid to OKU employees
+                          </td>
+                          <td>
+                            Employers can claim twice the amount of remuneration
+                            as deductible expense under Income Tax Act 1967
+                            (Double Deduction)
+                          </td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">Effective Deductible Expense</td>
+                          <td className="p-2">
+                            {result.annualCost.toFixed(2)}
+                          </td>
+                          <td className="p-2">
+                            {(result.annualCost * 2).toFixed(2)}
+                          </td>
+                          <td>For OKU, deduction = 2 x salary paid</td>
+                        </tr>
+                        <tr className="border-t">
+                          <td className="p-2">Tax Savings</td>
+                          <td className="p-2 text-green-700">
+                            {result.neuroTaxSavings.toFixed(2)}
+                          </td>
+                          <td className="p-2 text-green-700">
+                            {result.okuTaxSavings.toFixed(2)}
+                          </td>
+                          <td>
+                            Double deduction doubles the tax shield @ 24%
+                            Corporate Tax Rate
+                          </td>
+                        </tr>
+                        <tr className="border-t font-semibold bg-[#f7f6ff]">
+                          <td className="p-2">
+                            Net Effective Annual Employer Cost
+                          </td>
+                          <td className="p-2 text-[#3a4043]">
+                            {result.neuroAfterTax.toFixed(2)}
+                          </td>
+                          <td className="p-2 text-[#3a4043]">
+                            {result.okuAfterTax.toFixed(2)}
+                          </td>
+                          <td>
+                            RM{result.annualCost.toFixed(2)} - tax savings
+                            (After Tax)
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <table>
+                      <tbody>
+                        <tr></tr>
+                      </tbody>
+                    </table>
+
+                    <div className="mt-4 text-sm text-[#3a4043]">
+                      <p>
+                        <strong className="text-green-600 text-xl">
+                          Annual Savings (Per OKU Hire):
+                        </strong>{" "}
+                        <span className="text-green-600 font-semibold text-xl">
+                          RM{result.annualSavings.toFixed(2)}
+                        </span>
+                      </p>
+                      <p className="mt-2 text-gray-600">
+                        Hiring an OKU cardholder doesn't just promote inclusion
+                        --it also reduces your effective headcount cost by
+                        approximately{" "}
+                        <strong>
+                          {(
+                            (result.annualSavings / result.neuroAfterTax) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </strong>{" "}
+                        (thanks to the Double Tax Deduction incentive).
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Other tabs (overview, jobs, etc.) remain unchanged */}
+            {activeTab !== "tax-calculator" && (
+              <div className="text-gray-500 text-center mt-10">
+                {/* Placeholder for other content */}
+                <p>Select a tab from the sidebar.</p>
               </div>
             )}
           </div>

@@ -27,6 +27,7 @@ import {
 import { motion } from "motion/react";
 import  {useRouter} from "next/navigation"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select"
+import ResumeUploadButton from "@/app/components/resume-upload/ResumeUploadButton";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -387,12 +388,15 @@ const grad_year = Array.from(
 				<p className="text-gray-600">Here's your job search activity and recommendations.</p>
 			</div>
 <div className="flex flex-wrap gap-4 justify-center mt-6"> 
-      <Button
-        asChild
-        className="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-      >
-        <Link href="candidate-dashboard/resume_extract">Upload Resume</Link>
-      </Button>
+      <ResumeUploadButton 
+        buttonText="Upload Resume"
+        buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+        onResumeProcessed={(parsedInfo) => {
+          console.log("Resume processed:", parsedInfo);
+          // You can update the candidate profile with the parsed info here
+          // For example: setCandidateProfile(prev => ({ ...prev, ...parsedData }))
+        }}
+      />
 
       <Button
         asChild

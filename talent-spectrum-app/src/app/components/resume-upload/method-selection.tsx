@@ -4,7 +4,7 @@ import React from "react";
 import { ArrowLeft, FileText, User } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/app/components/card";
 import { Button } from "@/app/components/button";
-import { Job } from "@/types/job"; // adjust path as needed
+// Removed Job import as it's no longer needed
 
 interface MethodSelectionProps {
   setFillMethod: (method: "resume" | "manual") => void;
@@ -12,7 +12,7 @@ interface MethodSelectionProps {
   selectionHeaderRef: React.RefObject<HTMLDivElement | null>;
   selectionCardsRef: React.RefObject<HTMLDivElement | null>;
   setCurrentPage: (page: string) => void;
-  job: Job;
+  // job: Job;
 }
 
 const MethodSelection: React.FC<MethodSelectionProps> = ({
@@ -21,7 +21,7 @@ const MethodSelection: React.FC<MethodSelectionProps> = ({
   selectionHeaderRef,
   selectionCardsRef,
   setCurrentPage,
-  job,
+  // job,
 }) => (
   <div className="min-h-screen py-8 px-4">
     <div className="max-w-[1400px] mx-auto">
@@ -32,12 +32,12 @@ const MethodSelection: React.FC<MethodSelectionProps> = ({
           className="mb-6 text-[#3a4043] hover:text-[#635bff] text-base"
         >
           <ArrowLeft className="h-4 w-4 mb-1" />
-          Back to Job Details
+          Back to Information Form
         </Button>
       </div>
 
-      <Card className="border-2 border-[#d8d4f0] bg-white rounded-2xl">
-        <CardHeader ref={selectionHeaderRef} className="text-center pb-8">
+      <Card className="border-2 border-[#d8d4f0] bg-white rounded-2xl mt-10 py-20 px-20">
+        {/* <CardHeader ref={selectionHeaderRef} className="text-center pb-8">
           <h1 className="mb-4 text-[#3a4043]">Apply for {job.title}</h1>
           <div className="space-y-2 text-gray-600 mb-6">
             <p className="text-lg">{job.company}</p>
@@ -46,12 +46,12 @@ const MethodSelection: React.FC<MethodSelectionProps> = ({
           <p className="text-gray-600">
             Choose how you'd like to fill out your application
           </p>
-        </CardHeader>
+        </CardHeader> */}
 
         <CardContent className="space-y-4">
           <div
             ref={selectionCardsRef}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 gap-10"
           >
             {/* Upload Resume Card */}
             <Card

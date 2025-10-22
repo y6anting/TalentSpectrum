@@ -7,7 +7,7 @@ import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 // Types
-type UserType = "candidate" | "employer";
+type UserType = "candidate" | "employer" | "job-coach";
 type TabType = "login" | "signup";
 
 interface LoginFormData {
@@ -40,14 +40,21 @@ const USER_TYPE_CONFIG = {
     title: "Find Your Perfect Role",
     description:
       "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
-    dashboard: "/candidate-dashboard",
+    dashboard: "candidate/candidate-dashboard",
   },
   employer: {
     label: "Employer",
     title: "Discover Top Talent",
     description:
       "Build diverse teams with our neurodivergent-friendly hiring platform.",
-    dashboard: "/employer-dashboard",
+    dashboard: "employer/employer-dashboard",
+  },
+  "job-coach": {
+    label: "Job Coach",
+    title: "Guide & Support Talent",
+    description:
+      "Help neurodivergent professionals succeed and support inclusive employers.",
+    dashboard: "job-coach/dashboard",
   },
 } as const;
 
@@ -208,7 +215,7 @@ const LoginPage = () => {
   // NAVIGATION HELPER
   // ----------------------------------------------------------------------------
   const redirectToDashboard = () => {
-    router.push(USER_TYPE_CONFIG[userType].dashboard);
+    router.push(`/${USER_TYPE_CONFIG[userType].dashboard}`);
   };
 
   // ----------------------------------------------------------------------------
@@ -237,11 +244,13 @@ const LoginPage = () => {
           return;
         }
   
-        // Redirect based on role
+        // Redirect based on role using USER_TYPE_CONFIG
         if (session.user.role === "EMPLOYER") {
-          router.push("/employer-dashboard");
+          router.push(`/${USER_TYPE_CONFIG.employer.dashboard}`);
         } else if (session.user.role === "CANDIDATE") {
-          router.push("/candidate-dashboard");
+          router.push(`/${USER_TYPE_CONFIG.candidate.dashboard}`);
+        } else if (session.user.role === "JOB_COACH") {
+          router.push(`/${USER_TYPE_CONFIG["job-coach"].dashboard}`);
         } else {
           router.push("/"); // fallback
         }
@@ -289,7 +298,7 @@ const LoginPage = () => {
         });
 
         if (result?.ok) {
-          redirectToDashboard();
+          router.push("/candidate/candidate-info");
         }
       } else {
         const data = await response.json();
@@ -304,14 +313,28 @@ const LoginPage = () => {
 
   // Handle Google Sign In
   const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: USER_TYPE_CONFIG[userType].dashboard });
+    signIn("google", { callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}` });
   };
 
   // ----------------------------------------------------------------------------
   // USER TYPE TOGGLE
   // ----------------------------------------------------------------------------
-  const toggleUserType = async () => {
-    setUserType((prev) => (prev === "candidate" ? "employer" : "candidate"));
+  const toggleUserType = (newType?: "candidate" | "employer" | "job-coach") => {
+    setUserType((prev) => {
+      if (newType && newType !== prev) return newType;
+  
+      // Define all roles for easier management
+      const roles: ("candidate" | "employer" | "job-coach")[] = [
+        "candidate",
+        "employer",
+        "job-coach",
+      ];
+  
+      // Cycle to the next role in order
+      const currentIndex = roles.indexOf(prev);
+      const nextIndex = (currentIndex + 1) % roles.length;
+      return roles[nextIndex];
+    });
   };
 
   // ----------------------------------------------------------------------------
@@ -401,7 +424,7 @@ const LoginPage = () => {
         }}
       />
 
-      <div className="min-h-screen bg-white flex">
+      <div className="min-h-screen h-screen overflow-hidden bg-white flex">
         {/* ====================================================================
             LEFT SIDE - ILLUSTRATION PANEL
             To change gradient colors, modify: from-[#color] to-[#color]
@@ -509,11 +532,11 @@ const LoginPage = () => {
                   Welcome Back
                 </h2>
 
-                <img
+                {/* <img
                   src="/zzz.gif"
                   alt="Cute cat"
                   className="w-60 sm:w-72 md:w-96 lg:w-[500px] h-auto rounded-2xl object-contain"
-                />
+                /> */}
               </div>
                 )}
               </div>
@@ -528,12 +551,34 @@ const LoginPage = () => {
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-b from-violet-50 to-background">
           <div className="max-w-md w-full">
             {/* User Type Badge - Shows current user type (Job Seeker/Employer) */}
-            <div className="text-center mb-6 text-4xl font-semibold text-gray-600">
-              {/* Change badge color here: bg-[#635bff] */}
-              Hello, <span className="inline-block py-2 rounded-xl text-4xl font-semibold text-[#635bff] mb-10">
+            <div className="text-center mb-8 text-4xl font-semibold text-gray-600">
+              Hello, <span className="inline-block rounded-xl text-4xl font-semibold text-[#635bff] mb-7">
                 {currentConfig.label}.
               </span>
+              <div className="flex justify-center gap-3">
+                {[
+                  { type: "candidate", label: "Job Seeker" },
+                  { type: "employer", label: "Employer" },
+                  { type: "job-coach", label: "Job Coach" },
+                ].map(({ type, label }) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() =>
+                      toggleUserType(type as "candidate" | "employer" | "job-coach")
+                    }
+                    className={`px-5 py-2 text-sm font-medium rounded-full border transition-all duration-200 hover:cursor-pointer ${
+                      userType === type
+                        ? "bg-[#635bff] text-white border-[#635bff] shadow-md"
+                        : "text-[#635bff] border-[#635bff] hover:bg-[#635bff]/10"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+              
 
             {/* ================================================================
                 TAB SWITCHER - Login / Sign up tabs
@@ -747,25 +792,20 @@ const LoginPage = () => {
             )}
 
             {/* ================================================================
-                USER TYPE TOGGLE - Switch between Job Seeker/Employer
+                USER TYPE TOGGLE - Switch between Job Seeker/Employer/Job Coach
                 Change text/button colors: text-[#color] hover:text-[#color]
                 ================================================================ */}
-            <div className="mt-6 pt-6 border-t border-[#e8e6f0]">
-              <p className="text-center text-md text-gray-600 mb-3">
+            {/* <div className="mt-6 pt-6 border-t border-[#e8e6f0]"> */}
+              {/* <p className="text-center text-md text-gray-600 mb-3">
                 {userType === "candidate"
-                  ? "Are you an employer?"
-                  : "Are you a job seeker?"}
-              </p>
-              <button
-                type="button"
-                onClick={toggleUserType}
-                className="w-full py-2 text-sm font-medium text-[#635bff] hover:text-[#4f46e5] transition-colors"
-              >
-                {userType === "candidate"
-                  ? "Switch to Employer Login →"
-                  : "← Switch to Candidate Login"}
-              </button>
-            </div>
+                  ? "Are you an employer or job coach?"
+                  : userType === "employer"
+                  ? "Are you a job seeker or job coach?"
+                  : "Are you a job seeker or employer?"}
+              </p> */}
+              
+
+            {/* </div> */}
           </div>
         </div>
       </div>

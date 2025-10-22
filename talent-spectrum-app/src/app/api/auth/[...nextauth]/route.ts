@@ -55,7 +55,8 @@ const handler = NextAuth({
         // Mock user for development - any email/password combo will work
         // TESTING: Change this line to switch roles easily
         // const role = "CANDIDATE"; // Change to "EMPLOYER" or "CANDIDATE" to test employer dashboard
-        const role = credentials.userType === "employer" ? "EMPLOYER" : "CANDIDATE";
+        const role = credentials.userType === "employer" ? "EMPLOYER" : 
+                    credentials.userType === "job-coach" ? "JOB_COACH" : "CANDIDATE";
         return {
           id: "mock-user-id",
           email: credentials.email || "",
@@ -79,7 +80,7 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (token && token.sub) {
         session.user.id = token.sub;
-        session.user.role = token.role as "CANDIDATE" | "EMPLOYER";
+        session.user.role = token.role as "CANDIDATE" | "EMPLOYER" | "JOB_COACH";
       }
       return session;
     },

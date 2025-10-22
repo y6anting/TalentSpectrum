@@ -1,13 +1,9 @@
+// post-job/page.tsx
+
 "use client";
 
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card, // Card is still used for the overall structure, but not for the accordion items themselves
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/app/components/card";
 import { Button } from "@/app/components/button";
 import { Input } from "@/app/components/input";
 import { Textarea } from "@/app/components/textarea";
@@ -26,7 +22,6 @@ import {
   Plus,
   X,
   Eye,
-  // ChevronDown, ChevronRight are now handled internally by AccordionTrigger
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -61,10 +56,14 @@ export default function PostJob() {
     Record<string, HTMLInputElement | HTMLTextAreaElement | null>
   >({});
 
-  // --- State (kept the fields used by remaining sections) ---
+  const [jobTitle, setJobTitle] = useState("");
   const [jobType, setJobType] = useState("");
+  const [jobSummary, setJobSummary] = useState("");
   const [workLocation, setWorkLocation] = useState("");
+  const [salaryRange, setSalaryRange] = useState<string>("");
+  const [jobRequirements, setJobRequirements] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
+  const [jobLocation, setJobLocation] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
   const [accommodations, setAccommodations] = useState<string[]>([]);
@@ -84,16 +83,25 @@ export default function PostJob() {
     "Executive",
     "Non-Executive",
   ];
+
+  const salaryRanges = [ 
+  "Below RM 3,000",
+  "RM 3,000 - RM 5,000",
+  "RM 5,001 - RM 8,000",
+  "RM 8,001 - RM 12,000",
+  "RM 12,001 - RM 18,000",
+  "RM 18,001 - RM 25,000",
+  "Above RM 25,000",
+];
+
   const availableAccommodations = [
     "Flexible work hours",
     "Quiet room/space",
     "Sensory-friendly environment",
-    "Job coach available",
     "Peer support system",
-    "Flexible work arrangement",
     "Dedicated workspace (not hot desk)",
     "Sensory aids allowed",
-    "Neurodiversity acceptance training",
+    "Neurodiversity awareness training",
     "Use visual project-tracking tool",
     "Regular check-in with supervisor",
     "No forced social event",
@@ -121,10 +129,6 @@ export default function PostJob() {
       : setAccommodations([...accommodations, accommodation]);
   };
 
-  // --- Controlled fields for validation (required ones) ---
-  const [jobTitle, setJobTitle] = useState("");
-  const [jobSummary, setJobSummary] = useState("");
-
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -146,20 +150,26 @@ export default function PostJob() {
     }
   };
 
-  // Validation rules - required: jobTitle, jobType, workLocation, jobSummary
+  // Validation rules - required fields based on Pydantic schema
   const runValidation = () => {
     const next: Record<string, string> = {};
     if (!jobTitle.trim()) next.jobTitle = "Job title is required.";
     if (!jobType.trim()) next.jobType = "Job type is required.";
     if (!workLocation.trim()) next.workLocation = "Work mode is required.";
+    if (!experienceLevel.trim()) next.experienceLevel = "Experience level is required.";
+    if (!jobLocation.trim()) next.jobLocation = "Location is required.";
+    if (!salaryRange.trim()) next.salaryRange = "Salary range is required.";
     if (!jobSummary.trim()) next.jobSummary = "Job summary is required.";
     setErrors(next);
     return next;
   };
 
-  // Submit handler (front-end only)
-  const handleSubmit = (e: React.FormEvent) => {
+  // Submit handler (connect to backend)
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🚀 Form submitted");
+    console.log("📝 Form state:", { jobTitle, jobType, workLocation, experienceLevel, jobLocation, salaryRange, jobSummary, jobRequirements });
+
     const validation = runValidation();
     const keys = Object.keys(validation);
 
@@ -168,17 +178,84 @@ export default function PostJob() {
         jobTitle: "job-info",
         jobType: "job-info",
         workLocation: "job-info",
+        experienceLevel: "job-info",
+        jobLocation: "job-info",
+        salaryRange: "job-info",
         jobSummary: "job-desc",
       };
       const firstField = keys[0];
       const targetSection = fieldSectionMap[firstField] || "job-info";
-      setOpenSection(targetSection); // Open the section with the first error
+      setOpenSection(targetSection);
       setTimeout(() => scrollToSection(targetSection), 80);
       return;
     }
 
-    console.log("Form validated — ready to submit (client-only).");
-    router.push("/employer-dashboard");
+    // Construct request payload to match your FastAPI PostJobRequest model
+    const payload = {
+      job_title: jobTitle,
+      job_type: jobType,
+      work_mode: workLocation,
+      experience_level: experienceLevel,
+      location: jobLocation,
+      salary_range: parseInt(salaryRange),
+      job_summary: jobSummary,
+      job_requirements: jobRequirements || null,
+      soft_skills: skills.join(", ") || null,
+      flexible_work_hour: accommodations.includes("Flexible work hours"),
+      sensory_friendly_environment: accommodations.includes(
+        "Sensory-friendly environment"
+      ),
+      peer_support_system: accommodations.includes("Peer support system"),
+      dedicated_workspace: accommodations.includes(
+        "Dedicated workspace (not hot desk)"
+      ),
+      neurodiversity_awareness_training: accommodations.includes(
+        "Neurodiversity awareness training"
+      ),
+      regular_supervisor_check_in: accommodations.includes(
+        "Regular check-in with supervisor"
+      ),
+      zero_tolerance_bullying_mobbing_policy: accommodations.includes(
+        "Zero tolerance policy for bullying & mobbing"
+      ),
+      augmentative_alternative_communication: accommodations.includes(
+        "Alternative communication app allowed"
+      ),
+      quiet_room: accommodations.includes("Quiet room/space"),
+      sensory_aids: accommodations.includes("Sensory aids allowed"),
+      provide_visual_guidance: accommodations.includes(
+        "Use visual project-tracking tool"
+      ),
+      uses_project_management_tools: accommodations.includes(
+        "Use visual project-tracking tool"
+      ),
+      optional_social_event: accommodations.includes("No forced social event"),
+      mental_health_support: accommodations.includes("Mental health support"),
+      near_public_transport: accommodations.includes("Near public transport"),
+    };
+
+    try {
+      console.log("📤 Attempting to send request to backend...");
+      const res = await fetch("http://127.0.0.1:8000/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json(); // Try to get error details from the response
+        console.error("❌ Error response from server:", errorData);
+        throw new Error(`Failed to post job: ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      console.log("✅ Job posted successfully:", data);
+      alert("Job posted successfully!");
+      router.push("/employer-dashboard");
+    } catch (err) {
+      console.error("❌ Error posting job:", err);
+      alert(`Failed to post job: ${err}`);
+    }
   };
 
   // Shared padding class for content areas
@@ -255,9 +332,9 @@ export default function PostJob() {
                     <div ref={setSectionRef} className={contentPadding}>
                       {/* JOB INFO */}
                       {id === "job-info" && (
-                        <CardContent className="space-y-6 p-0">
+                        <div className="space-y-6">
                           {" "}
-                          {/* p-0 to avoid double padding */}
+                          {/* Removed CardContent to clean up unused imports */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-[#3a4043] mb-2">
@@ -349,7 +426,7 @@ export default function PostJob() {
                                       : "border-gray-300"
                                   } text-[#3a4043]`}
                                 >
-                                  <SelectValue placeholder="Select location" />
+                                  <SelectValue placeholder="Select work mode" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#f9fafb] border border-[#e8e6f0] shadow-md rounded-lg">
                                   {locations.map((loc) => (
@@ -371,13 +448,20 @@ export default function PostJob() {
 
                             <div>
                               <label className="block text-[#3a4043] mb-2">
-                                Experience Level
+                                Experience Level <span className="text-red-500">*</span>
                               </label>
                               <Select
                                 value={experienceLevel}
                                 onValueChange={setExperienceLevel}
+                                required
                               >
-                                <SelectTrigger className="border border-gray-300 text-[#3a4043]">
+                                <SelectTrigger
+                                  className={`border ${
+                                    errors.experienceLevel
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  } text-[#3a4043]`}
+                                >
                                   <SelectValue placeholder="Select level" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#f9fafb] border border-[#e8e6f0] shadow-md rounded-lg">
@@ -391,34 +475,78 @@ export default function PostJob() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {errors.experienceLevel && (
+                                <p className="text-sm text-red-500 mt-1">
+                                  {errors.experienceLevel}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-[#3a4043] mb-2">
-                                Location
+                                Location <span className="text-red-500">*</span>
                               </label>
                               <Input
                                 placeholder="e.g. Kuala Lumpur, Selangor"
-                                className="border border-gray-300 text-[#3a4043]"
+                                value={jobLocation}
+                                onChange={(e) => setJobLocation(e.target.value)}
+                                className={`border ${
+                                  errors.jobLocation
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                } text-[#3a4043]`}
                               />
+                              {errors.jobLocation && (
+                                <p className="text-sm text-red-500 mt-1">
+                                  {errors.jobLocation}
+                                </p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-[#3a4043] mb-2">
-                                Salary Range
+                                Salary Range <span className="text-red-500">*</span>
                               </label>
-                              <Input
-                                placeholder="e.g. RM80,000 - RM120,000"
-                                className="border border-gray-300 text-[#3a4043]"
-                              />
+                              <Select
+                                value={salaryRange}
+                                onValueChange={setSalaryRange}
+                                required
+                              >
+                                <SelectTrigger
+                                  className={`border ${
+                                    errors.salaryRange
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  } text-[#3a4043]`}
+                                >
+                                  <SelectValue placeholder="Select salary range">
+                                    {salaryRange !== "" ? salaryRanges[parseInt(salaryRange)] : "Select salary range"}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#f9fafb] border border-[#e8e6f0] shadow-md rounded-lg">
+                                  {salaryRanges.map((range, index) => (
+                                    <SelectItem
+                                      key={index}
+                                      value={index.toString()}
+                                    >
+                                      {range}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {errors.salaryRange && (
+                                <p className="text-sm text-red-500 mt-1">
+                                  {errors.salaryRange}
+                                </p>
+                              )}
                             </div>
                           </div>
-                        </CardContent>
+                        </div>
                       )}
 
                       {/* JOB DESCRIPTION */}
                       {id === "job-desc" && (
-                        <CardContent className="space-y-6 p-0">
+                        <div className="space-y-6">
                           <div>
                             <label className="block text-[#3a4043] mb-2">
                               Job Summary{" "}
@@ -455,15 +583,17 @@ export default function PostJob() {
                             <Textarea
                               placeholder="List requirements..."
                               rows={6}
+                              value={jobRequirements}
+                              onChange={(e) => setJobRequirements(e.target.value)}
                               className="border border-gray-300 text-[#3a4043]"
                             />
                           </div>
-                        </CardContent>
+                        </div>
                       )}
 
                       {/* SKILLS */}
                       {id === "skills" && (
-                        <CardContent className="space-y-4 p-0">
+                        <div className="space-y-4">
                           <div className="flex gap-2">
                             <Input
                               placeholder="Add a skill"
@@ -507,12 +637,12 @@ export default function PostJob() {
                               ))}
                             </div>
                           )}
-                        </CardContent>
+                        </div>
                       )}
 
                       {/* NEURO-FRIENDLY */}
                       {id === "neuro-friendly" && (
-                        <CardContent className="space-y-6 p-0">
+                        <div className="space-y-6">
                           <div>
                             <h3 className="text-[#3a4043] mb-2 flex items-center gap-2">
                               <Shield className="h-4 w-4 text-[#635bff]" />{" "}
@@ -541,7 +671,7 @@ export default function PostJob() {
                               ))}
                             </div>
                           </div>
-                        </CardContent>
+                        </div>
                       )}
                     </div>
                   </AccordionContent>

@@ -4,17 +4,13 @@ import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/card';
 import { Button } from '@/app/components/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/tabs';
 import { Badge } from '@/app/components/badge';
-import { CareerGuidance } from '@/app/components/job-coach/CareerGuidance';
-import { ResumeHelper } from '@/app/components/job-coach/ResumeHelper';
-import { InterviewCoach } from '@/app/components/job-coach/InterviewCoach';
-import { WorkplaceSupport } from '@/app/components/job-coach/WorkplaceSupport';
-import { LearningHub } from '@/app/components/job-coach/LearningHub';
+import { EmployerJobCoach } from '@/app/components/job-coach/employer/EmployerJobCoach';
+import { CandidateJobCoach } from '@/app/components/job-coach/candidate/CandidateJobCoach';
 import { AIJobCoachChat } from '@/app/components/job-coach/AIJobCoach';
 import { SessionBooking } from '@/app/components/job-coach/SessionBooking';
 import { AccessibilityControls } from '@/app/accessibility-control/page';
-import { Heart, Brain, Users, BookOpen, MessageCircle, Calendar, Star, CheckCircle } from 'lucide-react';
+import { Heart, Brain, Users, BookOpen, MessageCircle, Calendar, Star, CheckCircle, Volume2, Shield } from 'lucide-react';
 
 interface JobCoachProps {
   setCurrentPage: (page: string) => void;
@@ -24,7 +20,6 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
   const searchParams = useSearchParams();
   const coachMode = searchParams?.get('role') === 'employer' ? 'employer' : 'candidate';
   const coachHeadline = useMemo(() => coachMode === 'employer' ? 'Employer Job Coach' : 'Your Personal Job Coach', [coachMode]);
-  const [activeTab, setActiveTab] = useState('overview');
   const [showBooking, setShowBooking] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
 
@@ -74,14 +69,34 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      {/* Accessibility Controls hidden for now */}
-      {false && (
-        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-          <div className="max-w-[1400px] mx-auto px-4 py-2">
-            <AccessibilityControls darkMode={false} setDarkMode={() => {}} distractionFree={false} setDistractionFree={() => {}} />
+      {/* Accessibility Controls */}
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-[#e8e6f0]">
+        <div className="max-w-[1400px] mx-auto px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-[#e8e6f0] text-[#6f7a80] hover:bg-[#635bff]/10"
+              >
+                <Volume2 className="w-4 h-4 mr-2" />
+                Text-to-Speech
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-[#e8e6f0] text-[#6f7a80] hover:bg-[#635bff]/10"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Dark Mode
+              </Button>
+            </div>
+            <div className="text-xs text-[#6f7a80]">
+              Neurodivergent-friendly design
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Hero Section */}
       <section className="pt-20 pb-12 px-4">
@@ -95,8 +110,11 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
             {coachHeadline}
           </h1>
           
-          <p className="text-lg text-[#6f7a80] mb-8 max-w-2xl mx-auto leading-relaxed">
-            Get personalized career guidance, practice interviews, and learn workplace strategies designed specifically for neurodivergent professionals. Our AI coach is available 24/7, with human coaches ready when you need them.
+          <p className="text-lg text-[#6f7a80] mb-8 max-w-4xl mx-auto leading-relaxed">
+            Get career guidance, interview practice and workplace tips. 
+            <p>
+            AI-powered, human-supported.
+            </p>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-2">
@@ -143,66 +161,11 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
       {/* Main Coaching Sections */}
       <section className="py-2 px-4">
         <div className="max-w-[1400px] mx-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-white rounded-xl border border-[#e8e6f0] p-1">
-              <TabsTrigger value="overview" className="text-sm data-[state=active]:bg-[#635bff] data-[state=active]:text-white rounded-lg">Overview</TabsTrigger>
-              <TabsTrigger value="career" className="text-sm data-[state=active]:bg-[#635bff] data-[state=active]:text-white rounded-lg">Career Guidance</TabsTrigger>
-              <TabsTrigger value="resume" className="text-sm data-[state=active]:bg-[#635bff] data-[state=active]:text-white rounded-lg">Resume Help</TabsTrigger>
-              <TabsTrigger value="interview" className="text-sm data-[state=active]:bg-[#635bff] data-[state=active]:text-white rounded-lg">Interview Prep</TabsTrigger>
-              <TabsTrigger value="workplace" className="text-sm data-[state=active]:bg-[#635bff] data-[state=active]:text-white rounded-lg">Workplace Support</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              <LearningHub />
-              
-              {/* Testimonials */}
-              <Card className="bg-white rounded-2xl border border-[#e8e6f0] shadow-md mb-10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-[#3a4043]">
-                    <Star className="w-5 h-5 text-[#635bff]" />
-                    Success Stories
-                  </CardTitle>
-                  <CardDescription>
-                    Hear from neurodivergent professionals who found success with our Job Coach
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-6">
-                    {testimonials.map((testimonial, index) => (
-                      <div key={index} className="bg-white p-4 rounded-xl border border-[#e8e6f0] shadow-sm">
-                        <div className="flex items-center gap-1 mb-2">
-                          {[...Array(testimonial.rating)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-[#635bff] text-[#635bff]" />
-                          ))}
-                        </div>
-                        <p className="text-sm text-[#6f7a80] mb-3 italic">"{testimonial.content}"</p>
-                        <div>
-                          <p className="font-medium text-sm text-[#3a4043]">{testimonial.name}</p>
-                          <p className="text-xs text-[#6f7a80]">{testimonial.role}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="career">
-              <CareerGuidance />
-            </TabsContent>
-
-            <TabsContent value="resume">
-              <ResumeHelper />
-            </TabsContent>
-
-            <TabsContent value="interview">
-              <InterviewCoach setCurrentPage={setCurrentPage} />
-            </TabsContent>
-
-            <TabsContent value="workplace">
-              <WorkplaceSupport />
-            </TabsContent>
-          </Tabs>
+          {coachMode === 'employer' ? (
+            <EmployerJobCoach />
+          ) : (
+            <CandidateJobCoach />
+          )}
         </div>
       </section>
 

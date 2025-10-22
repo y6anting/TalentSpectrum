@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       id: "mock-user-id",
       name,
       email,
-      role: role || "EMPLOYER",
+      role: role || "CANDIDATE",
     };
 
     return NextResponse.json(

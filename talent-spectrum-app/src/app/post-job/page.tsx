@@ -28,7 +28,6 @@ import {
   Eye,
   // ChevronDown, ChevronRight are now handled internally by AccordionTrigger
 } from "lucide-react";
-import { motion } from "framer-motion";
 
 // Import Shadcn Accordion components
 import {
@@ -562,17 +561,9 @@ export default function PostJob() {
             <Button type="button" variant="outline">
               Save as Draft
             </Button>
-            <motion.div
-              whileHover={{
-                scale: 1.03,
-                boxShadow: "0px 8px 30px rgba(99,91,255,0.12)",
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              <Button type="submit" className="bg-[#635bff] text-white">
-                Post Job
-              </Button>
-            </motion.div>
+            <Button type="submit" className="bg-[#635bff] text-white">
+              Post Job
+            </Button>
           </div>
         </form>
       </div>

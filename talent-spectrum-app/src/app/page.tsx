@@ -23,7 +23,7 @@ export default function HomePage() {
     <div
       className="relative min-h-screen bg-cover bg-center bg-no-repeat py-8 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
       style={{
-        backgroundImage: "url('/n2.png')",
+        backgroundImage: "url('/TalentSpectrumBackground.png')",
         backgroundAttachment: "fixed",
       }}
     >
@@ -37,22 +37,21 @@ export default function HomePage() {
               style={{ wordBreak: "keep-all" }}
             >
               <span
-                className="block text-[clamp(2.8rem,5vw,5.5rem)] font-extrabold tracking-tight 
-                  bg-clip-text text-transparent 
+                className="block text-[clamp(1rem,2.5vw,2.5rem)] font-extrabold tracking-tight 
+                  bg-clip-text text-white 
                   bg-[linear-gradient(115deg,#1a1a1a,#635bff,#9a96ff)] 
                   drop-shadow-[2px_2px_10px_rgba(0,0,0,0.25)]"
               >
                 Neurodiversity:
               </span>
               <span
-                className="block text-[clamp(1.8rem,4vw,3.8rem)] font-semibold text-[#2e2f34] mt-3"
+                className="block text-[clamp(1rem,2.5vw,2.5rem)] font-semibold text-white mt-3"
               >
                 Innovation Beyond Inclusion.
               </span>
             </h1>
-            <p className="mt-6 max-w-2xl text-lg md:text-xl text-[#3a4043]/80 font-medium leading-relaxed">
-              Empowering neurodivergent talents to find inclusive opportunities
-              and employers who celebrate cognitive diversity.
+            <p className="mt-6 max-w-2xl text-lg md:text-xl text-white/80 font-medium leading-relaxed">
+              Empowering neurodivergent talents to find inclusive opportunities<br />and employers who celebrate cognitive diversity.
             </p>
           </div>
 
@@ -92,7 +91,7 @@ export default function HomePage() {
 
               {/* Search Suggestions */}
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-[#3a4043]">Popular searches:</span>
+                <span className="text-sm text-white">Popular searches:</span>
                 {["Analyst", "Content Marketing", "Designer", "Engineer", "HR"].map(
                   (tag) => (
                     <button
@@ -112,7 +111,7 @@ export default function HomePage() {
 
           {/* ========== BELOW: Existing Sections (Unchanged Layout) ========== */}
           <div className="mt-20">
-            <h2 className="text-4xl md:text-4xl text-[#635bff] font-bold">
+            <h2 className="text-4xl md:text-4xl text-white font-bold text-center">
               Inclusive Careers For You.
             </h2>
           </div>
@@ -184,7 +183,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-20">
-            <h2 className="text-4xl md:text-4xl my-10 text-[#635bff] font-bold">
+            <h2 className="text-4xl md:text-4xl my-10 text-white font-bold text-center">
               Job Coaches Matches To You.
             </h2>
 

@@ -152,8 +152,8 @@ export default function OpportunitiesPage() {
   };
 
   const toggleFilter = (filter: string) => {
-    setSelectedFilters(prev => 
-      prev.includes(filter) 
+    setSelectedFilters(prev =>
+      prev.includes(filter)
         ? prev.filter(f => f !== filter)
         : [...prev, filter]
     );
@@ -170,17 +170,17 @@ export default function OpportunitiesPage() {
 
   const filteredJobs = jobs.filter(job => {
     if (searchQuery && !job.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !job.company.toLowerCase().includes(searchQuery.toLowerCase())) {
+      !job.company.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    
+
     if (selectedFilters.includes("remote") && !job.isRemote) return false;
     if (selectedFilters.includes("flexible") && !job.isFlexible) return false;
     if (selectedFilters.includes("accommodations") && !job.hasAccommodations) return false;
     if (selectedFilters.includes("inclusive") && !job.isInclusive) return false;
     if (selectedFilters.includes("fulltime") && job.type !== "Full-time") return false;
     if (selectedFilters.includes("parttime") && job.type !== "Part-time") return false;
-    
+
     return true;
   });
 

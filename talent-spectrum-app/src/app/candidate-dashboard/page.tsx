@@ -14,6 +14,7 @@ import {
   Clock, 
   CheckCircle, 
   XCircle,
+  Plus,
   MapPin,
   DollarSign,
   Bell,
@@ -22,14 +23,20 @@ import {
   Star,
   Camera,
   Book,
-  House
+  House,
+  HandFist,
+  LetterTextIcon,
+  BrainCog,
+  BrainCircuit
 } from "lucide-react";
 import { motion } from "motion/react";
 import  {useRouter} from "next/navigation"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select"
+import { X } from 'lucide-react';
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
 
 // Mock Malaysian candidate profile
@@ -115,7 +122,7 @@ type CandidateProfile = {
       nationality: string;
       emailAddress: string;
       phoneNumber: string;
-      residentialAddress: string;
+      preferredLocation: string;
       nric: string;
       oku_card: string;
       linkedin: string;	
@@ -135,7 +142,23 @@ type CandidateProfile = {
       grade: string | null;
       award: string | null;
     }; 
-    exp_skill: {
+    experience: {
+      employer: string;
+      industry: string;
+      start: string;
+      end: string;
+      RoleTitle: string;
+      YearsInRole: string;
+      SeniorityLevel: string;
+      SkillsToolsUsed: string;
+      ProjectHighlights: string;
+      HardSkills: string;
+      SoftSkills: string;
+      LanguageProficiency: string;
+      TechnicalKeywords: string;
+      Achievements: string;
+    };
+    skill: {
       employer: string;
       industry: string;
       start: string;
@@ -153,6 +176,15 @@ type CandidateProfile = {
     };
     environment: Environment;
   };
+
+type LanguageProficiency = {
+  id: number;
+  language: string;
+  reading: string;
+  writing: string;
+  listening: string;
+  speaking: string;
+};
 
   // Mock data
   const applications = [
@@ -225,7 +257,7 @@ type CandidateProfile = {
     }  
   ];
 
-	const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     name: "Aminah",
     email: "",
     location: "Remote",
@@ -237,13 +269,13 @@ type CandidateProfile = {
       schedule: "Flexible hours",
     },
     personalIdentifiers: {
-      fullName: "Alex Johnson",
+      fullName: "Alicia Chui",
       dateOfBirth: "",
       gender: "",
       nationality: "",
-      emailAddress: "alex.johnson@email.com",
+      emailAddress: "alicia.chui@yahoo.com",
       phoneNumber: "",
-      residentialAddress: "",
+      preferredLocation: "",
       nric: "",
       oku_card: "",
       linkedin: "",			
@@ -263,7 +295,23 @@ type CandidateProfile = {
       grade: null,
       award: null,
     },	
-    exp_skill: {
+    experience: {
+      employer: "",
+      industry: "",
+      start: "",
+      end: "",
+      RoleTitle: "",
+      YearsInRole: "",
+      SeniorityLevel: "",
+      SkillsToolsUsed: "",
+      ProjectHighlights: "",
+      HardSkills: "",
+      SoftSkills: "",
+      LanguageProficiency: "",
+      TechnicalKeywords: "",
+      Achievements: "",
+    },
+    skill: {
       employer: "",
       industry: "",
       start: "",
@@ -324,12 +372,15 @@ const [experiences, setExperiences] = useState([
   {
     id: Date.now(),
     employer: "",
+    title: "",
     industry: "",
     start: "",
     end: "",
+    isCurrent: true,
     seniorityLevel: "",
     skillsToolsUsed: "",
     projectHighlights: "",
+    achievements: "",
   },
 ]);
 
@@ -376,15 +427,87 @@ const grad_year = Array.from(
   (_, i) => currentYear - i
 ); // [currentYear, currentYear-1, ..., 1990]  
 
+const [languageProficiencies, setLanguageProficiencies] = useState<LanguageProficiency[]>([
+  {
+    id: Date.now(),
+    language: "",
+    reading: "",
+    writing: "",
+    listening: "",
+    speaking: "",
+  }
+]);
+
+const [selectedStrengths, setSelectedStrengths] = useState<string[]>([]);
+
+const toggleStrength = (strength: string) => {
+  setSelectedStrengths(prev => {
+    if (prev.includes(strength)) {
+      return prev.filter(s => s !== strength);
+    }
+    if (prev.length >= 10) { // Changed from 5 to 10
+      return prev;
+    }
+    return [...prev, strength];
+  });
+};
+
+const strengthOptions = [
+  'Adaptability',
+  'Analytical',
+  'Athletic Performer',
+  'Authenticity',
+  'Committed to Succeed',
+  'Creative Thinker',
+  'Curiosity',
+  'Deep Empathizer',
+  'Dependable',
+  'Detail-oriented Thinker',
+  'Entrepreneurial',
+  'Fact Retainer',
+  'Geo-spatial Thinker',
+  'Great Storyteller',
+  'High Energy & Enthusiasm',
+  'Honesty',
+  'Hyperfocus',
+  'Innovative Thinker',
+  'Integrity',
+  'Lateral Thinking',
+  'Mathematical Thinker',
+  'Methodical Task Executor',
+  'Out of the Box Problem Solver',
+  'Patient',
+  'Pattern Recognition',
+  'Precision',
+  'Process Oriented',
+  'Reliable',
+  'Resilience',
+  'Self Starter',
+  'Socially Savvy',
+  'Strong Crisis Management',
+  'Strong Moral Compass',
+  'Strong Emotional Intelligence',
+  'Strong Sense of Justice or Fairness',
+  'Strong Task Persistence',
+  'Tech or Computer Savvy',
+  'Visual Memorizer',
+];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat py-8 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
+      style={{
+        backgroundImage: "url('/TalentSpectrumBackground.png')",
+        backgroundAttachment: "fixed",
+      }}
+    >
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		
 		<div className="flex flex-col-2 justify-between">
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold text-[#3a4043] mb-1">Welcome back, {MockCandidateProfile.lastName.split(' ')[0]}!</h1>
-				<p className="text-gray-600">Here's your job search activity and recommendations.</p>
+				<h1 className="text-3xl font-bold text-white mb-1">Welcome back, {MockCandidateProfile.lastName.split(' ')[0]}!</h1>
+				<p className="text-white">Here's your job search activity and recommendations.</p>
 			</div>
 <div className="flex flex-wrap gap-4 justify-center mt-6"> 
       <Button
@@ -396,8 +519,7 @@ const grad_year = Array.from(
 
       <Button
         asChild
-        variant="outline"
-        className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+        className="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
       >
         <Link href="/jobListing">Browse More Jobs</Link>
       </Button>
@@ -434,12 +556,14 @@ const grad_year = Array.from(
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: User },
-                    { id: "applications", label: "My Applications", icon: Briefcase },
+                    { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings },
           					{ id: "education", label: "Education", icon: Book },
-          					{ id: "exp_skill", label: "Experience & Skills", icon: Briefcase },
-							{ id: "environment", label: "Environment Profile", icon: House },
+          					{ id: "experience", label: "Experience", icon: Briefcase },
+                    { id: "skills", label: "Skills", icon: HandFist },
+                    { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+							      { id: "environment", label: "Preferred Environment", icon: House },
 							
                   ].map((item) => {
                     const Icon = item.icon;
@@ -597,7 +721,7 @@ const grad_year = Array.from(
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
+                  <h1 className="text-2xl font-bold text-white">My Applications</h1>
                   
                 </div>
 
@@ -663,7 +787,7 @@ const grad_year = Array.from(
             {activeTab === "saved" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
+                  <h1 className="text-2xl font-bold text-white">Saved Jobs</h1>
                   <p className="text-gray-600">{savedJobs.length} jobs saved</p>
                 </div>
 
@@ -723,7 +847,7 @@ const grad_year = Array.from(
             {/* Profile Settings Tab */}
 			{activeTab === "profile" && (
 			<div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
+				<h1 className="text-2xl font-bold text-white">Profile Settings</h1>
 
 				<div className="grid gap-6">
 				{/* Personal Info */}
@@ -734,56 +858,127 @@ const grad_year = Array.from(
 					<CardContent className="space-y-4">
 					<div className="grid md:grid-cols-2 gap-6">
 						{[
-						{ label: "Full Name", key: "fullName", type: "text" },
-						{ label: "NRIC", key: "nric", type: "text" },
-						{ label: "Email", key: "emailAddress", type: "email" },
-						{ label: "Phone Number", key: "phoneNumber", type: "text" },
-						{ label: "Date of Birth", key: "dateOfBirth", type: "date" },
-						{ label: "Gender", key: "gender", type: "text" },
-						{ label: "Nationality", key: "nationality", type: "text" },
+						{ label: "Full Name", key: "fullName", type: "text", required: true },
+						// { label: "NRIC", key: "nric", type: "text" },
+						{ label: "Email", key: "emailAddress", type: "email", required: true },
+						{ label: "Phone Number", key: "phoneNumber", type: "tel", required: true },
+						{ label: "Date of Birth", key: "dateOfBirth", type: "date", required: true },
+						{ label: "Gender", key: "gender", type: "select", options: ["Male", "Female", "Prefer not to mention"], required: true },
+						{ label: "Nationality", key: "nationality", type: "select", options: ["Malaysian", "Non-Malaysian"], required: true },
 						{ label: "OKU Card", key: "oku_card", type: "text" },
+            { label: "Preferred Role", key: "preferred_role", type: "select", options: ["Permanent", "Contract", "Part Time", "Internship"], required: true },
+            { label: "Preferred Industry", key: "preferred_industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"], required: true },
+            { label: "Preferred Location", key: "preferred_location", type: "select", options: ["Johor", "Kedah", "Kelantan", "Kuala Lumpur", "Labuan", "Malacca", "Negeri Sembilan", "Pahang", "Penang", "Perak", "Perlis", "Putrajaya", "Sabah", "Sarawak", "Selangor", "Terengganu", "Remote"], required: true },
 						].map((field) => (
-						<div key={field.key}>
-							<label className="block text-sm font-medium text-[#3a4043] mb-1">
-							{field.label}
-							</label>
-							<input
-							type={field.type}
-							value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers]}
-							onChange={(e) =>
-								setCandidateProfile({
-								...candidateProfile,
-								personalIdentifiers: {
-									...candidateProfile.personalIdentifiers,
-									[field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
-								},
-								})
-							}
-							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							/>
-						</div>
-						))}
+            <div key={field.key}>
+                          <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+            
+                          {field.type === "select" ? (
+                            <Select
+                              value={
+                                (candidateProfile.personalIdentifiers[
+                                  field.key as keyof typeof candidateProfile.personalIdentifiers
+                                ] as string) || ""
+                              }
+                              onValueChange={(val) => {
+                                setCandidateProfile({
+                                  ...candidateProfile,
+                                  personalIdentifiers: {
+                                    ...candidateProfile.personalIdentifiers,
+                                    [field.key as string]: val,
+                                  },
+                                });
+                                // Clear error when user fills the field
+                                if (field.required && val) {
+                                  setErrors({ ...errors, [field.key]: "" });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${
+                                errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
+                              }`}>
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+                                {field.options?.map((opt) => (
+                                  <SelectItem key={opt} value={opt}>
+                                    {opt}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <>
+                              <input
+                                type={field.type}
+                                value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers]}
+                                onChange={(e) => {
+                                  const { value } = e.target;
+                                  let error = "";
+                                  // Check if required field is empty
+            if (field.required && !value.trim()) {
+              error = `${field.label} is required`;
+            }
+                                  if (field.type === "email") {
+                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                    if (!emailRegex.test(value)) {
+                                      error = "Please enter a valid email address.";
+                                    }
+                                  }
+                                  if (field.type === "tel") {
+                                    const numericRegex = /^[0-9+\- ]*$/;
+                                    if (!numericRegex.test(value)) {
+                                      error = "Please enter a valid phone number.";
+                                    }
+                                  }
+
+                                  setErrors({ ...errors, [field.key]: error });
+
+                                  setCandidateProfile({
+                                    ...candidateProfile,
+                                    personalIdentifiers: {
+                                      ...candidateProfile.personalIdentifiers,
+                                      [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
+                                    },
+                                  });
+                                }}
+                                className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${
+                                  errors[field.key as string]
+                                    ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
+                                    : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
+                                }`}
+                              />
+                              {errors[field.key as string] && (
+                                <p className="text-red-500 text-xs mt-1">{errors[field.key as string]}</p>
+                              )}
+                            </>
+                          )}
+                        </div>
+            ))}
 					</div>
 
-					{/* Residential Address */}
+					{/* Preferred Location
 					<div>
 						<label className="block text-sm font-medium text-[#3a4043] mb-1">
-						Residential Address
+						Preferred Location
 						</label>
 						<textarea
-						value={candidateProfile.personalIdentifiers.residentialAddress}
+						value={candidateProfile.personalIdentifiers.preferredLocation}
 						onChange={(e) =>
 							setCandidateProfile({
 							...candidateProfile,
 							personalIdentifiers: {
 								...candidateProfile.personalIdentifiers,
-								residentialAddress: e.target.value,
+								preferredLocation: e.target.value,
 							},
 							})
 						}
 						className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[#635bff] focus:border-[1px]"
 						/>
-					</div>
+					</div> */}
 
 					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">
 						Save Changes
@@ -796,7 +991,7 @@ const grad_year = Array.from(
 
 {activeTab === "education" && (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
+    <h1 className="text-2xl font-bold text-white">Education</h1>
 
     {/* Render all education cards */}
     <div className="grid gap-6">
@@ -821,9 +1016,9 @@ const grad_year = Array.from(
           label: "Level",
           key: "level",
           type: "select",
-          options: ["Degree", "Master", "PhD", "Diploma", "STPM", "SPM/PT3"],
+          options: ["PT3", "SPM / O-level", "STPM / A-level / Diploma", "Degree", "Master", "PhD", "Vocational", "Professional Certificate"],
         },
-        { label: "University/College/School", key: "institution", type: "text" },
+        { label: "University / College / School", key: "institution", type: "text" },
         { label: "Field of Study", key: "fieldOfStudy", type: "text" },
         {
           label: "Graduation Year",
@@ -832,7 +1027,7 @@ const grad_year = Array.from(
           options: grad_year.map(String),
         },
         { label: "CGPA / Grade", key: "cgpa_grade", type: "text" },
-        { label: "Award", key: "award", type: "text" },
+        { label: "Award (If Applicable)", key: "award", type: "text" },
       ].map((field) => (
         <div key={field.key}>
           <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -909,10 +1104,10 @@ const grad_year = Array.from(
   </div>
 )}
 
-			{/* Experience & Skills Tab */}
-			{activeTab === "exp_skill" && (
+			{/* Experience Tab */}
+			{activeTab === "experience" && (
 			<div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#3a4043]">Experiences & Skills</h1>
+				<h1 className="text-2xl font-bold text-white">Experience</h1>
 
 				<div className="grid gap-6">
 				{/* Experience Info */}
@@ -935,28 +1130,112 @@ const grad_year = Array.from(
     <CardContent className="space-y-4">
       <div className="grid md:grid-cols-2 gap-6">
         {[
-          { label: "Employer", key: "employer" },
-          { label: "Industry", key: "industry" },
-          { label: "Start", key: "start" },
-          { label: "End", key: "end" },
-          { label: "Seniority", key: "seniorityLevel" },
-          { label: "Tools Used", key: "skillsToolsUsed" },
-          { label: "Project Highlights", key: "projectHighlights" },
+          { label: "Employer", key: "employer", type: "text" },
+          { label: "Title", key: "title", type: "text" },
+          { label: "Seniority", key: "seniorityLevel", type: "select", options: ["Non-executive", "Executive", "Managerial", "Head of Department", "C-suite"] },
+          { label: "Industry", key: "industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"] },
+          { label: "Start Date", key: "start", type: "date" },
+          // { label: "End Date", key: "end", type: "date" },
+          // { label: "Tools Used", key: "skillsToolsUsed" },
         ].map((field) => (
           <div key={field.key}>
             <label className="block text-sm font-medium text-[#3a4043] mb-1">
               {field.label}
             </label>
+
+            {field.type === "select" ? (
+              <Select
+                value={String(exp[field.key as keyof typeof exp] ?? "")}
+                onValueChange={(val) => updateExperience(exp.id, { [field.key]: val })}
+              >
+                <SelectTrigger className="w-full border border-[#e8e6f0] rounded-lg px-3 py-2 text-left">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+                 {field.options?.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                   {opt}
+                  </SelectItem>
+                ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <input
+                type={field.type}
+                value={String(exp[field.key as keyof typeof exp] ?? "")}
+                onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
+                className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+              />
+           )}
+          </div>
+        ))}
+
+        {/* End Date with "Currently working here" checkbox */}
+        <div>
+          <label className="block text-sm font-medium text-[#3a4043] mb-1">
+            End Date
+          </label>
+          <div className="flex items-center space-x-2 mb-2">
             <input
-              type="text"
-              value={exp[field.key as keyof typeof exp] || ""}
+              type="checkbox"
+              id={`current-${exp.id}`}
+              checked={exp.isCurrent}
               onChange={(e) =>
-                updateExperience(exp.id, { [field.key]: e.target.value })
+                updateExperience(exp.id, {
+                  isCurrent: e.target.checked,
+                  end: e.target.checked ? "" : exp.end, // Clear end date if checked
+                })
+              }
+              className="h-4 w-4 rounded border-gray-300 text-[#635bff] focus:ring-[#635bff]"
+            />
+            <label
+              htmlFor={`current-${exp.id}`}
+              className="text-sm text-gray-600"
+            >
+              I currently work here
+            </label>
+          </div>
+          {!exp.isCurrent && (
+            <input
+              type="date"
+              value={exp.end || ""}
+              onChange={(e) =>
+                updateExperience(exp.id, { end: e.target.value })
               }
               className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
             />
-          </div>
-        ))}
+          )}
+        </div>
+
+        {/* Project Highlights */}
+        <div>
+            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+              Project Highlights
+            </label>
+            <input
+              type="text"
+              value={String(exp.projectHighlights ?? "")}
+              onChange={(e) => {
+                updateExperience(exp.id, { projectHighlights: e.target.value });
+              }}
+              className="w-115 h-43 px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+            />
+        </div>
+
+        {/* Achievements */}
+        <div>
+            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+              Achievements
+            </label>
+            <input
+              type="text"
+              value={String(exp.achievements ?? "")}
+              onChange={(e) => {
+                updateExperience(exp.id, { achievements: e.target.value });
+              }}
+              className="w-115 h-43 px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+            />
+        </div>
       </div>
     </CardContent>
   </Card>
@@ -971,12 +1250,15 @@ const grad_year = Array.from(
         {
           id: Date.now(),
           employer: "",
+          title: "",
           industry: "",
           start: "",
           end: "",
+          isCurrent: true,
           seniorityLevel: "",
           skillsToolsUsed: "",
           projectHighlights: "",
+          achievements: "",
         },
       ])
     }
@@ -985,21 +1267,28 @@ const grad_year = Array.from(
     + Add Experience
   </Button>
 </div>
+				</div>
+			</div>
+			)}
 
+      {/* Skills Tab */}
+			{activeTab === "skills" && (
+			<div className="space-y-6">
+				<h1 className="text-2xl font-bold text-white">Skills</h1>
+
+				<div className="grid gap-6">
 				{/* Skills Info */}
 				<Card>
 					<CardHeader>
-					<CardTitle>Skills</CardTitle>
+					<CardTitle>Skill Types</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
 					{[
 						{ label: "Soft Skills", key: "SoftSkills" },
 						{ label: "Hard Skills", key: "HardSkills" },
-						{ label: "Language Proficiency", key: "LanguageProficiency" },
-						{ label: "Achievements", key: "Achievements" },
 					].map((field) => {
-						const key = field.key as keyof typeof candidateProfile.exp_skill;
-						const value = candidateProfile.exp_skill[key] ?? "";
+						const key = field.key as keyof typeof candidateProfile.experience;
+						const value = candidateProfile.experience[key] ?? "";
 
 						return (
 						<div key={key}>
@@ -1012,7 +1301,7 @@ const grad_year = Array.from(
 							onChange={(e) =>
 								setCandidateProfile({
 								...candidateProfile,
-								exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
+								experience: { ...candidateProfile.experience, [key]: e.target.value },
 								})
 							}
 							className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
@@ -1020,78 +1309,182 @@ const grad_year = Array.from(
 						</div>
 						);
 					})}
-					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
+					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Save Changes</Button>
 					</CardContent>
 				</Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Language Proficiency</CardTitle>
+              <Button
+                onClick={() => {
+                  setLanguageProficiencies([
+                    ...languageProficiencies,
+                    {
+                      id: Date.now(),
+                      language: "",
+                      reading: "",
+                      writing: "",
+                      listening: "",
+                      speaking: "",
+                    }
+                  ]);
+                }}
+                className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+              >
+                + Add Language
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Language</th>
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Reading</th>
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Writing</th>
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Listening</th>
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Speaking</th>
+                    <th className="text-left p-2 font-medium text-[#3a4043]">Action</th>
+                  </tr>
+                </thead>
+              <tbody>
+                {languageProficiencies.map((prof, index) => (
+                  <tr key={prof.id} className="border-b">
+                    <td className="p-2">
+                      <Select
+                        value={prof.language}
+                        onValueChange={(value) => {
+                          const updated = [...languageProficiencies];
+                          updated[index] = { ...prof, language: value };
+                          setLanguageProficiencies(updated);
+                        }}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["Arabic", "Bengali", "Chinese", "English", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Portuguese", "Russian", "Spanish", "Tamil", "Thai", "Turkish", "Vietnamese", "Other"].map((lang) => (
+                            <SelectItem key={lang} value={lang}>
+                              {lang}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    {["reading", "writing", "listening", "speaking"].map((skill) => (
+                      <td key={skill} className="p-2">
+                        <Select
+                          value={String(prof[skill as keyof LanguageProficiency])}
+                          onValueChange={(value) => {
+                            const updated = [...languageProficiencies];
+                            updated[index] = { ...prof, [skill]: value };
+                            setLanguageProficiencies(updated);
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["Expert", "Intermediate", "Beginner"].map((level) => (
+                              <SelectItem key={level} value={level}>
+                                {level}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    ))}
+                    <td className="p-2">
+                      {languageProficiencies.length > 0 && (
+                        <Button
+                          onClick={() => {
+                            const updated = languageProficiencies.filter((_, i) => i !== index);
+                            setLanguageProficiencies(updated);
+                          }}
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+        </Card>
 				</div>
 			</div>
 			)}
 	
-			
+			{/* Neurodivergent Strengths Tab */}
+			{activeTab === "neuro_strength" && (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between mb-6">
+      <h1 className="text-2xl font-bold text-white">Neurodivergent Strengths</h1>
+      <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
+    </div>
+
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        {strengthOptions.map((strength) => (
+          <Button
+            key={strength}
+            variant="outline"
+            className={`rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50 ${
+              selectedStrengths.includes(strength) ? 'bg-purple-50' : ''
+            }`}
+            onClick={() => toggleStrength(strength)}
+          >
+            {strength}
+            {selectedStrengths.includes(strength) ? (
+              <X className="ml-2 h-4 w-4" />
+            ) : (
+              <Plus className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ))}
+      </div>
+
+      {selectedStrengths.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-white mb-2">Selected Strengths:</h3>
+          <div className="flex flex-wrap gap-2">
+            {selectedStrengths.map((strength) => (
+              <Badge
+                key={strength}
+                variant="secondary"
+                className="bg-purple-50 text-purple-600 flex items-center gap-1"
+              >
+                {strength}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-transparent"
+                  onClick={() => toggleStrength(strength)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 				
-           {/* Environment & Preferences Tab */}
+           {/* Preferred Environment Tab */}
 			{activeTab === "environment" && (
 			<div className="space-y-6">
-				<h1 className="text-2xl font-bold text-[#3a4043]">Environment & Preferences</h1>
+				<h1 className="text-2xl font-bold text-white">Preferred Environment</h1>
 
 				<div className="grid md:grid-cols-2 gap-6">
-
-				{/* Cognitive & Technical */}
-				<Card>
-					<CardHeader>
-					<CardTitle>Cognitive & Technical</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-					{[
-						{ label: "Pattern Recognition (Ability to spot patterns)", key: "patternRecognition", options: ["Good", "Moderate", "Fair"] },
-						{ label: "Attention (Ability to concentrate)", key: "attention", options: ["Good", "Moderate", "Fair"] },
-						{ label: "Systematic Thinking (Ability to think logically)", key: "systematicThinking", options: ["Good", "Moderate", "Fair"] },
-						{ label: "Big Picture vs. Detail-Oriented", key: "bigVsDetail", options: ["Big Picture", "Detail-Oriented"] },
-						{ label: "Task-Switching (Ability to think logically)", key: "taskSwitching", options: ["One task at a time", "Moderate", "Multi Tasking"] },
-						{ label: "Hyperfocus (Ability to concentrate for extended period)", key: "hyperfocus", options: ["Good", "Moderate", "Fair"] },
-					].map((field) => {
-						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
-						return (
-						<div key={field.key}>
-							<label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-              <Select
-                value={value}
-                onValueChange={(val) =>
-                  setCandidateProfile({
-                    ...candidateProfile,
-                    environment: { ...candidateProfile.environment, [field.key]: val },
-                  })
-                }
-              >
-                <SelectTrigger className="w-full border-[#d9d6f3] rounded-xl focus:ring-[#635bff]/40">
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
-                  {field.options.map((opt) => (
-                    <SelectItem
-                      key={opt}
-                      value={opt}
-                      className="
-                        cursor-pointer
-                        text-gray-700
-                        hover:bg-[#635bff]/10
-                        hover:text-[#635bff]
-                        focus:bg-[#635bff]/20
-                        focus:text-[#635bff]
-                        transition-colors
-                      "
-                    >
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-						</div>
-						);
-					})}
-					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
-					</CardContent>
-				</Card>
 
 				{/* Communication & Social Preferences */}
 				<Card>
@@ -1101,11 +1494,11 @@ const grad_year = Array.from(
 					<CardContent className="space-y-4">
 					{[
 						{ label: "Preferred Communication Medium", key: "communicationMedium", options: ["Written", "Verbal", "Mix"] },
-						{ label: "Clarity of communication", key: "clarity", options: ["Prefers clear, literal instructions", "Open-ended or indirect language"] },
-						{ label: "Team Collaboration Style", key: "teamStyle", options: ["Work independently", "Small, close-knit team", "Large, dynamic team"] },
-						{ label: "Presentation Comfort", key: "presentationComfort", options: ["Comfortable", "Not comfortable", "Not comfortable, but willing to try"] },
-						{ label: "Check-ins", key: "checkIns", options: ["Prefers frequent check-ins", "Scheduled check-ins", "Given a task and left to complete"] },
-						{ label: "Job Coach", key: "jobCoach", options: ["Need", "No Need"] },
+						{ label: "Clarity of communication", key: "clarity", options: ["Prefer clear, literal instruction", "No preference on this"] },
+						{ label: "Team Collaboration Style", key: "teamStyle", options: ["Prefer to work independently", "Prefer small, close-knit team", "Prefer large, dynamic team"] },
+						{ label: "Presentation", key: "presentationComfort", options: ["Comfortable with presentation", "Not comfortable with presentation", "Not comfortable, but willing to try"] },
+						{ label: "Check-ins", key: "checkIns", options: ["Prefer frequent check-ins", "Prefer scheduled check-ins", "Prefer autonomy and check-ins at agreed milestone"] },
+						{ label: "Job Coach", key: "jobCoach", options: ["Prefer having a job coach", "Not required any job coach"] },
 					].map((field) => {
 						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
 						return (
@@ -1150,17 +1543,17 @@ const grad_year = Array.from(
 					</CardContent>
 				</Card>
 
-				{/* Environmental & Sensory Needs */}
+				{/* Sensory Needs */}
 				<Card>
 					<CardHeader>
-					<CardTitle>Environmental & Sensory Needs</CardTitle>
+					<CardTitle>Sensory Needs</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
 					{[
-						{ label: "Auditory Preferences", key: "auditory", options: ["Quiet environment", "Can have background noise", "Noisy environment"] },
+						{ label: "Auditory Preferences", key: "auditory", options: ["Prefer quiet environment", "Can have ambient noise", "Prefer lively environment"] },
 						{ label: "Visual Preferences", key: "visual", options: ["Bright lighting", "Natural lighting", "Dim lighting"] },
-						{ label: "Workspace Type", key: "workspace", options: ["Fixed table", "Shared table", "Private office", "Work from home"] },
-						{ label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour", "Not comfortable but willing to try"] },
+						{ label: "Workspace Preferences", key: "workspace", options: ["Fixed table", "Hot desk", "Work from anywhere / home"] },
+						{ label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour"] },
 					].map((field) => {
 						const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
 						return (
@@ -1205,7 +1598,7 @@ const grad_year = Array.from(
 					</CardContent>
 				</Card>
 
-				{/* Job Preferences */}
+				{/* Job Preferences
 				<Card>
 					<CardHeader>
 					<CardTitle>Job Preferences</CardTitle>
@@ -1247,7 +1640,7 @@ const grad_year = Array.from(
 					})}
 					<Button className="bg-[#635bff] hover:bg-[#827CFF] text-white">Update Preferences</Button>
 					</CardContent>
-				</Card>
+				</Card> */}
 
 				</div>
 			</div>

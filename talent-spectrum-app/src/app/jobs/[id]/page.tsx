@@ -216,28 +216,18 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
                   About {job.company}
                 </h3>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Company Size</span>
-                  <span>{job.companyInfo.size}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Industry</span>
-                  <span>{job.companyInfo.industry}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Founded</span>
-                  <span>{job.companyInfo.founded}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Inclusivity Score</span>
-                  <Badge className="bg-green-100 text-green-800">
-                    {job.companyInfo.inclusivityScore}
-                  </Badge>
-                </div>
-                <Button variant="outline" className="w-full mt-4">
-                  View Company Profile
+              <CardContent className="space-y-4">
+                <Button 
+                  className="w-full bg-[#635bff] hover:bg-[#827CFF] text-[#ffffff] hover:shadow-lg hover:cursor-pointer"
+                  onClick={() => setShowApplicationForm(true)}
+                >
+                  Apply for this role
+                </Button>
+                <Button variant="outline" className="w-full hover:cursor-pointer hover:shadow-lg">
+                  Save for later
+                </Button>
+                <Button variant="ghost" className="w-full hover:cursor-pointer hover:shadow-lg">
+                  Share this job
                 </Button>
               </CardContent>
             </Card>

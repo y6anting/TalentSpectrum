@@ -11,16 +11,51 @@ export default function ContactPage() {
     message: ""
   });
 
+
+  const [errors, setErrors] = useState({
+    email: ""
+  });
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
+    // Validate email on change
+    if (name === "email") {
+      if (value && !validateEmail(value)) {
+        setErrors(prev => ({
+          ...prev,
+          email: "Please enter a valid email address"
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          email: ""
+        }));
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email before submission
+    if (!validateEmail(formData.email)) {
+      setErrors(prev => ({
+        ...prev,
+        email: "Please enter a valid email address"
+      }));
+      return;
+    }
+
     console.log("Contact form data:", formData);
     alert("Thank you for your message! We'll get back to you soon.");
     // Reset form
@@ -30,25 +65,35 @@ export default function ContactPage() {
       subject: "",
       message: ""
     });
+    setErrors({ email: "" });
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat py-8 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
+      style={{
+        backgroundImage: "url('/TalentSpectrumBackground.png')",
+        backgroundAttachment: "fixed",
+      }}
+    >
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-[#6b8a7a] mb-4">
-            📬 Get In Touch
+          <h1 className="block text-[clamp(2.8rem,5vw,5.5rem)] font-extrabold tracking-tight 
+                  bg-clip-text text-white 
+                  bg-[linear-gradient(115deg,#1a1a1a,#635bff,#9a96ff)] 
+                  drop-shadow-[2px_2px_10px_rgba(0,0,0,0.25)]">
+            Get In Touch
           </h1>
-          <p className="text-xl text-[#3a4043] max-w-3xl mx-auto">
-            Have questions about our platform? Want to partner with us? We'd love to hear from you!
+          <p className="text-xl text-white max-w-3xl mx-auto">
+            Have questions about our platform? Want to partner with us?<br></br> We&apos;d love to hear from you!
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <div className="bg-white rounded-xl p-8 shadow-lg border border-[#e8e6f0]">
-            <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Send us a message</h2>
+            <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Send us a message:</h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -76,9 +121,14 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-[#faf9f7]"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-[#faf9f7] ${
+                    errors.email ? 'border-red-500' : 'border-[#e8e6f0]'
+                  }`}
                   placeholder="your@email.com"
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div>
@@ -110,7 +160,7 @@ export default function ContactPage() {
                   value={formData.message}
                   onChange={handleInputChange}
                   required
-                  rows={6}
+                  rows={19}
                   className="w-full px-4 py-3 border border-[#e8e6f0] rounded-lg focus:ring-2 focus:ring-[#6b8a7a] focus:border-[#6b8a7a] outline-none transition-all text-[#3a4043] bg-[#faf9f7]"
                   placeholder="Tell us how we can help you..."
                 />
@@ -118,8 +168,7 @@ export default function ContactPage() {
 
               <button
                 type="submit"
-                className="w-full bg-[#6b8a7a] hover:bg-[#5d7c6b] text-white font-medium py-3 rounded-lg transition-colors"
-              >
+                className="w-full bg-[#635bff] hover:bg-[#827CFF] text-white font-medium py-3 rounded-lg transition-colors"              >
                 Send Message
               </button>
             </form>
@@ -128,57 +177,68 @@ export default function ContactPage() {
           {/* Contact Information */}
           <div className="space-y-8">
             <div className="bg-white rounded-xl p-8 shadow-lg border border-[#e8e6f0]">
-              <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Contact Information</h2>
+              <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Contact Information:</h2>
               
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="text-2xl">📧</div>
+                  <div className="text-2xl"></div>
                   <div>
                     <h3 className="font-semibold text-[#3a4043] mb-1">Email</h3>
-                    <p className="text-[#6b8a7a]">hello@talentspectrum.com</p>
-                    <p className="text-sm text-[#3a4043]">We typically respond within 24 hours</p>
+                    <a 
+                      href="mailto:enquiry@talentspectrum.com" 
+                      className="text-[#635bff] hover:text-[#827CFF] transition-colors duration-200 underline hover:underline-offset-2"
+                    >
+                      enquiry@talentspectrum.com
+                    </a>
+                    <p className="text-sm text-[#3a4043]">We typically respond within one work day.</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="text-2xl">📱</div>
+                  <div className="text-2xl"></div>
                   <div>
-                    <h3 className="font-semibold text-[#3a4043] mb-1">Phone</h3>
-                    <p className="text-[#6b8a7a]">+1 (555) 123-4567</p>
-                    <p className="text-sm text-[#3a4043]">Monday - Friday, 9 AM - 6 PM EST</p>
+                    <h3 className="font-semibold text-[#3a4043] mb-1">WhatsApp</h3>
+                    <a 
+                       href="https://wa.me/60123456789" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#635bff] hover:text-[#827CFF] transition-colors duration-200 underline hover:underline-offset-2"
+                    >
+                      +60123456789
+                    </a>
+                    <p className="text-sm text-[#3a4043]">Operating hour: Monday - Friday, 9am - 6pm (GMT+8)</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="text-2xl">📍</div>
+                  <div className="text-2xl"></div>
                   <div>
-                    <h3 className="font-semibold text-[#3a4043] mb-1">Office</h3>
-                    <p className="text-[#6b8a7a]">123 Innovation Drive<br />Tech Valley, CA 94043</p>
+                    <h3 className="font-semibold text-[#3a4043] mb-1">HQ Address</h3>
+                    <p className="text-[#635bff]">6rAIn Plt.</p>
+                    <p className="text-sm text-[#3a4043]">Menara Mustapha Kamal,<br />Level 7, Block A,<br />47820 Petaling Jaya,<br /> Selangor Darul Ehsan,<br />Malaysia.</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-xl p-8 shadow-lg border border-[#e8e6f0]">
-              <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Frequently Asked Questions</h2>
-              
+              <h2 className="text-2xl font-bold text-[#3a4043] mb-6">Map:</h2>
+  
               <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-[#3a4043] mb-2">How accurate are your talent assessments?</h3>
-                  <p className="text-sm text-[#3a4043]">Our assessments are based on validated psychological research and have a 95% accuracy rate in predicting job performance and satisfaction.</p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-[#3a4043] mb-2">Is my data secure?</h3>
-                  <p className="text-sm text-[#3a4043]">Absolutely. We use enterprise-grade encryption and never share your personal data without explicit consent.</p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-[#3a4043] mb-2">Can I retake assessments?</h3>
-                  <p className="text-sm text-[#3a4043]">Yes, you can retake assessments after 6 months to track your development and growth.</p>
-                </div>
-              </div>
+              <div className="w-full h-[400px] rounded-lg overflow-hidden border border-[#e8e6f0]">
+              <iframe
+                             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3983.7244934307646!2d101.61009747529395!3d3.167097396808257!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31cc4f337f5b4ff9%3A0xfc3e77b863f10f0b!2sMenara%20Mustapha%20Kamal!5e0!3m2!1sen!2smy!4v1760688780314!5m2!1sen!2smy"
+                              width="100%"
+                              height="100%"
+                              style={{ border: 0 }}
+                              allowFullScreen={true}
+                             loading="lazy"
+                             referrerPolicy="no-referrer-when-downgrade"
+                              title="Talent Spectrum HQ Location"
+                            ></iframe>
             </div>
+  </div>
+</div>
           </div>
         </div>
       </div>

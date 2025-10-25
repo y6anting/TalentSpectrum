@@ -39,32 +39,28 @@ export default function Footer({ setCurrentPage }: FooterProps) {
       title: "For Job Seekers",
       links: [
         { label: "Browse Jobs", page: "jobs" },
-        { label: "Candidate Dashboard", page: "dashboard" },
-        { label: "Accessibility Features", page: "accessibility" }
+        { label: "Salary Guide", page: "Salary Guide" },
       ]
     },
     {
       title: "For Employers", 
       links: [
         { label: "Post a Job", page: "post-job" },
-        { label: "Employer Dashboard", page: "employer-dashboard" },
-        { label: "Inclusive Hiring", page: "employers" }
+        { label: "Double Tax Relief Calculator", page: "Double Tax Relief Calculator" },
       ]
     },
     {
-      title: "Resources",
+      title: "For Job Coaches",
       links: [
-        { label: "About Talent Spectrum", page: "about" },
-        { label: "Neurodiversity Guide", page: "guide" },
-        { label: "Success Stories", page: "stories" }
+        { label: "Online Test Resources", page: "Online Test Resources" },
+        { label: "Trainer's Manual", page: "Trainer's Manual" },
       ]
     },
     {
       title: "Support",
       links: [
-        { label: "Help Center", page: "help" },
         { label: "Contact Us", page: "contact" },
-        { label: "Accessibility Statement", page: "accessibility-statement" }
+        { label: "Privacy Policy & Term of Service", page: "Privacy Policy & Term of Service"}
       ]
     }
   ];

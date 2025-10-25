@@ -247,7 +247,7 @@ export default function PostJob() {
       const data = await res.json();
       console.log("✅ Job posted successfully:", data);
       alert("Job posted successfully!");
-      router.push("/employer-dashboard");
+      router.push("/employer/employer-dashboard");
     } catch (err) {
       console.error("❌ Error posting job:", err);
       alert(`Failed to post job: ${err}`);
@@ -265,7 +265,7 @@ export default function PostJob() {
           <div>
             <Button
               variant="ghost"
-              onClick={() => router.push("/employer-dashboard")}
+              onClick={() => router.push("/employer/employer-dashboard")}
               className="mb-2 text-[#3a4043] hover:text-[#635bff]"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -681,7 +681,7 @@ export default function PostJob() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/employer-dashboard")}
+              onClick={() => router.push("employer/employer-dashboard")}
             >
               Cancel
             </Button>

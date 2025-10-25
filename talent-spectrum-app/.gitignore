@@ -87,3 +87,15 @@ package-lock.json
 # =====================================================
 *.tsbuildinfo
 next-env.d.ts
+
+
+
+node_modules/
+.vscode/
+__pycache__/
+.env
+.DS_Store
+ResumeFeedbackEnv/
+TrainerBookEnv/
+dbEnv/
+ResumeExtractorEnv/

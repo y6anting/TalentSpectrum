@@ -93,60 +93,60 @@ export default function ResumeExtract() {
     }
   };
 
-  // Render different components based on current page
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case "method-selection":
-        return (
-          <MethodSelection
-            setFillMethod={setFillMethod}
-            backButtonRef={backButtonRef}
-            selectionHeaderRef={selectionHeaderRef}
-            selectionCardsRef={selectionCardsRef}
-            setCurrentPage={setCurrentPage}
-          />
-        );
-      case "resume-upload":
-        return (
-          <ResumeUpload
-            resumeFile={file}
-            handleFileUpload={handleFileUpload}
-            clickedField={clickedField}
-            setClickedField={setClickedField}
-          />
-        );
-      case "manual-fill":
-        return (
-          <div className="p-6 max-w-3xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Manual Form Fill</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Manual form filling functionality will be implemented here.</p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      default:
-        return (
-          <div className="p-6 max-w-3xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resume Analyser</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Please select a method to continue.</p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-    }
-  };
+  // // Render different components based on current page
+  // const renderCurrentPage = () => {
+  //   switch (currentPage) {
+  //     case "method-selection":
+  //       return (
+  //         <MethodSelection
+  //           setFillMethod={setFillMethod}
+  //           backButtonRef={backButtonRef}
+  //           selectionHeaderRef={selectionHeaderRef}
+  //           selectionCardsRef={selectionCardsRef}
+  //           setCurrentPage={setCurrentPage}
+  //         />
+  //       );
+  //     case "resume-upload":
+  //       return (
+  //         <ResumeUpload
+  //           resumeFile={file}
+  //           handleFileUpload={handleFileUpload}
+  //           clickedField={clickedField}
+  //           setClickedField={setClickedField}
+  //         />
+  //       );
+  //     case "manual-fill":
+  //       return (
+  //         <div className="p-6 max-w-3xl mx-auto">
+  //           <Card>
+  //             <CardHeader>
+  //               <CardTitle>Manual Form Fill</CardTitle>
+  //             </CardHeader>
+  //             <CardContent>
+  //               <p>Manual form filling functionality will be implemented here.</p>
+  //             </CardContent>
+  //           </Card>
+  //         </div>
+  //       );
+  //     default:
+  //       return (
+  //         <div className="p-6 max-w-3xl mx-auto">
+  //           <Card>
+  //             <CardHeader>
+  //               <CardTitle>Resume Analyser</CardTitle>
+  //             </CardHeader>
+  //             <CardContent>
+  //               <p>Please select a method to continue.</p>
+  //             </CardContent>
+  //           </Card>
+  //         </div>
+  //       );
+  //   }
+  // };
 
   return (
     <div>
-      {renderCurrentPage()}
+      {/* {renderCurrentPage()} */}
       
       {/* Show parsed information if available */}
       {parsedInfo && (

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
@@ -98,10 +99,10 @@ type CandidateProfile = {
 
 type OnboardingStep = "profile" | "education" | "experience" | "environment";
 
-export default function CandidateOnboarding() {
+export default function CandidateInfoPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("profile");
   const [isLoading, setIsLoading] = useState(false);
-  // Removed showDirectUpload state as it's now handled by the ResumeUploadButton component
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     name: "",
     email: "",
@@ -210,12 +211,54 @@ export default function CandidateOnboarding() {
   const saveData = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log("Saving profile data:", candidateProfile);
-      // In real app, save to API
+      // Format payload according to the required structure
+      const payload = {
+        name: candidateProfile.personalIdentifiers.fullName,
+        email: candidateProfile.personalIdentifiers.emailAddress,
+        location: candidateProfile.jobPreferences.locationPreference,
+        profile_completion: 100, // Assuming completion when user submits
+        accommodations: [],
+        preferences: {
+          workType: candidateProfile.jobPreferences.preferredRoles[0] || "",
+          communication: candidateProfile.environment.communicationMedium,
+          schedule: candidateProfile.environment.workdayStructure
+        },
+        personal_identifiers: candidateProfile.personalIdentifiers,
+        job_preferences: candidateProfile.jobPreferences,
+        education: candidateProfile.education,
+        exp_skill: candidateProfile.exp_skill,
+        environment: candidateProfile.environment
+      };
+      
+      // Send data to API
+      const response = await fetch('http://localhost:8000/profiles/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("Profile saved successfully:", result);
+      
+      // Save user email to localStorage for use in dashboard
+      localStorage.setItem('userEmail', candidateProfile.personalIdentifiers.emailAddress);
+      
+      // Redirect to dashboard or show success message
+      router.push('/candidate/candidate-dashboard');
     } catch (error) {
       console.error("Error saving data:", error);
+      // Show error message to user
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to save profile data. Please try again.",
+      //   variant: "destructive",
+      // });
     } finally {
       setIsLoading(false);
     }
@@ -389,8 +432,6 @@ export default function CandidateOnboarding() {
           </div>
         </div>
       </div>
-
-      {/* Direct Upload Modal now handled by ResumeUploadButton component */}
     </div>
   );
 }

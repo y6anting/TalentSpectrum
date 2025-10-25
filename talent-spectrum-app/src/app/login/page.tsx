@@ -236,6 +236,9 @@ const LoginPage = () => {
       });
   
       if (result?.ok) {
+        // Save user email to localStorage
+        localStorage.setItem('userEmail', loginData.email);
+        
         // get updated session
         const session = await getSession();
   

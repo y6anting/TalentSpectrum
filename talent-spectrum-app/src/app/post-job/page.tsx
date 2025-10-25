@@ -24,13 +24,12 @@ import {
   Eye,
 } from "lucide-react";
 
-// Import Shadcn Accordion components
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/app/components/accordion"; // Adjust path if necessary
+} from "@/app/components/accordion"; 
 
 /* SECTION IDs and titles (kept only the active sections) */
 const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
@@ -45,8 +44,6 @@ const SECTION_TITLES: Record<string, string> = {
 export default function PostJob() {
   const router = useRouter();
 
-  // --- Accordion navigation (one open at a time) ---
-  // This state will now directly control the Shadcn Accordion's 'value' prop
   const [openSection, setOpenSection] = useState<string>("job-info");
 
   // --- Refs for scrolling/focusing when validation fails ---

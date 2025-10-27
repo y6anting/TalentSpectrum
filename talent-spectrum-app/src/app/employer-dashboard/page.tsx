@@ -276,7 +276,7 @@ export default function EmployerDashboard() {
 
           {/* Button visible only on larger screens */}
           <Button
-            className="bg-gradient-to-r from-[#ff1b6b] to-[#45caff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
+            className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
             onClick={() => router.push("/post-job")}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -290,7 +290,7 @@ export default function EmployerDashboard() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-gradient-to-r from-[#ff1b6b] to-[#45caff] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
                     <Building className="h-6 w-6" />
                   </div>
                   <div>
@@ -314,7 +314,7 @@ export default function EmployerDashboard() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] h-2 rounded-full"
+                      className="bg-[#635bff] h-2 rounded-full"
                       style={{ width: `${companyProfile.inclusionScore}%` }}
                     />
                   </div>
@@ -346,7 +346,7 @@ export default function EmployerDashboard() {
                         onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors hover:cursor-pointer ${
                           activeTab === item.id
-                            ? "bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] text-white"
+                            ? "bg-[#635bff] text-white"
                             : "text-[#3a4043] hover:bg-gray-100"
                         }`}
                       >
@@ -496,7 +496,7 @@ export default function EmployerDashboard() {
                     </div>
                     <Button
                       variant="outline"
-                      className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer"
+                      className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer hover:text-white"
                     >
                       View All Certifications
                     </Button>

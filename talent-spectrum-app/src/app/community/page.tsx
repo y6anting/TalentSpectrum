@@ -21,7 +21,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'default', children, className, ...props }) => {
-  const baseStyle = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+  const baseStyle = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
   const variantStyles = {
     primary: 'bg-[#635bff] text-white hover:bg-[#5748e5]',
     outline: 'border border-[#e8e6f0] bg-white hover:bg-gray-100 hover:text-[#3a4043]',
@@ -322,7 +322,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: '/post-image-1.jpg', // Example image URL
+      imageUrl: 'community/post/post1.png',
     },
     {
       id: 'p2',
@@ -336,7 +336,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: null, // No image for this post
+      imageUrl: 'community/post/post3.png'
     },
     {
       id: 'p3',
@@ -350,7 +350,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: '/post-image-2.jpg', // Example image URL
+      imageUrl: 'community/post/post2.png'
     },
   ]);
 
@@ -928,7 +928,7 @@ const NeuroConnectPage: React.FC = () => {
 
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
-          <Card className="lg:col-span-1 h-fit sticky top-8">
+          <Card className="lg:col-span-1 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
             <CardContent className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <img src={currentUser.avatar || '/avatar-placeholder.jpg'} alt={currentUser.name} className="w-12 h-12 rounded-full object-cover" />
@@ -980,3 +980,5 @@ const NeuroConnectPage: React.FC = () => {
 };
 
 export default NeuroConnectPage;
+
+

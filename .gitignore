@@ -2,31 +2,58 @@
 # Node.js / Next.js
 # =====================================================
 node_modules/
+../node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Next.js build outputs
+# Next.js build output
 .next/
 out/
 build/
 
-# Package manager files
+# Package managers
 package-lock.json
 yarn.lock
-.pnp
-.pnp.*
+pnpm-lock.yaml
 
 # =====================================================
-# Python
+# Python / FastAPI
 # =====================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual environments
+# =====================================================
+# Virtual Environments
+# =====================================================
+.env
 .venv/
 env/
 venv/
@@ -35,19 +62,21 @@ env.bak/
 venv.bak/
 *Env/
 *env/
-
-# Python build artifacts
-*.egg-info/
-dist/
-build/
-*.egg
+myvenv/
+ResumeFeedbackEnv/
+TrainerBookEnv/
+dbEnv/
+ResumeExtractorEnv/
+wav2lipEnv/
+resumeExtractorEnv/
 
 # =====================================================
-# Database
+# Database files
 # =====================================================
 *.db
 *.sqlite
 *.sqlite3
+talentspectrum.db
 
 # =====================================================
 # IDE / Editor
@@ -59,23 +88,7 @@ build/
 *~
 
 # =====================================================
-# Environment / Secrets
-# =====================================================
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-
-# =====================================================
-# Logs / Debug
-# =====================================================
-logs/
-*.log
-
-# =====================================================
-# OS Generated Files
+# OS generated files
 # =====================================================
 .DS_Store
 .DS_Store?
@@ -86,7 +99,25 @@ ehthumbs.db
 Thumbs.db
 
 # =====================================================
-# Media Files (if not needed in repo)
+# Logs / Debug
+# =====================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =====================================================
+# Temporary files
+# =====================================================
+*.tmp
+*.temp
+temp/
+tmp/
+
+# =====================================================
+# Media files (if not needed in repo)
 # =====================================================
 *.mp3
 *.mp4
@@ -96,24 +127,22 @@ Thumbs.db
 *.mkv
 
 # =====================================================
-# PDF Files (if not needed in repo)
+# PDF files (if not needed in repo)
 # =====================================================
 *.pdf
 
 # =====================================================
-# Temporary Files
+# Environment / Secrets
 # =====================================================
-*.tmp
-*.temp
-temp/
-tmp/
-
-# =====================================================
-# Testing / Coverage
-# =====================================================
-coverage/
-.nyc_output/
-.coverage
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*
+*.pem
+*.key
+*.crt
 
 # =====================================================
 # TypeScript
@@ -127,13 +156,17 @@ next-env.d.ts
 .vercel
 
 # =====================================================
-# Prisma
+# Prisma / Generated
 # =====================================================
-src/generated/prisma/
+/src/generated/prisma
+
+# =====================================================
+# Coverage / Testing
+# =====================================================
+coverage/
+*.lcov
 
 # =====================================================
 # Miscellaneous
 # =====================================================
 *.pem
-*.key
-*.crt

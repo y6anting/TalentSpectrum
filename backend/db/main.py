@@ -11,6 +11,7 @@ from database.connection import create_tables, engine, Base
 from routers.profiles import router as profiles_router
 # from routers.profile_others import router as profile_others_router
 from routers.jobs import router as jobs_router
+from routers.applications import router as applications_router
 # from routers.resume_extract import router as resume_extract_router
 
 # Create DB tables
@@ -34,4 +35,5 @@ def read_root():
 app.include_router(profiles_router, prefix="/profiles", tags=["profiles"])
 # app.include_router(profile_others_router, prefix="/profile_others", tags=["profile_others"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
+app.include_router(applications_router, prefix="/applications", tags=["applications"])
 # app.include_router(resume_extract_router, prefix="/resume", tags=["resume"])

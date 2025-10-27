@@ -8,6 +8,7 @@ class Post_Job(Base):
     __tablename__ = "post_job"
 
     id = Column(Integer, primary_key = True, index = True)
+    employer_email = Column(String, nullable=False)
     job_title = Column(String)
     job_type = Column(String)
     work_mode = Column(String)
@@ -35,6 +36,7 @@ class Post_Job(Base):
 
 # Pydantic schema collocated with model
 class PostJobRequest(BaseModel):
+    employer_email: str
     job_title: str
     job_type: str
     work_mode: str
@@ -62,8 +64,41 @@ class PostJobRequest(BaseModel):
 
     class Config:
         from_attributes = True
-    
 
-    
+# Company Profile Model
+class Company(Base):
+    __tablename__ = "company"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    industry = Column(String)
+    location = Column(String)
+    website = Column(String)
+    employees = Column(String)
+    size = Column(String)
+    inclusion_score = Column(Integer, default=0)
+    certifications = Column(Text)  # JSON string of certifications array
+    description = Column(Text)
+    founded_year = Column(Integer)
+    company_type = Column(String)  # e.g., "Public", "Private", "Non-profit"
+
+# Pydantic schema for Company
+class CompanyRequest(BaseModel):
+    email: str
+    name: str
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    employees: Optional[str] = None
+    size: Optional[str] = None
+    inclusion_score: Optional[int] = 0
+    certifications: Optional[str] = None
+    description: Optional[str] = None
+    founded_year: Optional[int] = None
+    company_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 

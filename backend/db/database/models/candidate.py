@@ -10,8 +10,10 @@ class User(Base):
     __tablename__ = "user"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    role = Column(String)
+    email = Column(String, unique=True, index=True)  # For API/session
+    name = Column(String)  # For display in Header
+    role = Column(String)  # CANDIDATE, EMPLOYER, JOB_COACH
+    candidate_profile = relationship("CandidateProfile", back_populates="user", uselist=False)
 
 class CandidateProfile(Base):
     __tablename__ = "candidate_profiles"
@@ -25,10 +27,15 @@ class CandidateProfile(Base):
     accommodations = Column(JSON)  # List of accommodation strings
     preferences = Column(JSON)    # Work type, communication, schedule preferences
     personal_identifiers = Column(JSON)  # Full name, DOB, gender, etc.
-    job_preferences = Column(JSON)  # Industries, roles, location, availability
     education = Column(JSON)       # Education details
-    exp_skill = Column(JSON)       # Experience and skills
+    experience = Column(JSON)      # Work experience data
+    skills = Column(JSON)          # Skills data (hard skills, soft skills)
+    exp_skill = Column(JSON)       # Combined experience and skills data
+    language_proficiencies = Column(JSON)  # Language proficiency data
     environment = Column(JSON)     # Environment preferences
+    neurodivergent_strengths = Column(JSON)  # Neurodivergent strengths
+    applications = Column(JSON)  # Applications
+    saved_jobs = Column(JSON)  # Saved jobs
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -58,12 +65,14 @@ class Experience(Base):
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidate_profiles.id"))
     employer = Column(String)
+    title = Column(String)  # Added title field
     industry = Column(String)
     start_date = Column(String)
     end_date = Column(String)
     seniority_level = Column(String)
     skills_tools_used = Column(String)
     project_highlights = Column(Text)
+    achievements = Column(Text)  # Added achievements field
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship
@@ -121,15 +130,16 @@ class UserRequest(BaseModel):
 
 class PersonalIdentifiers(BaseModel):
     fullName: str
-    dateOfBirth: Optional[str] = None
-    gender: Optional[str] = None
-    nationality: Optional[str] = None
-    emailAddress: str
-    phoneNumber: Optional[str] = None
-    residentialAddress: Optional[str] = None
     nric: Optional[str] = None
+    emailAddress: str
+    phoneNumber: str
+    dateOfBirth: str
+    gender: str
+    nationality: str
     oku_card: Optional[str] = None
-    linkedin: Optional[str] = None
+    preferred_role: str
+    preferred_industry: str
+    preferred_location: str
 
 class Preferences(BaseModel):
     workType: Optional[str] = None
@@ -167,6 +177,17 @@ class ExperienceSkills(BaseModel):
     TechnicalKeywords: Optional[str] = None
     Achievements: Optional[str] = None
 
+class LanguageProficiency(BaseModel):
+    id: Optional[int] = None
+    language: str
+    reading: str
+    writing: str
+    listening: str
+    speaking: str
+
+class NeurodivergentStrengths(BaseModel):
+    strengths: List[str] = []
+
 class Environment(BaseModel):
     # Cognitive & Technical
     patternRecognition: Optional[str] = None
@@ -188,22 +209,6 @@ class Environment(BaseModel):
     workspace: Optional[str] = None
     workdayStructure: Optional[str] = None
 
-class CandidateProfileRequest(BaseModel):
-    name: str
-    email: str
-    location: Optional[str] = None
-    profile_completion: int = 0
-    accommodations: List[str] = []
-    preferences: Optional[Preferences] = None
-    personal_identifiers: Optional[PersonalIdentifiers] = None
-    job_preferences: Optional[JobPreferences] = None
-    education: Optional[EducationData] = None
-    exp_skill: Optional[ExperienceSkills] = None
-    environment: Optional[Environment] = None
-
-    class Config:
-        from_attributes = True
-
 class EducationRequest(BaseModel):
     level: Optional[str] = None
     field_of_study: Optional[str] = None
@@ -223,6 +228,29 @@ class ExperienceRequest(BaseModel):
     seniority_level: Optional[str] = None
     skills_tools_used: Optional[str] = None
     project_highlights: Optional[str] = None
+    title: Optional[str] = None
+    is_current: Optional[bool] = None
+    achievements: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class CandidateProfileRequest(BaseModel):
+    name: str
+    email: str
+    location: Optional[str] = None
+    profile_completion: int = 0
+    accommodations: List[str] = []
+    preferences: Optional[Preferences] = None
+    personal_identifiers: Optional[PersonalIdentifiers] = None
+    education: Optional[EducationData] = None
+    experience: Optional[ExperienceSkills] = None
+    skills: Optional[ExperienceSkills] = None
+    environment: Optional[Environment] = None
+    language_proficiencies: Optional[List[LanguageProficiency]] = None
+    neurodivergent_strengths: Optional[List[str]] = None
+    educations: Optional[List[EducationRequest]] = None
+    experiences: Optional[List[ExperienceRequest]] = None
 
     class Config:
         from_attributes = True

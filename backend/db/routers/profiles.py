@@ -16,11 +16,15 @@ async def get_profiles(db: DbDep):
 
 @router.get("/{email}")
 async def get_profiles_by_email(email: str, db: DbDep):
-    # Get the candidate profile with related education and experience data
-    profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
-    
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    try:
+        # Get the candidate profile with related education and experience data
+        profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
+        
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+    except Exception as e:
+        print(f"Error in get_profiles_by_email: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     # Get related education records
     educations = db.query(Education).filter(Education.candidate_id == profile.id).all()
@@ -39,10 +43,13 @@ async def get_profiles_by_email(email: str, db: DbDep):
         "accommodations": profile.accommodations,
         "preferences": profile.preferences,
         "personal_identifiers": profile.personal_identifiers,
-        "job_preferences": profile.job_preferences,
         "education": profile.education,
+        "experience": profile.experience,
+        "skills": profile.skills,
         "exp_skill": profile.exp_skill,
         "environment": profile.environment,
+        "language_proficiencies": profile.language_proficiencies,
+        "neurodivergent_strengths": profile.neurodivergent_strengths,
         "created_at": profile.created_at,
         "updated_at": profile.updated_at,
         "educations": [
@@ -62,12 +69,15 @@ async def get_profiles_by_email(email: str, db: DbDep):
             {
                 "id": exp.id,
                 "employer": exp.employer,
+                "title": exp.title or '',  # Use title field from database
                 "industry": exp.industry,
                 "start": exp.start_date,
                 "end": exp.end_date,
+                "isCurrent": exp.end_date is None or exp.end_date == '',  # Determine if current based on end_date
                 "seniorityLevel": exp.seniority_level,
                 "skillsToolsUsed": exp.skills_tools_used,
                 "projectHighlights": exp.project_highlights,
+                "achievements": exp.achievements or '',  # Use achievements field from database
                 "created_at": exp.created_at
             }
             for exp in experiences
@@ -84,10 +94,48 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
         # Delegate to the update_profile endpoint logic to keep behavior consistent
         return await update_profile(db, profile.email, profile)
 
-    new_profile = CandidateProfile(**profile.dict())
+    # Create the main profile
+    profile_data = profile.dict()
+    educations_data = profile_data.pop('educations', [])
+    experiences_data = profile_data.pop('experiences', [])
+    
+    new_profile = CandidateProfile(**profile_data)
     db.add(new_profile)
     db.commit()
     db.refresh(new_profile)
+    
+    # Create education records
+    if educations_data:
+        for edu_data in educations_data:
+            education = Education(
+                candidate_id=new_profile.id,
+                level=edu_data.get('level'),
+                field_of_study=edu_data.get('field_of_study'),
+                institution=edu_data.get('institution'),
+                graduation_year=edu_data.get('graduation_year'),
+                cgpa_grade=edu_data.get('cgpa_grade'),
+                award=edu_data.get('award')
+            )
+            db.add(education)
+    
+    # Create experience records
+    if experiences_data:
+        for exp_data in experiences_data:
+            experience = Experience(
+                candidate_id=new_profile.id,
+                employer=exp_data.get('employer'),
+                title=exp_data.get('title'),
+                industry=exp_data.get('industry'),
+                start_date=exp_data.get('start_date'),
+                end_date=exp_data.get('end_date'),
+                seniority_level=exp_data.get('seniority_level'),
+                skills_tools_used=exp_data.get('skills_tools_used'),
+                project_highlights=exp_data.get('project_highlights'),
+                achievements=exp_data.get('achievements')
+            )
+            db.add(experience)
+    
+    db.commit()
     return {"message": "Profile added", "profile": new_profile}
 
 @router.put("/{email}")
@@ -142,12 +190,14 @@ async def update_experience(email: str, experience_data: dict, db: DbDep):
         new_experience = Experience(
             candidate_id=profile.id,
             employer=exp.get("employer"),
+            title=exp.get("title"),
             industry=exp.get("industry"),
             start_date=exp.get("start"),
             end_date=exp.get("end"),
             seniority_level=exp.get("seniorityLevel"),
             skills_tools_used=exp.get("skillsToolsUsed"),
-            project_highlights=exp.get("projectHighlights")
+            project_highlights=exp.get("projectHighlights"),
+            achievements=exp.get("achievements")
         )
         db.add(new_experience)
     
@@ -201,6 +251,34 @@ async def update_environment(email: str, env_data: dict, db: DbDep):
     
     db.commit()
     return {"message": "Environment & preferences updated successfully"}
+
+# Language proficiencies endpoint
+@router.patch("/{email}/language_proficiencies")
+async def update_language_proficiencies(email: str, lang_data: dict, db: DbDep):
+    profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Update language proficiencies
+    if "language_proficiencies" in lang_data:
+        profile.language_proficiencies = lang_data["language_proficiencies"]
+    
+    db.commit()
+    return {"message": "Language proficiencies updated successfully"}
+
+# Neurodivergent strengths endpoint
+@router.patch("/{email}/neurodivergent_strengths")
+async def update_neurodivergent_strengths(email: str, strengths_data: dict, db: DbDep):
+    profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Update neurodivergent strengths
+    if "neurodivergent_strengths" in strengths_data:
+        profile.neurodivergent_strengths = strengths_data["neurodivergent_strengths"]
+    
+    db.commit()
+    return {"message": "Neurodivergent strengths updated successfully"}
 
 # @router.delete("/{profile_id}")
 # async def delete_profile(db: DbDep, profile_id: int):

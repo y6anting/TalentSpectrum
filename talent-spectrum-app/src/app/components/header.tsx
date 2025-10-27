@@ -152,7 +152,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           {/* Logo */}
           <Link
             href={logoLink}
-            onClick={() => setCurrentPage?.("about")}
+            onClick={() => setCurrentPage?.("homepage")}
             className="flex items-center gap-3"
           >
             <Image

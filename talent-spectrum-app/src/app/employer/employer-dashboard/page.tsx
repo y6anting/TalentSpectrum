@@ -15,6 +15,7 @@ import { calculateEmployerCosts } from "@/app/employer/component/taxCalculator";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/select";
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
+import { useToastHelpers } from "@/components/ui/toast";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -75,42 +76,22 @@ export default function EmployerDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const router = useRouter();
+  const { success, error, warning, info } = useToastHelpers();
 
-  const applications = [
-    {
-      id: "1",
-      candidateName: "Alex Johnson",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-18",
-      status: "under_review",
-      accommodationsRequested: true,
-      accommodationDetails: "Flexible hours, quiet workspace",
-      experience: "3 years",
-      score: 92,
-    },
-    {
-      id: "2",
-      candidateName: "Sam Chen",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-17",
-      status: "interview_scheduled",
-      accommodationsRequested: false,
-      experience: "2 years",
-      score: 88,
-      interviewDate: "2024-01-25",
-    },
-    {
-      id: "3",
-      candidateName: "Jordan Smith",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-16",
-      status: "shortlisted",
-      accommodationsRequested: true,
-      accommodationDetails: "Extended time for technical tests",
-      experience: "4 years",
-      score: 95,
-    },
-  ];
+  type EmployerApplication = {
+    id: number | string;
+    candidateName: string;
+    jobTitle: string;
+    appliedDate: string;
+    status: string;
+    accommodationsRequested: boolean;
+    accommodationDetails?: string;
+    experience?: string;
+    score: number;
+    interviewDate?: string;
+  };
+
+  const [applications, setApplications] = useState<EmployerApplication[]>([]);
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [companyName, setCompanyName] = useState("");
@@ -167,7 +148,7 @@ export default function EmployerDashboard() {
         method: 'DELETE',
       });
       if (response.ok) {
-        alert('Job deleted successfully!');
+        success('Job deleted successfully!');
         // Refresh the job postings
         const employerEmail = localStorage.getItem('employerEmail');
         if (employerEmail) {
@@ -178,11 +159,11 @@ export default function EmployerDashboard() {
           }
         }
       } else {
-        alert('Failed to delete job. Please try again.');
+        error('Failed to delete job. Please try again.');
       }
-    } catch (error) {
-      console.error('Error deleting job:', error);
-      alert('An error occurred while deleting the job.');
+    } catch (err) {
+      console.error('Error deleting job:', err);
+      error('An error occurred while deleting the job.');
     }
   };
 
@@ -269,7 +250,7 @@ export default function EmployerDashboard() {
     try {
       const employerEmail = localStorage.getItem('employerEmail');
       if (!employerEmail) {
-        alert('Please log in as an employer to save settings.');
+        warning('Please log in as an employer to save settings.');
         return;
       }
 
@@ -301,7 +282,7 @@ export default function EmployerDashboard() {
       });
 
       if (response.ok) {
-        alert('Company settings saved successfully!');
+        success('Company settings saved successfully!');
         // Refresh the company profile data
         const updatedResponse = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`);
         if (updatedResponse.ok) {
@@ -316,11 +297,11 @@ export default function EmployerDashboard() {
           errorText = 'Unknown error';
         }
         console.error('Error saving company settings:', errorText);
-        alert('Failed to save company settings. Please try again.');
+        error('Failed to save company settings. Please try again.');
       }
-    } catch (error) {
-      console.error('Error saving company settings:', error);
-      alert('An error occurred while saving company settings.');
+    } catch (err) {
+      console.error('Error saving company settings:', err);
+      error('An error occurred while saving company settings.');
     }
   };
 
@@ -368,7 +349,28 @@ export default function EmployerDashboard() {
         setCompanyData({ name: companyData.name, industry: companyData.industry, location: companyData.location, size: companyData.size });
 
         const jobsResponse = await fetch(`http://127.0.0.1:8000/jobs/employer/${employerEmail}`);
-        if (jobsResponse.ok) setJobPostings(await jobsResponse.json());
+        if (jobsResponse.ok) {
+          setJobPostings(await jobsResponse.json());
+        }
+
+        // Fetch employer applications from Next.js API
+        const appsResponse = await fetch(`/api/employer-applications?employerEmail=${encodeURIComponent(employerEmail)}`);
+        if (appsResponse.ok) {
+          const rawApps = await appsResponse.json();
+          const mapped: EmployerApplication[] = rawApps.map((app: any) => ({
+            id: app.id,
+            candidateName: app.candidate_name || 'Unknown',
+            jobTitle: app.job_title,
+            appliedDate: app.applied_date ? new Date(app.applied_date).toISOString().slice(0, 10) : '',
+            status: app.status,
+            accommodationsRequested: !!app.accommodations_requested,
+            accommodationDetails: '',
+            experience: '',
+            score: typeof app.score === 'number' ? app.score : 0,
+            interviewDate: app.interview_date ? new Date(app.interview_date).toISOString().slice(0, 10) : undefined,
+          }));
+          setApplications(mapped);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -396,7 +398,7 @@ export default function EmployerDashboard() {
     try {
       const employerEmail = localStorage.getItem('employerEmail');
       if (!employerEmail) {
-        alert('Please log in as an employer to save settings.');
+        warning('Please log in as an employer to save settings.');
         return;
       }
 
@@ -424,15 +426,15 @@ export default function EmployerDashboard() {
       if (response.ok) {
         const updated = await response.json();
         setCompanyProfile(cp => (cp ? { ...cp, ...updated } : cp));
-        alert('Inclusion settings saved successfully!');
+        success('Inclusion settings saved successfully!');
       } else {
         const err = await response.text();
         console.error('Failed to save inclusion settings', err);
-        alert('Failed to save inclusion settings. Please try again.');
+        error('Failed to save inclusion settings. Please try again.');
       }
-    } catch (error) {
-      console.error('Error saving inclusion settings', error);
-      alert('An error occurred while saving inclusion settings.');
+    } catch (err) {
+      console.error('Error saving inclusion settings', err);
+      error('An error occurred while saving inclusion settings.');
     }
   };
 
@@ -514,12 +516,14 @@ export default function EmployerDashboard() {
           </div>
 
           {/* Button visible only on larger screens */}
-        <motion.div>
-            <Button className="bg-gradient-to-r from-[#ff1b6b] to-[#45caff] hover:from-[#e6185f] hover:to-[#3eb8e6] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer" onClick={() => router.push("/post-job")}>
-              <Plus className="h-4 w-4 mr-2" /> Post New Job
-            </Button>
-          </motion.div>
-      </div>  
+          <Button
+            className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
+            onClick={() => router.push("/post-job")}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Post New Job
+          </Button>
+        </div>
 
         <div className="grid lg:grid-cols-4 gap-8 space-y-4">
           {/* Sidebar */}
@@ -527,7 +531,7 @@ export default function EmployerDashboard() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-gradient-to-r from-[#ff1b6b] to-[#45caff] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
                     <Building className="h-6 w-6" />
                   </div>
                   <div>
@@ -561,17 +565,33 @@ export default function EmployerDashboard() {
                     { id: "overview", label: "Overview", icon: BarChart3 },
                     { id: "jobs", label: "Job Postings", icon: FileText },
                     { id: "applications", label: "Applications", icon: Users },
-                    { id: "settings", label: "Company Settings", icon: Settings },
-                    { id: "tax-calculator", label: "Calculator", icon: Calculator },
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === item.id ? "bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] text-white" : "text-[#3a4043] hover:bg-gray-100"}`}
-                    >
-                      <item.icon className="h-4 w-4" /> {item.label}
-                    </button>
-                  ))}
+                    {
+                      id: "settings",
+                      label: "Company Settings",
+                      icon: Settings,
+                    },
+                    {
+                      id: "tax-calculator",
+                      label: "Calculator",
+                      icon: Calculator,
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors hover:cursor-pointer ${
+                          activeTab === item.id
+                            ? "bg-[#635bff] text-white"
+                            : "text-[#3a4043] hover:bg-gray-100"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </nav>
               </CardContent>
             </Card>
@@ -603,34 +623,61 @@ export default function EmployerDashboard() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>Recent Applications</CardTitle>
-                      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">View More</div>
+                      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+                        View More
+                      </div>
                     </div>
                   </CardHeader>
+
                   <CardContent>
-                    <div className="space-y-4">
-                      {applications.slice(0, 3).map(app => (
-                        <motion.div key={app.id} whileHover={{ boxShadow: "2px 2px 4px rgba(99,91,255,0.3)" }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer">
+                    <div className="divide-y divide-[#e8e6f0]">
+                      {applications.slice(0, 3).map((app) => (
+                        <motion.div
+                          key={app.id}
+                          whileHover={{
+                            scale: 1.01,
+                            backgroundColor: "rgba(99,91,255,0.03)",
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20,
+                          }}
+                          className="flex items-center justify-between py-4 hover:cursor-pointer"
+                        >
                           <div className="flex items-center gap-3">
                             {getStatusIcon(app.status)}
                             <div>
-                              <h4 className="font-medium text-[#3a4043]">{app.candidateName}</h4>
-                              <p className="text-sm text-gray-600">{app.jobTitle} • {app.experience} experience</p>
+                              <h4 className="font-medium text-[#3a4043]">
+                                {app.candidateName}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {app.jobTitle} • {app.experience} experience
+                              </p>
                             </div>
                             {app.accommodationsRequested && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-800 flex items-center gap-1">
-                                <Shield className="h-3 w-3" /> Accommodations
+                              <Badge
+                                variant="secondary"
+                                className="bg-purple-100 text-purple-800 flex items-center gap-1"
+                              >
+                                <Shield className="h-3 w-3" />
+                                Accommodations
                               </Badge>
                             )}
                           </div>
+
                           <div className="text-right">
                             {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Score: {app.score}%</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Score: {app.score}%
+                            </p>
                           </div>
                         </motion.div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
+                
 
                 {/* Company Certifications */}
                <Card>
@@ -647,7 +694,12 @@ export default function EmployerDashboard() {
                         </Badge>
                       )) : null}
                     </div>
-                    <Button variant="outline" className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer">View All Certifications</Button>
+                    <Button
+                      variant="outline"
+                      className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer hover:text-white"
+                    >
+                      View All Certifications
+                    </Button>
                   </CardContent>
                 </Card>
               </div>

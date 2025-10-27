@@ -13,7 +13,9 @@ interface ProfileSubmissionProps {
       residentialAddress: string;
       nric: string;
       oku_card: string;
-      linkedin: string;
+      preferred_role: string;
+      preferred_industry: string;
+      preferred_location: string;
     };
     name: string;
     email: string;
@@ -44,7 +46,7 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
 
       console.log('Saving personal information:', requestData);
 
-      const response = await fetch(`http://localhost:8000/profiles/${userEmail}/personal_identifiers`, {
+      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/personal_identifiers`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

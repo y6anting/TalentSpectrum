@@ -8,15 +8,9 @@ import {
   Plus, Edit, Eye, Trash2, DollarSign, Clock, CheckCircle, XCircle,
   BarChart3, Camera, User, MapPin
 } from 'lucide-react';
-
-// Import Recharts components
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-
-// --- Replicating components based on your provided files ---
-// Assuming these components exist in your project at '@/app/components'
-// You might need to adjust paths or create these if they don't exist.
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'outline' | 'ghost';
@@ -234,9 +228,9 @@ const EcommerceDashboardPage: React.FC = () => {
 
   // Placeholder data
   const products = [
-    { id: 'p1', name: 'Hand-knitted Scarf', category: 'Handcrafts', price: 45.00, stock: 10, status: 'Active', imageUrl: 'ecomm/scarf.jfif' },
-    { id: 'p2', name: 'Gluten-Free Chocolate Chip Cookies', category: 'Baked Goods', price: 12.50, stock: 25, status: 'Active', imageUrl: 'ecomm/gf_cookies.jfif' },
-    { id: 'p3', name: 'Abstract Canvas Painting', category: 'Art & Design', price: 120.00, stock: 1, status: 'Draft', imageUrl: 'ecomm/painting.jfif' },
+    { id: 'p1', name: 'Hand-knitted Scarf', category: 'Handcrafts', price: 45.00, stock: 10, status: 'Active', imageUrl: '/ecomm/scarf.jfif' },
+    { id: 'p2', name: 'Gluten-Free Chocolate Chip Cookies', category: 'Baked Goods', price: 12.50, stock: 25, status: 'Active', imageUrl: '/ecomm/gf_cookies.jfif' },
+    { id: 'p3', name: 'Abstract Canvas Painting', category: 'Art & Design', price: 120.00, stock: 1, status: 'Draft', imageUrl: '/ecomm/painting.jfif' },
   ];
 
   const orders = [
@@ -247,18 +241,18 @@ const EcommerceDashboardPage: React.FC = () => {
 
   // Updated messages data with chatHistory
   const messages = [
-    { id: 'm1', sender: 'Alice Smith', senderAvatar: 'ecomm/chat/alice_smith.png', lastMessage: 'Great! I\'ll place an order soon.', time: '10:30 AM', chatHistory: [
+    { id: 'm1', sender: 'Alice Smith', senderAvatar: '/ecomm/chat/alice_smith.png', lastMessage: 'Great! I\'ll place an order soon.', time: '10:30 AM', chatHistory: [
         { type: 'received', text: 'Hi, is the scarf still available?' },
         { type: 'sent', text: 'Yes, it is! I have 10 in stock.' },
         { type: 'received', text: 'Great! I\'ll place an order soon.' },
       ]
     },
-    { id: 'm2', sender: 'Platform Support', senderAvatar: 'ecomm/chat/ts_logo.png', lastMessage: 'Awesome, thanks for the update!', time: 'Yesterday', chatHistory: [
+    { id: 'm2', sender: 'Platform Support', senderAvatar: '/ecomm/chat/ts_logo.png', lastMessage: 'Awesome, thanks for the update!', time: 'Yesterday', chatHistory: [
         { type: 'received', text: 'Your new product listing for "Hand-knitted Scarf" is now live!' },
         { type: 'sent', text: 'Awesome, thanks for the update!' },
       ]
     },
-    { id: 'm3', sender: 'Bob Johnson', senderAvatar: 'ecomm/chat/bob_johnson.png', lastMessage: 'You\'re very welcome, Bob! Enjoy!', time: '2 days ago', chatHistory: [
+    { id: 'm3', sender: 'Bob Johnson', senderAvatar: '/ecomm/chat/bob_johnson.png', lastMessage: 'You\'re very welcome, Bob! Enjoy!', time: '2 days ago', chatHistory: [
         { type: 'received', text: 'Received the scarf, it\'s beautiful! Thank you so much.' },
         { type: 'sent', text: 'You\'re very welcome, Bob! Enjoy!' },
       ]
@@ -693,7 +687,7 @@ const EcommerceDashboardPage: React.FC = () => {
           {/* Sidebar */}
           <Card className="lg:col-span-1 h-fit sticky top-8">
             <CardContent className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
+              <div className="flex items-center space-x-3 my-6">
                 <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold text-lg">
                   CM
                 </div>

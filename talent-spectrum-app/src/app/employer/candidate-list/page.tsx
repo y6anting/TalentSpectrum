@@ -37,6 +37,7 @@ import {
   SortDesc,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect } from "react";
 
 export default function CandidateList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,107 +45,61 @@ export default function CandidateList() {
   const [sortBy, setSortBy] = useState("recent");
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
 
-  // Mock candidate data
-  const candidates = [
-    {
-      id: "1",
-      name: "Alex Johnson",
-      title: "Software Developer",
-      location: "San Francisco, CA",
-      experience: "3 years",
-      skills: ["React", "Node.js", "TypeScript", "Python"],
-      status: "available",
-      matchScore: 92,
-      lastActive: "2 days ago",
-      accommodationsRequested: true,
-      accommodationDetails: "Flexible hours, quiet workspace",
-      portfolio: "https://alexjohnson.dev",
-      resume: "Alex_Johnson_Resume.pdf",
-      appliedJobs: ["Backend Developer", "Full Stack Developer"],
-      availability: "Immediate",
-      salaryExpectation: "$70k - $90k",
-      workStyle: "Remote preferred",
-      neurodivergentStrengths: ["Attention to detail", "Systematic thinking", "Deep focus"],
-    },
-    {
-      id: "2",
-      name: "Sam Chen",
-      title: "UX Designer",
-      location: "Seattle, WA",
-      experience: "2 years",
-      skills: ["Figma", "Adobe Creative Suite", "User Research", "Prototyping"],
-      status: "interviewing",
-      matchScore: 88,
-      lastActive: "1 day ago",
-      accommodationsRequested: false,
-      portfolio: "https://samchen.design",
-      resume: "Sam_Chen_Resume.pdf",
-      appliedJobs: ["UX Designer", "Product Designer"],
-      availability: "2 weeks notice",
-      salaryExpectation: "$65k - $85k",
-      workStyle: "Hybrid preferred",
-      neurodivergentStrengths: ["Visual thinking", "User empathy", "Creative problem-solving"],
-    },
-    {
-      id: "3",
-      name: "Jordan Smith",
-      title: "Data Analyst",
-      location: "Austin, TX",
-      experience: "4 years",
-      skills: ["Python", "SQL", "Tableau", "Machine Learning"],
-      status: "available",
-      matchScore: 95,
-      lastActive: "3 hours ago",
-      accommodationsRequested: true,
-      accommodationDetails: "Extended time for complex analysis",
-      portfolio: "https://jordansmith.analytics",
-      resume: "Jordan_Smith_Resume.pdf",
-      appliedJobs: ["Data Analyst", "Business Intelligence Analyst"],
-      availability: "Immediate",
-      salaryExpectation: "$80k - $110k",
-      workStyle: "Remote or on-site",
-      neurodivergentStrengths: ["Pattern recognition", "Analytical thinking", "Accuracy"],
-    },
-    {
-      id: "4",
-      name: "Taylor Williams",
-      title: "Marketing Specialist",
-      location: "New York, NY",
-      experience: "2 years",
-      skills: ["Digital Marketing", "Content Creation", "SEO", "Social Media"],
-      status: "hired",
-      matchScore: 85,
-      lastActive: "1 week ago",
-      accommodationsRequested: true,
-      accommodationDetails: "Written instructions, structured feedback",
-      portfolio: "https://taylorwilliams.marketing",
-      resume: "Taylor_Williams_Resume.pdf",
-      appliedJobs: ["Marketing Coordinator", "Content Manager"],
-      availability: "Not available",
-      salaryExpectation: "$55k - $75k",
-      workStyle: "Hybrid",
-      neurodivergentStrengths: ["Creative thinking", "Attention to detail", "Organization"],
-    },
-    {
-      id: "5",
-      name: "Casey Rodriguez",
-      title: "Project Manager",
-      location: "Chicago, IL",
-      experience: "5 years",
-      skills: ["Agile", "Scrum", "Jira", "Team Leadership"],
-      status: "available",
-      matchScore: 90,
-      lastActive: "5 hours ago",
-      accommodationsRequested: false,
-      portfolio: "https://caseyrodriguez.pm",
-      resume: "Casey_Rodriguez_Resume.pdf",
-      appliedJobs: ["Project Manager", "Scrum Master"],
-      availability: "1 month notice",
-      salaryExpectation: "$75k - $95k",
-      workStyle: "Remote or hybrid",
-      neurodivergentStrengths: ["Systematic planning", "Process improvement", "Team coordination"],
-    },
-  ];
+  // Replace mock data with fetched candidates
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await fetch("http://127.0.0.1:8000/profiles");
+        if (!res.ok) throw new Error(`Failed to fetch profiles: ${res.status}`);
+        const data = await res.json();
+        const mapped = (Array.isArray(data) ? data : []).map((p: any) => {
+          const hardSkills = (p.exp_skill?.HardSkills || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+          const softSkills = (p.exp_skill?.SoftSkills || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+          const skills = [...new Set([...hardSkills, ...softSkills])];
+          const strengths = Object.entries(p.environment || {})
+            .filter(([_, v]) => {
+              if (typeof v === "string") return v.trim().length > 0;
+              if (v === null || v === undefined) return false;
+              return Boolean(v);
+            })
+            .map(([k]) => k.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim());
+          const accommodationsRequested = Array.isArray(p.accommodations) && p.accommodations.length > 0;
+          return {
+            id: String(p.id ?? p.email ?? Math.random().toString(36).slice(2)),
+            name: p.name ?? "Unnamed",
+            title: p.exp_skill?.RoleTitle ?? "Candidate",
+            location: p.location ?? "",
+            experience: p.exp_skill?.YearsInRole ? `${p.exp_skill.YearsInRole} years` : "",
+            skills,
+            status: "available",
+            matchScore: undefined,
+            lastActive: "",
+            accommodationsRequested,
+            accommodationDetails: accommodationsRequested ? (Array.isArray(p.accommodations) ? p.accommodations.join(", ") : String(p.accommodations)) : "",
+            portfolio: p.personal_identifiers?.linkedin ?? "",
+            resume: "",
+            appliedJobs: [],
+            availability: p.job_preferences?.availability ?? "",
+            salaryExpectation: "",
+            workStyle: p.preferences?.workType ?? "",
+            neurodivergentStrengths: strengths,
+          };
+        });
+        setCandidates(mapped);
+      } catch (err: any) {
+        setError(err.message || "Failed to load candidates");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCandidates();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -181,10 +136,8 @@ export default function CandidateList() {
   const filteredCandidates = candidates.filter((candidate) => {
     const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         candidate.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+                         candidate.skills.some((skill: string) => skill.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesFilter = filterStatus === "all" || candidate.status === filterStatus;
-    
     return matchesSearch && matchesFilter;
   });
 
@@ -287,9 +240,13 @@ export default function CandidateList() {
 
         {/* Results Summary */}
         <div className="mb-6">
-          <p className="text-[#6f7a80]">
-            Showing {filteredCandidates.length} of {candidates.length} candidates
-          </p>
+          {isLoading && <p className="text-[#6f7a80]">Loading candidates...</p>}
+          {error && <p className="text-red-600">{error}</p>}
+          {!isLoading && !error && (
+            <p className="text-[#6f7a80]">
+              Showing {filteredCandidates.length} of {candidates.length} candidates
+            </p>
+          )}
         </div>
 
         {/* Candidate Cards */}
@@ -318,9 +275,11 @@ export default function CandidateList() {
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-xl font-semibold text-[#3a4043]">{candidate.name}</h3>
                             {getStatusBadge(candidate.status)}
-                            <div className={`text-sm font-medium ${getMatchScoreColor(candidate.matchScore)}`}>
-                              {candidate.matchScore}% match
-                            </div>
+                            {typeof candidate.matchScore === "number" && (
+                              <div className={`text-sm font-medium ${getMatchScoreColor(candidate.matchScore)}`}>
+                                {candidate.matchScore}% match
+                              </div>
+                            )}
                           </div>
                           
                           <p className="text-[#635bff] font-medium mb-2">{candidate.title}</p>
@@ -343,7 +302,7 @@ export default function CandidateList() {
                           {/* Skills */}
                           <div className="mb-3">
                             <div className="flex flex-wrap gap-2">
-                              {candidate.skills.map((skill, skillIndex) => (
+                              {candidate.skills.map((skill: string, skillIndex: number) => (
                                 <Badge key={skillIndex} variant="secondary" className="text-xs">
                                   {skill}
                                 </Badge>
@@ -358,7 +317,7 @@ export default function CandidateList() {
                               <span className="text-sm font-medium text-[#3a4043]">Neurodivergent Strengths:</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              {candidate.neurodivergentStrengths.map((strength, strengthIndex) => (
+                              {candidate.neurodivergentStrengths.map((strength: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined, strengthIndex: number) => (
                                 <Badge key={strengthIndex} variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
                                   {strength}
                                 </Badge>

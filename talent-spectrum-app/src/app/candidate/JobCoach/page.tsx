@@ -84,9 +84,9 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
           
           <p className="text-lg text-[#6f7a80] mb-8 max-w-4xl mx-auto leading-relaxed">
             Get career guidance, interview practice and workplace tips. 
-            <p>
+            <span>
             AI-powered, human-supported.
-            </p>
+            </span>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-2">
@@ -159,6 +159,9 @@ export default function JobCoach({ setCurrentPage }: JobCoachProps) {
     </div>
   );
 }
+
+
+
 
 
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 
 interface HeaderProps {
@@ -16,6 +16,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   // Normalize role to uppercase
   const role = session?.user?.role
@@ -25,6 +26,45 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         | "JOB_COACH")
     : undefined;
 
+    // useEffect(() => {
+    //   if (status !== "authenticated") return;
+
+    //   const loadName = async () => {
+    //     try {
+    //       const localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    //       const userEmail = encodeURIComponent(localEmail || session?.user?.email || '');
+    //       const roleUpper = String(session.user.role).toUpperCase();
+
+    //       console.log("Fetching name for:", { role: roleUpper, userEmail, localEmail, sessionName: session.user.name });
+
+    //       if (roleUpper === "CANDIDATE") {
+    //         const res = await fetch(`http://localhost:8000/profiles/${userEmail}`);
+    //         if (res.ok) {
+    //           const profile = await res.json();
+    //           setDisplayName(profile?.name ?? session.user.name ?? null);
+    //         } else {
+    //           setDisplayName(session.user.name ?? null);
+    //         }
+    //       } else if (roleUpper === "EMPLOYER") {
+    //         const res = await fetch(`http://localhost:8000/jobs/company/${userEmail}`);
+    //         if (res.ok) {
+    //           const company = await res.json();
+    //           setDisplayName(company?.name ?? session.user.name ?? null);
+    //         } else {
+    //           setDisplayName(session.user.name ?? null);
+    //         }
+    //       } else if (roleUpper === "JOB_COACH") {
+    //         setDisplayName(session.user.name ?? null);
+    //       }
+    //     } catch (e) {
+    //       console.error("Failed to fetch display name:", e);
+    //       setDisplayName(session.user?.name ?? null);
+    //     }
+    //   };
+
+    //   loadName();
+    // }, [session, status]);
+    
   // Show loading skeleton instead of hiding header
   if (status === "loading") {
     return (
@@ -74,6 +114,8 @@ export default function Header({ setCurrentPage }: HeaderProps) {
       // { href: "/candidate/homepage", label: "Homepage" },
       { href: "/candidate/JobListing", label: "Find Jobs" },
       { href: "/candidate/JobCoach", label: "Job Coach" },
+      { href: "/candidate/community", label: "Community" },
+      { href: "/candidate/ecommerce", label: "E-Commerce" },
     ];
   } else if (role === "JOB_COACH") {
     navItems = [
@@ -144,7 +186,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
             {session?.user ? (
               <>
                 <span className="text-[#3a4043]">
-                  Hi, <span className="font-semibold">{role}</span>
+                  Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
@@ -207,10 +249,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 {session?.user ? (
                   <>
                     <span className="text-center text-[#3a4043] py-2">
-                      Hi,{" "}
-                      <span className="font-semibold">
-                        {session.user.name ?? "User"}
-                      </span>
+                     Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
                     </span>
                     <button
                       onClick={() => {

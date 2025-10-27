@@ -20,15 +20,10 @@ interface EnvironmentSubmissionProps {
     workspace: string;
     workdayStructure: string;
   };
-  jobPreferences: {
-    preferredIndustries: string[];
-    preferredRoles: string[];
-    locationPreference: string;
-    availability: string;
-  };
+  onSave?: () => void;
 }
 
-export function EnvironmentSubmission({ environment, jobPreferences }: EnvironmentSubmissionProps) {
+export function EnvironmentSubmission({ environment, onSave }: EnvironmentSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,10 +36,10 @@ export function EnvironmentSubmission({ environment, jobPreferences }: Environme
         throw new Error('No userEmail found in localStorage');
       }
 
-      const requestData = { environment, jobPreferences };
-      console.log('Saving environment & preferences:', requestData);
+      const requestData = { environment };
+      console.log('Saving environment:', requestData);
 
-      const response = await fetch(`http://localhost:8000/profiles/${userEmail}/environment`, {
+      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/environment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -53,15 +48,16 @@ export function EnvironmentSubmission({ environment, jobPreferences }: Environme
       });
 
       if (response.ok) {
-        alert('Environment & Preferences saved successfully!');
+        alert('Environment saved successfully!');
+        if (onSave) onSave();
       } else {
         const errorText = await response.text();
         console.error('API Error Response:', errorText);
-        throw new Error('Failed to save environment & preferences.');
+        throw new Error('Failed to save environment.');
       }
     } catch (error: any) {
-      console.error('Error saving environment & preferences:', error);
-      setError(error.message || 'An error occurred while saving your environment & preferences.');
+      console.error('Error saving environment:', error);
+      setError(error.message || 'An error occurred while saving your environment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -75,7 +71,7 @@ export function EnvironmentSubmission({ environment, jobPreferences }: Environme
         onClick={handleSubmitEnvironment}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Saving...' : 'Save Environment & Preferences'}
+        {isSubmitting ? 'Saving...' : 'Save Environment'}
       </Button>
     </div>
   );

@@ -11,9 +11,10 @@ interface EducationSubmissionProps {
     cgpa_grade: string;
     award: string;
   }>;
+  onSave?: () => void;
 }
 
-export function EducationSubmission({ educations }: EducationSubmissionProps) {
+export function EducationSubmission({ educations, onSave }: EducationSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,7 @@ export function EducationSubmission({ educations }: EducationSubmissionProps) {
         throw new Error('No userEmail found in localStorage');
       }
 
-      const response = await fetch(`http://localhost:8000/profiles/${userEmail}/education`, {
+      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/education`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -36,6 +37,7 @@ export function EducationSubmission({ educations }: EducationSubmissionProps) {
 
       if (response.ok) {
         alert('Education saved successfully!');
+        if (onSave) onSave();
       } else {
         throw new Error('Failed to save education.');
       }

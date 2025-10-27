@@ -186,8 +186,16 @@ export default function PostJob() {
       return;
     }
 
+    // Get employer email from localStorage
+    const employerEmail = localStorage.getItem('employerEmail');
+    if (!employerEmail) {
+      alert('Please log in as an employer to post jobs.');
+      return;
+    }
+
     // Construct request payload to match your FastAPI PostJobRequest model
     const payload = {
+      employer_email: employerEmail,
       job_title: jobTitle,
       job_type: jobType,
       work_mode: workLocation,

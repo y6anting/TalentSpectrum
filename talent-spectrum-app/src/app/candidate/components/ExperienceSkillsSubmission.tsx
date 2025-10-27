@@ -18,9 +18,10 @@ interface ExperienceSkillsSubmissionProps {
     LanguageProficiency: string;
     Achievements: string;
   };
+  onSave?: () => void;
 }
 
-export function ExperienceSkillsSubmission({ experiences, exp_skill }: ExperienceSkillsSubmissionProps) {
+export function ExperienceSkillsSubmission({ experiences, exp_skill, onSave }: ExperienceSkillsSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +35,7 @@ export function ExperienceSkillsSubmission({ experiences, exp_skill }: Experienc
       }
 
       // Save experiences
-      const experienceResponse = await fetch(`http://localhost:8000/profiles/${userEmail}/experience`, {
+      const experienceResponse = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/experience`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +44,7 @@ export function ExperienceSkillsSubmission({ experiences, exp_skill }: Experienc
       });
 
       // Save skills
-      const skillsResponse = await fetch(`http://localhost:8000/profiles/${userEmail}/exp_skill`, {
+      const skillsResponse = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/exp_skill`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -53,6 +54,7 @@ export function ExperienceSkillsSubmission({ experiences, exp_skill }: Experienc
 
       if (experienceResponse.ok && skillsResponse.ok) {
         alert('Experience & Skills saved successfully!');
+        if (onSave) onSave();
       } else {
         throw new Error('Failed to save experience & skills.');
       }

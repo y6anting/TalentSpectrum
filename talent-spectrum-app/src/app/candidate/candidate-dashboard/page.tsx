@@ -6,7 +6,8 @@ import { Button } from "@/app/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
 import { Badge } from "@/app/components/badge";
 import {
-  User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield
+  User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
+  HandFist, LetterTextIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -16,13 +17,18 @@ import { ProfileSubmission } from "../components/ProfileSubmission";
 import { EducationSubmission } from "../components/EducationSubmission";
 import { ExperienceSkillsSubmission } from "../components/ExperienceSkillsSubmission";
 import { EnvironmentSubmission } from "../components/EnvironmentSubmission";
+import { SkillsSubmission } from "../components/SkillsSubmission";
+import { NeuroStrengthSubmission } from "../components/NeuroStrengthSubmission";
 import ResumeUploadButton from "@/app/components/resume-upload/ResumeUploadButton";
+import { useSession } from "next-auth/react";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   type Environment = {
     patternRecognition: string;
@@ -56,12 +62,15 @@ export default function CandidateDashboard() {
   type Experience = {
     id: number;
     employer: string;
+    title: string;
     industry: string;
     start: string;
     end: string;
+    isCurrent: boolean;
     seniorityLevel: string;
     skillsToolsUsed: string;
     projectHighlights: string;
+    achievements: string;
   };
 
   type CandidateProfile = {
@@ -86,12 +95,9 @@ export default function CandidateDashboard() {
       nric: string;
       oku_card: string;
       linkedin: string;
-    };
-    jobPreferences: {
-      preferredIndustries: string[];
-      preferredRoles: string[];
-      locationPreference: string;
-      availability: string;
+      preferred_role: string;
+      preferred_industry: string;
+      preferred_location: string;
     };
     education: {
       level: string;
@@ -143,12 +149,9 @@ export default function CandidateDashboard() {
       nric: "",
       oku_card: "",
       linkedin: "",
-    },
-    jobPreferences: {
-      preferredIndustries: [],
-      preferredRoles: [],
-      locationPreference: "",
-      availability: "",
+      preferred_role: "",
+      preferred_industry: "",
+      preferred_location: "",
     },
     education: {
       level: "",
@@ -211,153 +214,384 @@ export default function CandidateDashboard() {
     {
       id: Date.now(),
       employer: "",
+      title: "",
       industry: "",
       start: "",
       end: "",
+      isCurrent: true,
       seniorityLevel: "",
       skillsToolsUsed: "",
       projectHighlights: "",
+      achievements: "",
     },
   ]);
 
-  // Mock data
-  const applications = [
+  type LanguageProficiency = {
+    id: number;
+    language: string;
+    reading: string;
+    writing: string;
+    listening: string;
+    speaking: string;
+  };
+
+  const [languageProficiencies, setLanguageProficiencies] = useState<LanguageProficiency[]>([
     {
-      id: "1",
-      jobTitle: "Frontend Developer",
-      company: "NeuroTech",
-      appliedDate: "2024-01-15",
-      status: "under_review",
-      location: "Remote",
-      salary: "$70k - $90k",
-      accommodationsRequested: true,
-      score: 78,
-    },
-    {
-      id: "2",
-      jobTitle: "UX Designer",
-      company: "InclusiveDesign Co",
-      appliedDate: "2024-01-10",
-      status: "interview_scheduled",
-      location: "Hybrid",
-      salary: "$65k - $85k",
-      accommodationsRequested: false,
-      interviewDate: "2024-01-25",
-      score: 92,
-    },
-    {
-      id: "3",
-      jobTitle: "Data Analyst",
-      company: "DataWorks",
-      appliedDate: "2024-01-05",
-      status: "rejected",
-      location: "On-site",
-      salary: "$60k - $75k",
-      accommodationsRequested: true,
-      score: 65,
-    },
+      id: Date.now(),
+      language: "",
+      reading: "",
+      writing: "",
+      listening: "",
+      speaking: "",
+    }
+  ]);
+
+  const [selectedStrengths, setSelectedStrengths] = useState<string[]>([]);
+
+  const toggleStrength = (strength: string) => {
+    setSelectedStrengths(prev => {
+      if (prev.includes(strength)) {
+        return prev.filter(s => s !== strength);
+      }
+      if (prev.length >= 10) {
+        return prev;
+      }
+      return [...prev, strength];
+    });
+  };
+
+  const strengthOptions = [
+    'Adaptability',
+    'Analytical',
+    'Athletic Performer',
+    'Authenticity',
+    'Committed to Succeed',
+    'Creative Thinker',
+    'Curiosity',
+    'Deep Empathizer',
+    'Dependable',
+    'Detail-oriented Thinker',
+    'Entrepreneurial',
+    'Fact Retainer',
+    'Geo-spatial Thinker',
+    'Great Storyteller',
+    'High Energy & Enthusiasm',
+    'Honesty',
+    'Hyperfocus',
+    'Innovative Thinker',
+    'Integrity',
+    'Lateral Thinking',
+    'Mathematical Thinker',
+    'Methodical Task Executor',
+    'Out of the Box Problem Solver',
+    'Patient',
+    'Pattern Recognition',
+    'Precision',
+    'Process Oriented',
+    'Reliable',
+    'Resilience',
+    'Self Starter',
+    'Socially Savvy',
+    'Strong Crisis Management',
+    'Strong Moral Compass',
+    'Strong Emotional Intelligence',
+    'Strong Sense of Justice or Fairness',
+    'Strong Task Persistence',
+    'Tech or Computer Savvy',
+    'Visual Memorizer',
   ];
 
-  const savedJobs = [
-    {
-      id: "4",
-      title: "React Developer",
-      company: "TechForward",
-      location: "Remote",
-      type: "Full-time",
-      salary: "$80k - $100k",
-      isInclusive: true,
-      hasAccommodations: true,
-    },
-    {
-      id: "5",
-      title: "Software Engineer",
-      company: "InnovateCorp",
-      location: "San Francisco, CA",
-      type: "Full-time",
-      salary: "$90k - $120k",
-      isInclusive: true,
-      hasAccommodations: false,
-    },
-    {
-      id: "6",
-      title: "Kucing Engineer",
-      company: "InnovateCorp",
-      location: "San Francisco, CA",
-      type: "Full-time",
-      salary: "$90k - $120k",
-      isInclusive: true,
-      hasAccommodations: false,
-    },
-  ];
+  // Applications and saved jobs from API
+  const [applications, setApplications] = useState<any[]>([]);
+  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+
+  // Fetch applications and saved jobs
+  useEffect(() => {
+    const email = typeof window !== 'undefined' 
+      ? (localStorage.getItem('userEmail') || session?.user?.email || '')
+      : '';
+
+    if (!email) return;
+
+    const formatDate = (d: string | Date | null | undefined) => {
+      try {
+        if (!d) return '';
+        const date = typeof d === 'string' ? new Date(d) : d;
+        return date ? date.toLocaleDateString() : '';
+      } catch {
+        return '';
+      }
+    };
+
+    const fetchData = async () => {
+      try {
+        const [appsRes, savedRes] = await Promise.all([
+          fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`),
+          fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`)
+        ]);
+
+        if (appsRes.ok) {
+          const apps = await appsRes.json();
+          const mappedApps = (apps || []).map((a: any) => ({
+            id: a.id,
+            jobTitle: a.job_title || a.jobTitle,
+            company: a.company,
+            appliedDate: a.applied_date ? formatDate(a.applied_date) : a.appliedDate,
+            status: a.status,
+            location: a.location,
+            salary: a.salary,
+            accommodationsRequested: a.accommodations_requested ?? a.accommodationsRequested ?? false,
+            interviewDate: a.interview_date ? formatDate(a.interview_date) : a.interviewDate,
+            score: a.score,
+          }));
+          setApplications(mappedApps);
+        }
+
+        if (savedRes.ok) {
+          const saved = await savedRes.json();
+          const mappedSaved = (saved || []).map((s: any) => ({
+            id: s.id,
+            title: s.job_title || s.title,
+            company: s.company,
+            location: s.location,
+            type: s.job_type || s.type,
+            salary: s.salary,
+            isInclusive: s.is_inclusive ?? s.isInclusive ?? false,
+            hasAccommodations: s.has_accommodations ?? s.hasAccommodations ?? false,
+            created_at: s.created_at,
+          }));
+          setSavedJobs(mappedSaved);
+        }
+      } catch (err) {
+        console.error('Failed to fetch applications/saved jobs:', err);
+      }
+    };
+
+    fetchData();
+  }, [status, session]);
+
+  // Initialize email from localStorage on component mount
+  useEffect(() => {
+    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    if (storedEmail && !candidateProfile.email) {
+      setCandidateProfile(prev => ({
+        ...prev,
+        email: storedEmail,
+        personalIdentifiers: {
+          ...prev.personalIdentifiers,
+          emailAddress: storedEmail
+        }
+      }));
+    }
+  }, []);
 
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const userEmail = localStorage.getItem('userEmail');
-        if (!userEmail) {
-          console.error('No userEmail found in localStorage');
+        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        
+        // If no email in localStorage but we have session email, store it
+        if (!localEmail && session?.user?.email) {
+          localEmail = session.user.email;
+          localStorage.setItem('userEmail', localEmail);
+        }
+        
+        const emailToUse = encodeURIComponent(localEmail || '');
+        console.log('Using email for profile fetch:', emailToUse);
+        
+        if (!emailToUse) {
+          console.error('No email found in localStorage or session');
           setIsLoading(false);
           return;
         }
 
-        const response = await fetch(`http://localhost:8000/profiles/${userEmail}`);
+        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           console.log('API Response:', data);
+          console.log('Personal Identifiers from API:', data.personal_identifiers);
           console.log('Educations from API:', data.educations);
           console.log('Experiences from API:', data.experiences);
           if (data) {
             // Update candidate profile with fetched data
-            setCandidateProfile(prevProfile => ({
-              ...prevProfile,
-              name: data.name || prevProfile.name,
-              email: data.email || prevProfile.email,
-              location: data.location || prevProfile.location,
-              profileCompletion: data.profile_completion || prevProfile.profileCompletion,
-              accommodations: data.accommodations || prevProfile.accommodations,
-              preferences: data.preferences || prevProfile.preferences,
-              personalIdentifiers: data.personal_identifiers || prevProfile.personalIdentifiers,
-              jobPreferences: data.job_preferences || prevProfile.jobPreferences,
-              education: data.education || prevProfile.education,
-              exp_skill: data.exp_skill || prevProfile.exp_skill,
-              environment: data.environment || prevProfile.environment,
-            }));
+            const updatedProfile = {
+              ...candidateProfile,
+              name: data.name || candidateProfile.name,
+              email: data.email || localEmail || candidateProfile.email,
+              location: data.location || candidateProfile.location,
+              profileCompletion: data.profile_completion || candidateProfile.profileCompletion,
+              accommodations: data.accommodations || candidateProfile.accommodations,
+              preferences: data.preferences || candidateProfile.preferences,
+              personalIdentifiers: {
+                ...candidateProfile.personalIdentifiers,
+                ...data.personal_identifiers,
+                emailAddress: data.personal_identifiers?.emailAddress || data.email || localEmail || candidateProfile.personalIdentifiers.emailAddress
+              },
+              education: {
+                ...candidateProfile.education,
+                ...data.education
+              },
+              exp_skill: {
+                ...candidateProfile.exp_skill,
+                ...data.experience,
+                ...data.skills
+              },
+              environment: {
+                ...candidateProfile.environment,
+                ...data.environment
+              },
+            };
+            
+            console.log('Updated personalIdentifiers:', updatedProfile.personalIdentifiers);
+            setCandidateProfile(updatedProfile);
 
-            // Set educations and experiences arrays if they exist in the response
-            if (data.educations && Array.isArray(data.educations)) {
-              console.log('Setting educations:', data.educations);
-              setEducations(data.educations);
-            } else {
-              console.log('No educations found in response or not an array');
+            // Helper function to map education data
+            const mapEducation = (edu: any, isFromArray = true) => {
+              console.log('Mapping education:', edu);
+              return {
+                id: isFromArray ? edu.id : Date.now(),
+                level: edu.level || "",
+                fieldOfStudy: edu.fieldOfStudy || edu.field_of_study || "",  // Handle both field name formats
+                institution: edu.institution || "",
+                graduationYear: edu.graduationYear || edu.graduation_year || null,  // Handle both field name formats
+                cgpa_grade: edu.grade || edu.cgpa_grade || "",
+                award: edu.award || "",
+              };
+            };
+
+            // Set educations from API response
+            if (data.educations?.length > 0) {
+              setEducations(data.educations.map((edu: any) => mapEducation(edu)));
+            } else if (data.education && Object.keys(data.education).length > 0) {
+              setEducations([mapEducation(data.education, false)]);
+            } else if (educations.length === 0) {
+              setEducations([mapEducation({})]);
             }
-            if (data.experiences && Array.isArray(data.experiences)) {
-              console.log('Setting experiences:', data.experiences);
-              setExperiences(data.experiences);
-            } else {
-              console.log('No experiences found in response or not an array');
+            // Helper function to map experience data
+            const mapExperience = (exp: any) => {
+              console.log('Mapping experience:', exp);
+              return {
+                id: exp.id || Date.now(),
+                employer: exp.employer || "",
+                title: exp.title || "",
+                industry: exp.industry || "",
+                start: exp.start || exp.start_date || "",  // Handle both field name formats
+                end: exp.end || exp.end_date || "",  // Handle both field name formats
+                isCurrent: exp.isCurrent !== undefined ? exp.isCurrent : false,
+                seniorityLevel: exp.seniorityLevel || exp.seniority_level || "",  // Handle both field name formats
+                skillsToolsUsed: exp.skillsToolsUsed || exp.skills_tools_used || "",  // Handle both field name formats
+                projectHighlights: exp.projectHighlights || exp.project_highlights || "",  // Handle both field name formats
+                achievements: exp.achievements || "",
+              };
+            };
+
+            // Set experiences from API response
+            if (data.experiences?.length > 0) {
+              setExperiences(data.experiences.map((exp: any) => mapExperience(exp)));
+            } else if (experiences.length === 0) {
+              setExperiences([mapExperience({})]);
+            }
+
+            // Set language proficiencies from API response
+            if (data.language_proficiencies?.length > 0) {
+              setLanguageProficiencies(data.language_proficiencies);
+            } else if (languageProficiencies.length === 0) {
+              setLanguageProficiencies([{
+                id: Date.now(),
+                language: "",
+                reading: "",
+                writing: "",
+                listening: "",
+                speaking: "",
+              }]);
+            }
+
+            // Set neurodivergent strengths from API response
+            if (data.neurodivergent_strengths?.length > 0) {
+              setSelectedStrengths(data.neurodivergent_strengths);
             }
             
             setDataLoaded(true);
           } else {
             console.error('No data in response:', data);
+            
+            // If no data but we have email, at least populate the email field
+            if (localEmail) {
+              setCandidateProfile(prev => ({
+                ...prev,
+                email: localEmail,
+                personalIdentifiers: {
+                  ...prev.personalIdentifiers,
+                  emailAddress: localEmail
+                }
+              }));
+            }
           }
+          setIsLoading(false);
+        } else if (response.status === 404) {
+          console.log('Profile not found, creating new profile with email');
+          
+          // If profile not found but we have email, create a basic profile
+          if (localEmail) {
+            setCandidateProfile(prev => ({
+              ...prev,
+              email: localEmail,
+              personalIdentifiers: {
+                ...prev.personalIdentifiers,
+                emailAddress: localEmail
+              }
+            }));
+          }
+          
+          setDataLoaded(true);
           setIsLoading(false);
         } else {
           console.error('API request failed:', response.status, response.statusText);
           const errorText = await response.text();
           console.error('Error response:', errorText);
+          
+          // If API fails but we have email, at least populate the email field
+          if (localEmail) {
+            setCandidateProfile(prev => ({
+              ...prev,
+              email: localEmail,
+              personalIdentifiers: {
+                ...prev.personalIdentifiers,
+                emailAddress: localEmail
+              }
+            }));
+          }
+          
           setIsLoading(false);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
+        
+        // If there's an error but we have email, at least populate the email field
+        const fallbackEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        if (fallbackEmail) {
+          setCandidateProfile(prev => ({
+            ...prev,
+            email: fallbackEmail,
+            personalIdentifiers: {
+              ...prev.personalIdentifiers,
+              emailAddress: fallbackEmail
+            }
+          }));
+        }
+        
         setIsLoading(false);
       }
     };
 
     fetchProfileData();
-  }, []);
+  }, [status, session]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -399,12 +633,6 @@ export default function CandidateDashboard() {
     completedFields += envFields.length;
     totalFields += Object.keys(candidateProfile.environment).length;
 
-    // jobPreferences (weight: 10%)
-    const jobPrefFields = Object.values(candidateProfile.jobPreferences).filter(
-      (val) => (Array.isArray(val) ? val.length > 0 : val !== '' && val !== null && val !== undefined)
-    );
-    completedFields += jobPrefFields.length;
-    totalFields += Object.keys(candidateProfile.jobPreferences).length;
 
     const completionPercentage = totalFields > 0 ? Math.round((completedFields / totalFields) * 100) : 0;
     
@@ -422,7 +650,12 @@ export default function CandidateDashboard() {
     if (dataLoaded) {
       calculateProfileCompletion();
     }
-  }, [candidateProfile.personalIdentifiers, candidateProfile.education, candidateProfile.exp_skill, candidateProfile.environment, candidateProfile.jobPreferences, educations, experiences, dataLoaded]);
+  }, [candidateProfile.personalIdentifiers, candidateProfile.education, candidateProfile.exp_skill, candidateProfile.environment, educations, experiences, dataLoaded]);
+
+  // Debug education state changes
+  useEffect(() => {
+    console.log('Education state changed:', educations);
+  }, [educations]);
 
   // Handle tab switching
   const handleTabChange = (tabId: string) => {
@@ -586,12 +819,14 @@ export default function CandidateDashboard() {
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: User },
-                    { id: "applications", label: "My Applications", icon: Briefcase },
+                    { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings },
                     { id: "education", label: "Education", icon: Book },
-                    { id: "exp_skill", label: "Experience & Skills", icon: Briefcase },
-                    { id: "environment", label: "Environment Profile", icon: House },
+                    { id: "experience", label: "Experience", icon: Briefcase },
+                    { id: "skills", label: "Skills", icon: HandFist },
+                    { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+                    { id: "environment", label: "Preferred Environment", icon: House },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -866,77 +1101,116 @@ export default function CandidateDashboard() {
                     <CardContent className="space-y-4">
                       <div className="grid md:grid-cols-2 gap-6">
                         {[
-                          { label: "Full Name", key: "fullName", type: "text" },
+                          { label: "Full Name", key: "fullName", type: "text", required: true },
                           { label: "NRIC", key: "nric", type: "text" },
-                          { label: "Email", key: "emailAddress", type: "email" },
-                          { label: "Phone Number", key: "phoneNumber", type: "text" },
-                          { label: "Date of Birth", key: "dateOfBirth", type: "date" },
-                          { label: "Gender", key: "gender", type: "text" },
-                          { label: "Nationality", key: "nationality", type: "text" },
+                          { label: "Email", key: "emailAddress", type: "email", required: true },
+                          { label: "Phone Number", key: "phoneNumber", type: "tel", required: true },
+                          { label: "Date of Birth", key: "dateOfBirth", type: "date", required: true },
+                          { label: "Gender", key: "gender", type: "select", options: ["Male", "Female", "Prefer not to mention"], required: true },
+                          { label: "Nationality", key: "nationality", type: "select", options: ["Malaysian", "Non-Malaysian"], required: true },
                           { label: "OKU Card", key: "oku_card", type: "text" },
+                          { label: "Preferred Role", key: "preferred_role", type: "select", options: ["Permanent", "Contract", "Part Time", "Internship"], required: true },
+                          { label: "Preferred Industry", key: "preferred_industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"], required: true },
+                          { label: "Preferred Location", key: "preferred_location", type: "select", options: ["Johor", "Kedah", "Kelantan", "Kuala Lumpur", "Labuan", "Malacca", "Negeri Sembilan", "Pahang", "Penang", "Perak", "Perlis", "Putrajaya", "Sabah", "Sarawak", "Selangor", "Terengganu", "Remote"], required: true },
                         ].map((field) => (
                           <div key={field.key}>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
                               {field.label}
+                              {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
-                            <input
-                              type={field.type}
-                              value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers] || ""}
-                              onChange={(e) =>
-                                setCandidateProfile({
-                                  ...candidateProfile,
-                                  personalIdentifiers: {
-                                    ...candidateProfile.personalIdentifiers,
-                                    [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
-                                  },
-                                  name: field.key === "fullName" ? e.target.value : candidateProfile.name,
-                                  email: field.key === "emailAddress" ? e.target.value : candidateProfile.email,
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                            />
-                          </div>
+            
+                            {field.type === "select" ? (
+                              <Select
+                                value={
+                                  (candidateProfile.personalIdentifiers[
+                                    field.key as keyof typeof candidateProfile.personalIdentifiers
+                                  ] as string) || ""
+                                }
+                                onValueChange={(val) => {
+                            setCandidateProfile({
+                              ...candidateProfile,
+                              personalIdentifiers: {
+                                ...candidateProfile.personalIdentifiers,
+                                      [field.key as string]: val,
+                                    },
+                                    name: field.key === "fullName" ? val : candidateProfile.name,
+                                    email: field.key === "emailAddress" ? val : candidateProfile.email,
+                                  });
+                                  // Clear error when user fills the field
+                                  if (field.required && val) {
+                                    setErrors({ ...errors, [field.key]: "" });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${
+                                  errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
+                                }`}>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+                                  {field.options?.map((opt) => (
+                                    <SelectItem key={opt} value={opt}>
+                                      {opt}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <>
+                        <input
+                                  type={field.type}
+                                  value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers] || ""}
+                                  onChange={(e) => {
+                                    const { value } = e.target;
+                                    let error = "";
+                                    // Check if required field is empty
+                                    if (field.required && !value.trim()) {
+                                      error = `${field.label} is required`;
+                                    }
+                                    if (field.type === "email") {
+                                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                      if (!emailRegex.test(value)) {
+                                        error = "Please enter a valid email address.";
+                                      }
+                                    }
+                                    if (field.type === "tel") {
+                                      const numericRegex = /^[0-9+\- ]*$/;
+                                      if (!numericRegex.test(value)) {
+                                        error = "Please enter a valid phone number.";
+                                      }
+                                    }
+
+                                    setErrors({ ...errors, [field.key]: error });
+
+                            setCandidateProfile({
+                              ...candidateProfile,
+                              personalIdentifiers: {
+                                ...candidateProfile.personalIdentifiers,
+                                        [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
+                                      },
+                                      name: field.key === "fullName" ? e.target.value : candidateProfile.name,
+                                      email: field.key === "emailAddress" ? e.target.value : candidateProfile.email,
+                                    });
+                                  }}
+                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${
+                                    errors[field.key as string]
+                                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
+                                      : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
+                                  }`}
+                                />
+                                {errors[field.key as string] && (
+                                  <p className="text-red-500 text-xs mt-1">{errors[field.key as string]}</p>
+                                )}
+                              </>
+                            )}
+                      </div>
                         ))}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                          Residential Address
-                        </label>
-                        <textarea
-                          value={candidateProfile.personalIdentifiers.residentialAddress || ""}
-                          onChange={(e) =>
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
-                                residentialAddress: e.target.value,
-                              },
-                              location: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus:ring-0 focus:border-[#635bff] focus:border-[1px]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                          LinkedIn Profile
-                        </label>
-                        <input
-                          type="url"
-                          value={candidateProfile.personalIdentifiers.linkedin || ""}
-                          onChange={(e) =>
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
-                                linkedin: e.target.value,
-                              },
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                          placeholder="https://linkedin.com/in/yourprofile"
-                        />
-                      </div>
+                       
+                    </CardContent>
+                  </Card>
+                   <hr className="my-3 border-gray-200" />
+                    <div className="flex justify-end">
                       <ProfileSubmission
                         candidateProfile={{
                           personalIdentifiers: candidateProfile.personalIdentifiers,
@@ -948,15 +1222,16 @@ export default function CandidateDashboard() {
                           calculateProfileCompletion();
                         }}
                       />
-                    </CardContent>
-                  </Card>
+                    </div>
                 </div>
               </div>
             )}
 
             {activeTab === "education" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Education Settings</h1>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1>
+
+                {/* Render all education cards */}
                 <div className="grid gap-6">
                   {educations.map((edu, index) => (
                     <Card key={edu.id}>
@@ -971,6 +1246,7 @@ export default function CandidateDashboard() {
                           </button>
                         )}
                       </CardHeader>
+
                       <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-6">
                           {[
@@ -978,9 +1254,9 @@ export default function CandidateDashboard() {
                               label: "Level",
                               key: "level",
                               type: "select",
-                              options: ["Degree", "Master", "PhD", "Diploma", "STPM", "SPM/PT3"],
+                              options: ["PT3", "SPM / O-level", "STPM / A-level / Diploma", "Degree", "Master", "PhD", "Vocational", "Professional Certificate"],
                             },
-                            { label: "University/College/School", key: "institution", type: "text" },
+                            { label: "University / College / School", key: "institution", type: "text" },
                             { label: "Field of Study", key: "fieldOfStudy", type: "text" },
                             {
                               label: "Graduation Year",
@@ -989,12 +1265,13 @@ export default function CandidateDashboard() {
                               options: grad_year.map(String),
                             },
                             { label: "CGPA / Grade", key: "cgpa_grade", type: "text" },
-                            { label: "Award", key: "award", type: "text" },
+                            { label: "Award (If Applicable)", key: "award", type: "text" },
                           ].map((field) => (
                             <div key={field.key}>
                               <label className="block text-sm font-medium text-[#3a4043] mb-1">
                                 {field.label}
                               </label>
+
                               {field.type === "select" ? (
                                 <select
                                   value={
@@ -1039,6 +1316,9 @@ export default function CandidateDashboard() {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+
+                {/* Manage Multiple Education Cards */}
                   <div className="flex justify-end mb-4">
                     <Button
                       onClick={() =>
@@ -1060,17 +1340,24 @@ export default function CandidateDashboard() {
                       + Add Education
                     </Button>
                   </div>
+              <hr className="my-3 border-gray-200" />
+                <div className="flex justify-end">
                   <EducationSubmission 
                     educations={educations} 
+                    onSave={() => {
+                      calculateProfileCompletion();
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {activeTab === "exp_skill" && (
+            {activeTab === "experience" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Experiences & Skills</h1>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
+
                 <div className="grid gap-6">
+                  {/* Experience Info */}
                   {experiences.map((exp, index) => (
                     <Card key={exp.id}>
                       <CardHeader className="flex justify-between items-center">
@@ -1086,35 +1373,120 @@ export default function CandidateDashboard() {
                           </button>
                         )}
                       </CardHeader>
+
                       <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-6">
                           {[
-                            { label: "Employer", key: "employer" },
-                            { label: "Industry", key: "industry" },
-                            { label: "Start", key: "start" },
-                            { label: "End", key: "end" },
-                            { label: "Seniority", key: "seniorityLevel" },
-                            { label: "Tools Used", key: "skillsToolsUsed" },
-                            { label: "Project Highlights", key: "projectHighlights" },
+                            { label: "Employer", key: "employer", type: "text" },
+                            { label: "Title", key: "title", type: "text" },
+                            { label: "Seniority", key: "seniorityLevel", type: "select", options: ["Non-executive", "Executive", "Managerial", "Head of Department", "C-suite"] },
+                            { label: "Industry", key: "industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"] },
+                            { label: "Start Date", key: "start", type: "date" },
                           ].map((field) => (
                             <div key={field.key}>
                               <label className="block text-sm font-medium text-[#3a4043] mb-1">
                                 {field.label}
                               </label>
+
+                              {field.type === "select" ? (
+                                <Select
+                                  value={String(exp[field.key as keyof typeof exp] ?? "")}
+                                  onValueChange={(val) => updateExperience(exp.id, { [field.key]: val })}
+                                >
+                                  <SelectTrigger className="w-full border border-[#e8e6f0] rounded-lg px-3 py-2 text-left">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
+                                    {field.options?.map((opt) => (
+                                      <SelectItem key={opt} value={opt}>
+                                        {opt}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
                               <input
-                                type="text"
-                                value={exp[field.key as keyof typeof exp] || ""}
+                                  type={field.type}
+                                  value={String(exp[field.key as keyof typeof exp] ?? "")}
+                                  onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
+                                  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                                />
+                              )}
+                            </div>
+                          ))}
+
+                          {/* End Date with "Currently working here" checkbox */}
+                          <div>
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              End Date
+                            </label>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <input
+                                type="checkbox"
+                                id={`current-${exp.id}`}
+                                checked={exp.isCurrent}
                                 onChange={(e) =>
-                                  updateExperience(exp.id, { [field.key]: e.target.value })
+                                  updateExperience(exp.id, {
+                                    isCurrent: e.target.checked,
+                                    end: e.target.checked ? "" : exp.end, // Clear end date if checked
+                                  })
+                                }
+                                className="h-4 w-4 rounded border-gray-300 text-[#635bff] focus:ring-[#635bff]"
+                              />
+                              <label
+                                htmlFor={`current-${exp.id}`}
+                                className="text-sm text-gray-600"
+                              >
+                                I currently work here
+                              </label>
+                            </div>
+                            {!exp.isCurrent && (
+                              <input
+                                type="date"
+                                value={exp.end || ""}
+                                onChange={(e) =>
+                                  updateExperience(exp.id, { end: e.target.value })
                                 }
                                 className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                               />
+                            )}
                             </div>
-                          ))}
+
+                          {/* Project Highlights */}
+                          <div>
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              Project Highlights
+                            </label>
+                            <textarea
+                              value={String(exp.projectHighlights ?? "")}
+                              onChange={(e) => {
+                                updateExperience(exp.id, { projectHighlights: e.target.value });
+                              }}
+                              rows={4}
+                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                            />
+                          </div>
+
+                          {/* Achievements */}
+                          <div>
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              Achievements
+                            </label>
+                            <textarea
+                              value={String(exp.achievements ?? "")}
+                              onChange={(e) => {
+                                updateExperience(exp.id, { achievements: e.target.value });
+                              }}
+                              rows={4}
+                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                            />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+
+                  {/* Add Experience Button */}
                   <div className="flex justify-end mt-4">
                     <Button
                       onClick={() =>
@@ -1123,12 +1495,15 @@ export default function CandidateDashboard() {
                           {
                             id: Date.now(),
                             employer: "",
+                            title: "",
                             industry: "",
                             start: "",
                             end: "",
+                            isCurrent: true,
                             seniorityLevel: "",
                             skillsToolsUsed: "",
                             projectHighlights: "",
+                            achievements: "",
                           },
                         ])
                       }
@@ -1137,19 +1512,41 @@ export default function CandidateDashboard() {
                       + Add Experience
                     </Button>
                   </div>
+
+                  {/* Save Experience Button */}
+                  <hr className="my-3 border-gray-200" />
+                  <div className="flex justify-end mt-4">
+                    <ExperienceSkillsSubmission
+                      experiences={experiences}
+                      exp_skill={candidateProfile.exp_skill}
+                      onSave={() => {
+                        calculateProfileCompletion();
+                      }}
+                    />
+                  </div>
+                  
+                </div>
+              </div>
+            )}
+
+            {activeTab === "skills" && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+
+                <div className="grid gap-6">
+                  {/* Skills Info */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Skills</CardTitle>
+                      <CardTitle>Skill Types</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {[
                         { label: "Soft Skills", key: "SoftSkills" },
                         { label: "Hard Skills", key: "HardSkills" },
-                        { label: "Language Proficiency", key: "LanguageProficiency" },
-                        { label: "Achievements", key: "Achievements" },
                       ].map((field) => {
                         const key = field.key as keyof typeof candidateProfile.exp_skill;
                         const value = candidateProfile.exp_skill[key] ?? "";
+
                         return (
                           <div key={key}>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -1169,74 +1566,201 @@ export default function CandidateDashboard() {
                           </div>
                         );
                       })}
-                      <ExperienceSkillsSubmission
-                        experiences={experiences}
-                        exp_skill={candidateProfile.exp_skill}
-                      />
+                      
                     </CardContent>
                   </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>Language Proficiency</CardTitle>
+                        <Button
+                          onClick={() => {
+                            setLanguageProficiencies([
+                              ...languageProficiencies,
+                              {
+                                id: Date.now(),
+                                language: "",
+                                reading: "",
+                                writing: "",
+                                listening: "",
+                                speaking: "",
+                              }
+                            ]);
+                          }}
+                          className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+                        >
+                          + Add Language
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Language</th>
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Reading</th>
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Writing</th>
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Listening</th>
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Speaking</th>
+                              <th className="text-left p-2 font-medium text-[#3a4043]">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {languageProficiencies.map((prof, index) => (
+                              <tr key={prof.id} className="border-b">
+                                <td className="p-2">
+                            <Select
+                                    value={prof.language}
+                                    onValueChange={(value) => {
+                                      const updated = [...languageProficiencies];
+                                      updated[index] = { ...prof, language: value };
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-[200px]">
+                                      <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                                    <SelectContent>
+                                      {["Arabic", "Bengali", "Chinese", "English", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Portuguese", "Russian", "Spanish", "Tamil", "Thai", "Turkish", "Vietnamese", "Other"].map((lang) => (
+                                        <SelectItem key={lang} value={lang}>
+                                          {lang}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                                {["reading", "writing", "listening", "speaking"].map((skill) => (
+                                  <td key={skill} className="p-2">
+                                    <Select
+                                      value={String(prof[skill as keyof LanguageProficiency])}
+                                      onValueChange={(value) => {
+                                        const updated = [...languageProficiencies];
+                                        updated[index] = { ...prof, [skill]: value };
+                                        setLanguageProficiencies(updated);
+                                      }}
+                                    >
+                                      <SelectTrigger className="w-[140px]">
+                                        <SelectValue placeholder="Select level" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {["Expert", "Intermediate", "Beginner"].map((level) => (
+                                          <SelectItem key={level} value={level}>
+                                            {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                                  </td>
+                                ))}
+                                <td className="p-2">
+                                  {languageProficiencies.length > 0 && (
+                                    <Button
+                                      onClick={() => {
+                                        const updated = languageProficiencies.filter((_, i) => i !== index);
+                                        setLanguageProficiencies(updated);
+                                      }}
+                                      variant="ghost"
+                                      className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                          </div>
+                    </CardContent>
+                    
+                  </Card>
+                  <hr className="my-3 border-gray-200" />
+                  <div className="flex justify-end">
+                    <SkillsSubmission 
+                          exp_skill={candidateProfile.exp_skill}
+                          languageProficiencies={languageProficiencies}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                          }}
+                      />
+                    </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "neuro_strength" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1>
+                  <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-3">
+                    {strengthOptions.map((strength) => (
+                      <Button
+                        key={strength}
+                        variant="outline"
+                        className={`rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50 ${
+                          selectedStrengths.includes(strength) ? 'bg-purple-100' : ''
+                        }`}
+                        onClick={() => toggleStrength(strength)}
+                      >
+                        {strength}
+                        {selectedStrengths.includes(strength) ? (
+                          <X className="ml-2 h-4 w-4" />
+                        ) : (
+                          <Plus className="ml-2 h-4 w-4" />
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {selectedStrengths.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium text-[#3a4043] mb-2">Selected Strengths:</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedStrengths.map((strength) => (
+                          <Badge
+                            key={strength}
+                            variant="secondary"
+                            className="bg-purple-100 border border-purple-400 text-purple-600 flex items-center gap-1"
+                          >
+                            {strength}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 hover:bg-transparent"
+                              onClick={() => toggleStrength(strength)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <hr className="my-6 border-gray-200" />
+                <div className="flex justify-end mt-5">
+                  <NeuroStrengthSubmission 
+                    selectedStrengths={selectedStrengths}
+                    onSave={() => {
+                      calculateProfileCompletion();
+                    }}
+                  />
+                </div>
                 </div>
               </div>
             )}
 
             {activeTab === "environment" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Environment & Preferences</h1>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1>
+
                 <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Cognitive & Technical</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {[
-                        { label: "Pattern Recognition (Ability to spot patterns)", key: "patternRecognition", options: ["Good", "Moderate", "Fair"] },
-                        { label: "Attention (Ability to concentrate)", key: "attention", options: ["Good", "Moderate", "Fair"] },
-                        { label: "Systematic Thinking (Ability to think logically)", key: "systematicThinking", options: ["Good", "Moderate", "Fair"] },
-                        { label: "Big Picture vs. Detail-Oriented", key: "bigVsDetail", options: ["Big Picture", "Detail-Oriented"] },
-                        { label: "Task-Switching (Ability to think logically)", key: "taskSwitching", options: ["One task at a time", "Moderate", "Multi Tasking"] },
-                        { label: "Hyperfocus (Ability to concentrate for extended period)", key: "hyperfocus", options: ["Good", "Moderate", "Fair"] },
-                      ].map((field) => {
-                        const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
-                        return (
-                          <div key={field.key}>
-                            <label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-                            <Select
-                              value={value}
-                              onValueChange={(val) =>
-                                setCandidateProfile({
-                                  ...candidateProfile,
-                                  environment: { ...candidateProfile.environment, [field.key]: val },
-                                })
-                              }
-                            >
-                              <SelectTrigger className="w-full border-[#d9d6f3] rounded-xl focus:ring-[#635bff]/40">
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
-                                {field.options.map((opt) => (
-                                  <SelectItem
-                                    key={opt}
-                                    value={opt}
-                                    className="
-                                      cursor-pointer
-                                      text-gray-700
-                                      hover:bg-[#635bff]/10
-                                      hover:text-[#635bff]
-                                      focus:bg-[#635bff]/20
-                                      focus:text-[#635bff]
-                                      transition-colors
-                                    "
-                                  >
-                                    {opt}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
+                  {/* Communication & Social Preferences */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Communication & Social Preferences</CardTitle>
@@ -1244,11 +1768,11 @@ export default function CandidateDashboard() {
                     <CardContent className="space-y-4">
                       {[
                         { label: "Preferred Communication Medium", key: "communicationMedium", options: ["Written", "Verbal", "Mix"] },
-                        { label: "Clarity of communication", key: "clarity", options: ["Prefers clear, literal instructions", "Open-ended or indirect language"] },
-                        { label: "Team Collaboration Style", key: "teamStyle", options: ["Work independently", "Small, close-knit team", "Large, dynamic team"] },
-                        { label: "Presentation Comfort", key: "presentationComfort", options: ["Comfortable", "Not comfortable", "Not comfortable, but willing to try"] },
-                        { label: "Check-ins", key: "checkIns", options: ["Prefers frequent check-ins", "Scheduled check-ins", "Given a task and left to complete"] },
-                        { label: "Job Coach", key: "jobCoach", options: ["Need", "No Need"] },
+                        { label: "Clarity of communication", key: "clarity", options: ["Prefer clear, literal instruction", "No preference on this"] },
+                        { label: "Team Collaboration Style", key: "teamStyle", options: ["Prefer to work independently", "Prefer small, close-knit team", "Prefer large, dynamic team"] },
+                        { label: "Presentation", key: "presentationComfort", options: ["Comfortable with presentation", "Not comfortable with presentation", "Not comfortable, but willing to try"] },
+                        { label: "Check-ins", key: "checkIns", options: ["Prefer frequent check-ins", "Prefer scheduled check-ins", "Prefer autonomy and check-ins at agreed milestone"] },
+                        { label: "Job Coach", key: "jobCoach", options: ["Prefer having a job coach", "Not required any job coach"] },
                       ].map((field) => {
                         const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
                         return (
@@ -1291,16 +1815,18 @@ export default function CandidateDashboard() {
                       })}
                     </CardContent>
                   </Card>
+
+                  {/* Sensory Needs */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Environmental & Sensory Needs</CardTitle>
+                      <CardTitle>Sensory Needs</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {[
-                        { label: "Auditory Preferences", key: "auditory", options: ["Quiet environment", "Can have background noise", "Noisy environment"] },
+                        { label: "Auditory Preferences", key: "auditory", options: ["Prefer quiet environment", "Can have ambient noise", "Prefer lively environment"] },
                         { label: "Visual Preferences", key: "visual", options: ["Bright lighting", "Natural lighting", "Dim lighting"] },
-                        { label: "Workspace Type", key: "workspace", options: ["Fixed table", "Shared table", "Private office", "Work from home"] },
-                        { label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour", "Not comfortable but willing to try"] },
+                        { label: "Workspace Preferences", key: "workspace", options: ["Fixed table", "Hot desk", "Work from anywhere / home"] },
+                        { label: "Workday Structure", key: "workdayStructure", options: ["Fixed work hour", "Flexible work hour"] },
                       ].map((field) => {
                         const value = candidateProfile.environment[field.key as keyof typeof candidateProfile.environment] ?? "";
                         return (
@@ -1343,52 +1869,19 @@ export default function CandidateDashboard() {
                       })}
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Job Preferences</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {[
-                        { label: "Preferred Industries", key: "preferredIndustries", type: "text", isArray: true },
-                        { label: "Preferred Roles", key: "preferredRoles", type: "text", isArray: true },
-                        { label: "Location Preference", key: "locationPreference", type: "text" },
-                        { label: "Availability", key: "availability", type: "text" },
-                      ].map((field) => {
-                        const key = field.key as keyof typeof candidateProfile.jobPreferences;
-                        const value = candidateProfile.jobPreferences[key];
-                        return (
-                          <div key={key}>
-                            <label className="block text-sm font-medium text-[#3a4043] mb-1">{field.label}</label>
-                            <input
-                              type="text"
-                              value={
-                                field.isArray
-                                  ? (value as string[]).join(", ")
-                                  : (value as string)
-                              }
-                              onChange={(e) =>
-                                setCandidateProfile({
-                                  ...candidateProfile,
-                                  jobPreferences: {
-                                    ...candidateProfile.jobPreferences,
-                                    [key]: field.isArray
-                                      ? e.target.value.split(",").map((s) => s.trim())
-                                      : e.target.value,
-                                  },
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                            />
-                          </div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
+
+                 
+                </div>
+                 {/* Save Environment Button */}
+                 <hr className="my-3 border-gray-200" />
+                  <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
-                    jobPreferences={candidateProfile.jobPreferences}
+                    onSave={() => {
+                      calculateProfileCompletion();
+                    }}
                   />
-                </div>
+                  </div>
               </div>
             )}
           </div>

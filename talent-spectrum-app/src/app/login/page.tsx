@@ -147,6 +147,8 @@ const LoginPage = () => {
   const [userType, setUserType] = useState<UserType>("candidate");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  
 
   const [loginData, setLoginData] = useState<LoginFormData>({
     email: "",
@@ -209,6 +211,11 @@ const LoginPage = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user starts typing (but don't validate yet)
+    if (error && name === "email") {
+      setError("");
+    }
   };
 
   // ----------------------------------------------------------------------------
@@ -236,15 +243,21 @@ const LoginPage = () => {
       });
   
       if (result?.ok) {
-        // Save user email to localStorage
-        localStorage.setItem('userEmail', loginData.email);
-        
-        // get updated session
+        // get updated session first to determine role
         const session = await getSession();
   
         if (!session?.user?.role) {
           setError("User role not found.");
           return;
+        }
+        
+        // Save user email to localStorage based on role
+        if (session.user.role === "EMPLOYER") {
+          localStorage.setItem('employerEmail', loginData.email);
+        } else if (session.user.role === "CANDIDATE") {
+          localStorage.setItem('userEmail', loginData.email);
+        } else if (session.user.role === "JOB_COACH") {
+          localStorage.setItem('jobCoachEmail', loginData.email);
         }
   
         // Redirect based on role using USER_TYPE_CONFIG
@@ -293,6 +306,9 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
+        // Store user email in localStorage immediately after successful registration
+        localStorage.setItem('userEmail', signupData.email);
+        
         // Auto-login after successful registration
         const result = await signIn("credentials", {
           email: signupData.email,
@@ -344,21 +360,30 @@ const LoginPage = () => {
   // PROGRESSIVE SIGNUP HANDLERS
   // ----------------------------------------------------------------------------
   const handleNextStep = () => {
-    const { currentStep, completedSteps } = signupProgress;
+  const { currentStep, completedSteps } = signupProgress;
 
-    // Validate current step before proceeding
-    if (currentStep === "name" && signupData.name.trim()) {
-      setSignupProgress({
-        currentStep: "email",
-        completedSteps: [...completedSteps, "name"],
-      });
-    } else if (currentStep === "email" && signupData.email.trim()) {
-      setSignupProgress({
-        currentStep: "password",
-        completedSteps: [...completedSteps, "email"],
-      });
+  // Validate current step before proceeding
+  if (currentStep === "name" && signupData.name.trim()) {
+    setSignupProgress({
+      currentStep: "email",
+      completedSteps: [...completedSteps, "name"],
+    });
+  } else if (currentStep === "email" && signupData.email.trim()) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(signupData.email)) {
+      if (!signupData.email.includes("@")) {
+        setError("Please enter a valid email address");
+      } 
+      return;
     }
-  };
+    setError(""); // Clear any previous error
+    setSignupProgress({
+      currentStep: "password",
+      completedSteps: [...completedSteps, "email"],
+    });
+  }
+};
 
   const handlePreviousStep = () => {
     const { currentStep, completedSteps } = signupProgress;
@@ -368,6 +393,7 @@ const LoginPage = () => {
         currentStep: "name",
         completedSteps: completedSteps.filter((s) => s !== "name"),
       });
+      setError(""); // Clear error when going back
     } else if (currentStep === "password") {
       setSignupProgress({
         currentStep: "email",
@@ -387,6 +413,7 @@ const LoginPage = () => {
       password: "",
       confirmPassword: "",
     });
+    setError("");
   };
 
   // Get current user type configuration
@@ -614,6 +641,12 @@ const LoginPage = () => {
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="mb-4 p-3 bg-purple-50 border border-purple-400 text-purple-600 rounded-lg text-sm">
+                {message}
               </div>
             )}
 

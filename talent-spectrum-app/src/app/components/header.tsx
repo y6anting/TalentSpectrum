@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 
 interface HeaderProps {
@@ -15,54 +15,144 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const { data: session, status } = useSession();
-  // Normalize role to uppercase to avoid casing mismatches (e.g., "employer" vs "EMPLOYER")
-  const role = session?.user?.role ? (String(session.user.role).toUpperCase() as "CANDIDATE" | "EMPLOYER") : undefined;
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
-  // Wait until session is loaded
-  if (status === "loading") return null;
+  // Normalize role to uppercase
+  const role = session?.user?.role
+    ? (String(session.user.role).toUpperCase() as
+        | "CANDIDATE"
+        | "EMPLOYER"
+        | "JOB_COACH")
+    : undefined;
 
-  // Base nav items
-  const base = [
-    { href: "/about", label: "About" },
-    { href: "/jobListing", label: "Jobs" },
-    // { href: "/job-coach", label: "Job Coach" },
-  ];
+    // useEffect(() => {
+    //   if (status !== "authenticated") return;
 
-  // Job coach link depends on role
-  // const jobCoach = {
-  //   href: role === "EMPLOYER" ? "/job-coach?role=employer" : "/job-coach?role=candidate",
-  //   label: "Job Coach",
-  // };
+    //   const loadName = async () => {
+    //     try {
+    //       const localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    //       const userEmail = encodeURIComponent(localEmail || session?.user?.email || '');
+    //       const roleUpper = String(session.user.role).toUpperCase();
 
-  // const jobCoach =
-  //   role === "EMPLOYER"
-  //     ? [{ href: "/job-coach?role=employer", label: "Job Coach" }]
-  //     : role === "CANDIDATE"
-  //     ? [{ href: "/job-coach?role=candidate", label: "Job Coach" }]
-  //     : [];
-  
-  const dashboards =
-    role === "EMPLOYER"
-      ? [{ href: "/employer-dashboard", label: "Dashboard" }]
-      : role === "CANDIDATE"
-      ? [{ href: "/candidate-dashboard", label: "Dashboard" }]
-      : [];
+    //       console.log("Fetching name for:", { role: roleUpper, userEmail, localEmail, sessionName: session.user.name });
 
-  // Combine all nav items
-  const navItems = [...base, ...dashboards];
+    //       if (roleUpper === "CANDIDATE") {
+    //         const res = await fetch(`http://localhost:8000/profiles/${userEmail}`);
+    //         if (res.ok) {
+    //           const profile = await res.json();
+    //           setDisplayName(profile?.name ?? session.user.name ?? null);
+    //         } else {
+    //           setDisplayName(session.user.name ?? null);
+    //         }
+    //       } else if (roleUpper === "EMPLOYER") {
+    //         const res = await fetch(`http://localhost:8000/jobs/company/${userEmail}`);
+    //         if (res.ok) {
+    //           const company = await res.json();
+    //           setDisplayName(company?.name ?? session.user.name ?? null);
+    //         } else {
+    //           setDisplayName(session.user.name ?? null);
+    //         }
+    //       } else if (roleUpper === "JOB_COACH") {
+    //         setDisplayName(session.user.name ?? null);
+    //       }
+    //     } catch (e) {
+    //       console.error("Failed to fetch display name:", e);
+    //       setDisplayName(session.user?.name ?? null);
+    //     }
+    //   };
+
+    //   loadName();
+    // }, [session, status]);
+    
+  // Show loading skeleton instead of hiding header
+  if (status === "loading") {
+    return (
+      <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/90 shadow-sm border-b border-indigo-100">
+        <div className="w-full px-6 py-2">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo Skeleton */}
+            <div className="flex items-center gap-3">
+              <div className="w-[110px] h-[110px] bg-gray-200 rounded-md animate-pulse"></div>
+            </div>
+            
+            {/* Navigation Skeleton */}
+            <nav className="hidden md:flex items-center space-x-2">
+              <div className="h-8 w-20 bg-gray-200 rounded-xl animate-pulse"></div>
+              <div className="h-8 w-24 bg-gray-200 rounded-xl animate-pulse"></div>
+              <div className="h-8 w-20 bg-gray-200 rounded-xl animate-pulse"></div>
+            </nav>
+            
+            {/* Auth Area Skeleton */}
+            <div className="hidden md:flex items-center space-x-4">
+              <div className="h-8 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="h-8 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+            </div>
+            
+            {/* Mobile Menu Skeleton */}
+            <div className="md:hidden">
+              <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  let navItems: { href: string; label: string }[] = [];
+
+  if (role === "EMPLOYER") {
+    navItems = [
+      { href: "/employer/employer-dashboard", label: "Dashboard" },
+      // { href: "/employer/homepage", label: "Homepage" },
+      { href: "/employer/JobCoach", label: "Job Coach" },
+      { href: "/employer/candidate-list", label: "Candidate List" },
+    ];
+  } else if (role === "CANDIDATE") {
+    navItems = [
+      { href: "/candidate/candidate-dashboard", label: "Dashboard" },
+      // { href: "/candidate/homepage", label: "Homepage" },
+      { href: "/candidate/JobListing", label: "Find Jobs" },
+      { href: "/candidate/JobCoach", label: "Job Coach" },
+      { href: "/candidate/community", label: "Community" },
+      { href: "/candidate/ecommerce", label: "E-Commerce" },
+    ];
+  } else if (role === "JOB_COACH") {
+    navItems = [
+      { href: "/job-coach/dashboard", label: "Dashboard" },
+      // { href: "/job-coach/homepage", label: "Homepage" },
+      { href: "/job-coach/Candidate", label: "Candidates" },
+      { href: "/job-coach/Company", label: "Companies" },
+      {href: "/job-coach/ManualBook", label:" Manual Book" },
+    ];
+  } else {
+    // Default (no session)
+    navItems = [
+      { href: "/candidate/JobListing", label: "Find Jobs" },
+      { href: "/contact", label: "Contact" },
+    ];
+  }
+
+  // ✅ Logo link based on role
+  const logoLink =
+    role === "CANDIDATE"
+      ? "/about"
+      : role === "EMPLOYER"
+      ? "/employer/employer-dashboard"
+      : role === "JOB_COACH"
+      ? "/job-coach/dashboard"
+      : "/";
 
   const isActive = (path: string) => pathname === path;
 
   return (
     <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/90 shadow-sm border-b border-indigo-100">
-      <div className="w-full px-6 py-2">
+      <div className="w-full py-2 sm:px-6 md:px-16 lg:px-20 ">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
-            href="/"
-            onClick={() => setCurrentPage?.("home")}
+            href={logoLink}
+            onClick={() => setCurrentPage?.("homepage")}
             className="flex items-center gap-3"
           >
             <Image
@@ -80,7 +170,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-2 rounded-xl font-semibold9 text-base tracking-wide transition-all duration-200 ${
+                className={`px-3 py-2 rounded-xl font-semibold text-base tracking-wide transition-all duration-200 ${
                   isActive(item.href)
                     ? "bg-[#635bff] text-white hover:bg-[#524aff]"
                     : "hover:text-[#635bff] text-[#312d7f] hover:bg-violet-100/70 font-semibold"
@@ -96,8 +186,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
             {session?.user ? (
               <>
                 <span className="text-[#3a4043]">
-                  {/* Hi, <span className="font-semibold">{session.user.name ?? "User"}</span> */}
-                  Hi, <span className="font-semibold">{role}</span>
+                  Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
@@ -160,7 +249,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 {session?.user ? (
                   <>
                     <span className="text-center text-[#3a4043] py-2">
-                      Hi, <span className="font-semibold">{session.user.name ?? "User"}</span>
+                     Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
                     </span>
                     <button
                       onClick={() => {

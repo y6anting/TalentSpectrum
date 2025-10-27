@@ -13,7 +13,7 @@ export default function Footer({ setCurrentPage }: FooterProps) {
   const getPageRoute = (page: string): string => {
     const routeMap: Record<string, string> = {
       'jobs': '/jobListing',
-      'dashboard': '/candidate-dashboard',
+      'dashboard': '/candidate/candidate-dashboard',
       'post-job': '/post-job',
       'employer-dashboard': '/employer-dashboard',
       'about': '/about',

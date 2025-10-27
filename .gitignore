@@ -1,0 +1,172 @@
+# =====================================================
+# Node.js / Next.js
+# =====================================================
+node_modules/
+../node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# =====================================================
+# Python / FastAPI
+# =====================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# =====================================================
+# Virtual Environments
+# =====================================================
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*Env/
+*env/
+myvenv/
+ResumeFeedbackEnv/
+TrainerBookEnv/
+dbEnv/
+ResumeExtractorEnv/
+wav2lipEnv/
+resumeExtractorEnv/
+
+# =====================================================
+# Database files
+# =====================================================
+*.db
+*.sqlite
+*.sqlite3
+talentspectrum.db
+
+# =====================================================
+# IDE / Editor
+# =====================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =====================================================
+# OS generated files
+# =====================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =====================================================
+# Logs / Debug
+# =====================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =====================================================
+# Temporary files
+# =====================================================
+*.tmp
+*.temp
+temp/
+tmp/
+
+# =====================================================
+# Media files (if not needed in repo)
+# =====================================================
+*.mp3
+*.mp4
+*.wav
+*.avi
+*.mov
+*.mkv
+
+# =====================================================
+# PDF files (if not needed in repo)
+# =====================================================
+*.pdf
+
+# =====================================================
+# Environment / Secrets
+# =====================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*
+*.pem
+*.key
+*.crt
+
+# =====================================================
+# TypeScript
+# =====================================================
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================================================
+# Vercel
+# =====================================================
+.vercel
+
+# =====================================================
+# Prisma / Generated
+# =====================================================
+/src/generated/prisma
+
+# =====================================================
+# Coverage / Testing
+# =====================================================
+coverage/
+*.lcov
+
+# =====================================================
+# Miscellaneous
+# =====================================================
+*.pem

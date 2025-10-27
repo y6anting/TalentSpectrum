@@ -685,7 +685,7 @@ const EcommerceDashboardPage: React.FC = () => {
 
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
-          <Card className="lg:col-span-1 h-fit sticky top-8">
+          <Card className="lg:col-span-1 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
             <CardContent className="p-6">
               <div className="flex items-center space-x-3 my-6">
                 <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold text-lg">

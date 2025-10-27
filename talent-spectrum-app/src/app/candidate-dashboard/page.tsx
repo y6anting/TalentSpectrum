@@ -1427,45 +1427,41 @@ const strengthOptions = [
   <div className="space-y-6">
     <div className="flex items-center justify-between mb-6">
       <h1 className="text-2xl font-bold text-white">Neurodivergent Strengths</h1>
-      <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
+      <p className="text-sm text-white italic">( Select Your Top 10 Strengths )</p>
     </div>
 
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
-        {strengthOptions.map((strength) => (
+        {strengthOptions
+          .filter(strength => !selectedStrengths.includes(strength))
+          .map((strength) => (
           <Button
             key={strength}
             variant="outline"
-            className={`rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50 ${
-              selectedStrengths.includes(strength) ? 'bg-purple-50' : ''
-            }`}
+            className="cursor-pointer rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50"
             onClick={() => toggleStrength(strength)}
           >
             {strength}
-            {selectedStrengths.includes(strength) ? (
-              <X className="ml-2 h-4 w-4" />
-            ) : (
-              <Plus className="ml-2 h-4 w-4" />
-            )}
+            <Plus className="ml-2 h-4 w-4" />
           </Button>
         ))}
       </div>
 
       {selectedStrengths.length > 0 && (
         <div className="mt-4">
-          <h3 className="text-sm font-medium text-white mb-2">Selected Strengths:</h3>
+          <h3 className="text-1xl font-bold text-white">Selected Strengths:</h3>
           <div className="flex flex-wrap gap-2">
             {selectedStrengths.map((strength) => (
               <Badge
                 key={strength}
                 variant="secondary"
-                className="bg-purple-50 text-purple-600 flex items-center gap-1"
+                className="rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50 h-10 text-sm pl-3"
               >
                 {strength}
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
+                  className="h-4 w-4 p-0 hover:bg-transparent cursor-pointer"
                   onClick={() => toggleStrength(strength)}
                 >
                   <X className="h-3 w-3" />

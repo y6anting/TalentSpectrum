@@ -247,7 +247,7 @@ type LanguageProficiency = {
     },
     {
       id: "6",
-      title: "Kucing Engineer",
+      title: "Engineer",
       company: "InnovateCorp",
       location: "San Francisco, CA",
       type: "Full-time", 
@@ -558,6 +558,7 @@ const strengthOptions = [
                     { id: "overview", label: "Overview", icon: User },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
+                    // { id: "resume", label: "Upload Resume", icon: Camera },
                     { id: "profile", label: "Profile Settings", icon: Settings },
           					{ id: "education", label: "Education", icon: Book },
           					{ id: "experience", label: "Experience", icon: Briefcase },

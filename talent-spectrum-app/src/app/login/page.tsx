@@ -741,32 +741,6 @@ const LoginPage = () => {
                 )}
               </form>
             )}
-
-            {/* Footer Links */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
-                {activeTab === "login" ? "Don't have an account? " : "Already have an account? "}
-                <button
-                  onClick={() => {
-                    setActiveTab(activeTab === "login" ? "signup" : "login");
-                    resetSignupProgress();
-                  }}
-                  className="text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  {activeTab === "login" ? "Sign up" : "Sign in"}
-                </button>
-              </p>
-            </div>
-
-            {/* Back to Home */}
-            <div className="mt-4 text-center">
-              <Link
-                href="/"
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                ← Back to home
-              </Link>
-            </div>
           </div>
         </div>
       </div>

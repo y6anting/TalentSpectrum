@@ -26,44 +26,46 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         | "JOB_COACH")
     : undefined;
 
-    // useEffect(() => {
-    //   if (status !== "authenticated") return;
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user) return;
 
-    //   const loadName = async () => {
-    //     try {
-    //       const localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-    //       const userEmail = encodeURIComponent(localEmail || session?.user?.email || '');
-    //       const roleUpper = String(session.user.role).toUpperCase();
+    const loadName = async () => {
+      try {
+        // Use session email as primary source, localStorage as fallback only
+        const sessionEmail = session?.user?.email;
+        const localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        const userEmail = encodeURIComponent(sessionEmail || localEmail || '');
+        const roleUpper = String(session.user.role).toUpperCase();
 
-    //       console.log("Fetching name for:", { role: roleUpper, userEmail, localEmail, sessionName: session.user.name });
+        console.log("Fetching name for:", { role: roleUpper, userEmail, sessionEmail, localEmail, sessionName: session.user.name });
 
-    //       if (roleUpper === "CANDIDATE") {
-    //         const res = await fetch(`http://localhost:8000/profiles/${userEmail}`);
-    //         if (res.ok) {
-    //           const profile = await res.json();
-    //           setDisplayName(profile?.name ?? session.user.name ?? null);
-    //         } else {
-    //           setDisplayName(session.user.name ?? null);
-    //         }
-    //       } else if (roleUpper === "EMPLOYER") {
-    //         const res = await fetch(`http://localhost:8000/jobs/company/${userEmail}`);
-    //         if (res.ok) {
-    //           const company = await res.json();
-    //           setDisplayName(company?.name ?? session.user.name ?? null);
-    //         } else {
-    //           setDisplayName(session.user.name ?? null);
-    //         }
-    //       } else if (roleUpper === "JOB_COACH") {
-    //         setDisplayName(session.user.name ?? null);
-    //       }
-    //     } catch (e) {
-    //       console.error("Failed to fetch display name:", e);
-    //       setDisplayName(session.user?.name ?? null);
-    //     }
-    //   };
+        if (roleUpper === "CANDIDATE") {
+          const res = await fetch(`http://localhost:8000/profiles/${userEmail}`);
+          if (res.ok) {
+            const profile = await res.json();
+            setDisplayName(profile?.name ?? session.user.name ?? null);
+          } else {
+            setDisplayName(session.user.name ?? null);
+          }
+        } else if (roleUpper === "EMPLOYER") {
+          const res = await fetch(`http://localhost:8000/jobs/company/${userEmail}`);
+          if (res.ok) {
+            const company = await res.json();
+            setDisplayName(company?.name ?? session.user.name ?? null);
+          } else {
+            setDisplayName(session.user.name ?? null);
+          }
+        } else if (roleUpper === "JOB_COACH") {
+          setDisplayName(session.user.name ?? null);
+        }
+      } catch (e) {
+        console.error("Failed to fetch display name:", e);
+        setDisplayName(session.user?.name ?? null);
+      }
+    };
 
-    //   loadName();
-    // }, [session, status]);
+    loadName();
+  }, [session, status]);
     
   // Show loading skeleton instead of hiding header
   if (status === "loading") {
@@ -136,7 +138,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   // ✅ Logo link based on role
   const logoLink =
     role === "CANDIDATE"
-      ? "/about"
+      ? "/"
       : role === "EMPLOYER"
       ? "/employer/employer-dashboard"
       : role === "JOB_COACH"

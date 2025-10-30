@@ -1,255 +1,523 @@
-// src/app/page.tsx
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import Link from "next/link";
-import Image from "next/image";
-import About_Us from "@/../public/About_Us.png";
+import { useState, useEffect } from "react";
+import { Button } from "@/app/components/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/card";
 
 export default function HomePage() {
-  const slides = [
-    {
-      title: "Motives and Aims",
-      text: "Why we decided to do this as our Capstone Project",
-      bg: "/About_Motivations_Aims.jpg",
-    },
-    {
-      title: "AI-Matching and CV Parsing",
-      text: "How our AI works",
-      bg: "/About_AI.jpg",
-    },
-    {
-      title: "Methodologies",
-      text: "Languages, apps, and other software used for this site",
-      bg: "/About_Methodologies.jpg",
-    },
-  ];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("employer");
+  const [currentJobIndex, setCurrentJobIndex] = useState(0);
+  const images = ["/1.png", "/2.png", "/3.png", "/4.png", "/5.png"];
 
-  // Clone first and last slides for seamless looping
-  const loopedSlides = [slides[slides.length - 1], ...slides, slides[0]];
-
-  const [current, setCurrent] = useState(1); // Start on first real slide
-  const [transitioning, setTransitioning] = useState(true);
-  const [isCooldown, setIsCooldown] = useState(false);
-
-  const transitionDuration = 400; // ms
-  const cooldownTimerRef = useRef<any>(null);
-
-  // === Handle transition end for seamless looping ===
-  const handleTransitionEnd = () => {
-    setIsCooldown(false); // allow next press after transition completes
-
-    if (current === loopedSlides.length - 1) {
-      setTransitioning(false);
-      setCurrent(1);
-    } else if (current === 0) {
-      setTransitioning(false);
-      setCurrent(loopedSlides.length - 2);
-    }
-  };
-
-  // Reactivate transitions after snap
   useEffect(() => {
-    if (!transitioning) {
-      const timeout = setTimeout(() => setTransitioning(true), 50);
-      return () => clearTimeout(timeout);
-    }
-  }, [transitioning]);
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 2000); // Change image every 2 seconds
 
-  // === Cooldown logic ===
-  const startCooldown = () => {
-    setIsCooldown(true);
-    clearTimeout(cooldownTimerRef.current);
-    cooldownTimerRef.current = setTimeout(
-      () => setIsCooldown(false),
-      transitionDuration
-    );
-  };
+    return () => clearInterval(interval);
+  }, []);
 
-  const nextSlide = () => {
-    if (isCooldown) return;
-    setTransitioning(true);
-    setCurrent((prev) => prev + 1);
-    startCooldown();
-  };
-
-  const prevSlide = () => {
-    if (isCooldown) return;
-    setTransitioning(true);
-    setCurrent((prev) => prev - 1);
-    startCooldown();
-  };
-
-  // === Transition styling ===
-  const transitionStyle = {
-    transform: `translateX(-${current * 100}%)`,
-    transition: transitioning ? `transform ${transitionDuration}ms ease-in-out` : "none",
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Searching for:", searchQuery);
+    alert(`Searching for: ${searchQuery}`);
   };
 
   return (
     <div
-      className="min-h-screen bg-fixed bg-center bg-cover"
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat py-0 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
       style={{
         backgroundImage: "url('/TalentSpectrumBackground.png')",
         backgroundAttachment: "fixed",
       }}
     >
-      {/* HOMEPAGE CONTENT*/}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
-        <div className="max-w-[1400px] mx-auto">
-          {/* Hero Section */}
-          <div className="mb-8">
-            <h1
-              className="leading-[1.15] break-words overflow-visible"
-              style={{ wordBreak: "keep-all" }}
-            >
-              <span
-                className="block text-[clamp(1rem,2.5vw,2.5rem)] font-extrabold tracking-tight 
-                  bg-clip-text text-white 
-                  bg-[linear-gradient(115deg,#1a1a1a,#635bff,#9a96ff)] 
-                  drop-shadow-[2px_2px_10px_rgba(0,0,0,0.25)]"
+      {/* Main Content */}
+      <div className="flex items-center justify-center pt-10 pb-12 px-4 overflow-visible">
+        <div className="max-w-[1400px] w-full text-left">
+          {/* Hero Section - Updated with Grid Layout */}
+          <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            {/* Left Column - Text Content */}
+            <div>
+              <h1
+                className="leading-[1.15] break-words overflow-visible"
+                style={{ wordBreak: "keep-all" }}
               >
-                Neurodiversity:
-              </span>
-              <span
-                className="block text-[clamp(1rem,2.5vw,2.5rem)] font-semibold text-white mt-3"
-              >
-                Innovation Beyond Inclusion.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg md:text-xl text-white/80 font-medium leading-relaxed">
-              Empowering neurodivergent talents to find inclusive opportunities<br />and employers who celebrate cognitive diversity.
-            </p>
-          </div>
-
-          {/* Search Bar Section */}
-          <div className="mb-16 mt-10">
-            <div className="max-w-2xl">
-              <form onSubmit={(e) => { e.preventDefault(); console.log("Searching..."); }} className="relative">
-                <input
-                  type="text"
-                  placeholder="Search jobs, inclusive employers, coaches & more..."
-                  className="w-full px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl 
-                    focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all 
-                    text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 
-                    bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors"
+                {/* <span
+                  className="block text-[clamp(1rem,2.5vw,2.5rem)] font-extrabold tracking-tight 
+                    bg-clip-text text-white 
+                    bg-[linear-gradient(115deg,#1a1a1a,#635bff,#9a96ff)] 
+                    drop-shadow-[2px_2px_10px_rgba(0,0,0,0.25)]"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </button>
-              </form>
+                  Neurodiversity:
+                </span>
+                <span
+                  className="block text-[clamp(1rem,2.5vw,2.5rem)] font-semibold text-white mt-3"
+                >
+                  Innovation Beyond Inclusion.
+                </span> */}
+              </h1>
+              <p className="block text-[clamp(1rem,10vw,2.5rem)] width-0 font-semibold text-white mt-3">
+                Bridging neurodivergent<br />talents to inclusive career
+              </p>
 
-              {/* Search Suggestions */}
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-white">Popular searches:</span>
-                {["Analyst", "Content Marketing", "Designer", "Engineer", "HR"].map(
-                  (tag) => (
-                    <button
-                      key={tag}
-                      className="px-3 py-1 bg-white/60 border border-[#e8e6f0] 
-                        rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white 
-                        transition-colors"
+              {/* Search Bar Section */}
+              <div className="mt-8">
+                <form onSubmit={handleSearch} className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search jobs, inclusive employers, coaches & more..."
+                    className="w-5/6 px-6 py-4 pr-12 text-lg border border-[#e8e6f0] rounded-xl 
+                      focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all 
+                      text-[#3a4043] bg-white/90 backdrop-blur-sm shadow-lg"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute left-130 top-1/2 transform -translate-y-1/2 
+                      bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {tag}
-                    </button>
-                  )
-                )}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </button>
+                </form>
+
+                {/* Search Suggestions */}
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-white/80 font-medium">Popular searches:</span>
+                  {["Analyst", "Content Marketing", "Designer", "Engineer", "HR"].map(
+                    (tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => setSearchQuery(tag)}
+                        className="px-3 py-1 bg-white/60 border border-[#e8e6f0] 
+                          rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white 
+                          transition-colors"
+                      >
+                        {tag}
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Right Column - Image Carousel */}
+            <div className="relative w-full h-[650px] rounded-xl overflow-hidden">
+              {images.map((img, index) => (
+                <img
+                  key={index}
+                  src={img}
+                  alt={`Slide ${index + 1}`}
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                    index === currentImageIndex ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              ))}
+              {/* Optional: Dots indicator
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-3 h-3 rounded-full transition-all ${
+                      index === currentImageIndex
+                        ? "bg-white w-8"
+                        : "bg-white/50 hover:bg-white/75"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div> */}
             </div>
           </div>
 
-          {/* Job Listings Section */}
-          <div className="mt-20">
-            <h2 className="text-4xl md:text-4xl text-white font-bold text-center">
-              Inclusive Careers For You.
+          <div className="mt-10">
+            <h2 className="text-4xl md:text-4xl my-10 text-white font-bold text-center">
+              Why Talent Spectrum?
             </h2>
+
+            {/* Tab Buttons */}
+            <div className="flex justify-center gap-4 mb-8">
+              <button
+                onClick={() => setActiveTab("employer")}
+                className={`px-8 py-3 rounded-full font-semibold transition-all ${
+                  activeTab === "employer"
+                    ? "bg-[#635bff] text-white shadow-lg"
+                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                }`}
+              >
+                Employer
+              </button>
+              <button
+                onClick={() => setActiveTab("employee")}
+                className={`px-8 py-3 rounded-full font-semibold transition-all ${
+                  activeTab === "employee"
+                    ? "bg-[#635bff] text-white shadow-lg"
+                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                }`}
+              >
+                Neurodivergent Talent
+              </button>
+              <button
+                onClick={() => setActiveTab("jobCoach")}
+                className={`px-8 py-3 rounded-full font-semibold transition-all ${
+                  activeTab === "jobCoach"
+                    ? "bg-[#635bff] text-white shadow-lg"
+                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                }`}
+              >
+                Job Coach
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === "employer" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card 1: Access a Diverse Talent Pool */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">A</span>ccess a Diverse Talent Pool
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Our AI matching technology connects you with the right skilled neurodivergent professionals who bring unique perspectives,
+                      exceptional focus, and innovative problem-solving abilities.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 2: Brand Yourself as a Sustainable Employer */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">B</span>rand Yourself as a Sustainable Employer
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Commit to ESG values and CSR that enhance your corporate reputation as a leader in diversity and inclusion by using our platform to hire and support neurodivergent talent.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 3: Cut Headcount Cost */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">C</span>ut Cost Through Double Tax Relief
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Enjoy Double Tax Deduction when hiring OKU cardholders. For every minimum wage hire at RM1,700 per month, the Malaysian company can save at least RM4,896 annually.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "employee" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card 1: Access Support & Resources */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                 <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                   <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                 </div>
+                 <CardContent className="p-0">
+                   <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">A</span>ccess Support & Resources
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                     Get access to supportive resources including upskilling online courses, AI job coaching, AI mock interviews, and tools designed to help you succeed in getting hired.
+                   </p>
+                  </CardContent>
+               </Card>
+               
+                {/* Card 2: Find Your Perfect Role */}
+                  <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                    <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                      <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                   <CardContent className="p-0">
+                      <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                       <span className="text-3xl">B</span>e Yourself to Find the Perfect Career
+                      </h4>
+                      <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                       Showcase your neurodivergent strengths, personality, communication style, and accommodations needed to find a fulfilling career - no masking.
+                       </p>
+                    </CardContent>
+                  </Card>
+
+               {/* Card 3: Connect with Job Coaches */}
+               <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                   </svg>
+                  </div>
+                 <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                     <span className="text-3xl">C</span>onnect with Job Coaches
+                    </h4>
+                   <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Work with experienced job coaches who understand your strengths and needs to help you customize your accommodation approach so you can thrive in your career.
+                    </p>
+                  </CardContent>
+                </Card>
+             </div>
+            )}
+
+            {activeTab === "jobCoach" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               {/* Card 1: Expand Your Reach */}
+               <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">A</span>ccess to Regional Network
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Connect with neurodivergent professionals and make a bigger impact - whether helping them secure job placements or venture into entrepreneurship.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 2: Powerful Management Tools */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                      <span className="text-3xl">B</span>e Empowered by AI Management Tools
+                    </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                     Manage employer and talent relationships, assign tasks, certify accommodating employers, track progress, and streamline your coaching workflow all on one platform.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 3: Collaborate with Employers */}
+                <Card className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-[#f0eef5] shadow-lg overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-[#635bff] to-[#9a96ff] flex items-center justify-center -mx-8 -mt-8 mb-6">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                    </svg>
+                  </div>
+                  <CardContent className="p-0">
+                    <h4 className="text-lg font-bold text-[#3a4043] mb-3 text-center">
+                     <span className="text-3xl">C</span>ollaborate with Employers
+                   </h4>
+                    <p className="text-[#3a4043] text-sm leading-relaxed text-center">
+                      Partner with inclusive employers to create accommodating workplace environments and provide training on neurodiversity acceptance and workplace integration.
+                    </p>
+                  </CardContent>
+               </Card>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10">
-            {[
-              {
-                id: "1",
-                logo: "/Google_logo.png",
-                alt: "Google Logo",
-                title: "UX Designer",
-                location: "Hybrid",
-                schedule: "Flexible work hour",
-                salary: "RM65k - 85k / annum",
-              },
-              {
-                id: "2",
-                logo: "/PwC_Logo.png",
-                alt: "PwC Logo",
-                title: "Consultant",
-                location: "Remote",
-                schedule: "Flexible work hour",
-                salary: "RM80k - 110k / annum",
-              },
-              {
-                id: "3",
-                logo: "/Gamuda_Logo.png",
-                alt: "Gamuda Logo",
-                title: "Developer",
-                location: "Remote",
-                schedule: "Flexible work hour",
-                salary: "RM70k - 90k / annum",
-              },
-              {
-                id: "4",
-                logo: "/SLB_Logo.png",
-                alt: "SLB Logo",
-                title: "Data Analyst",
-                location: "Part time",
-                schedule: "Flexible work hour",
-                salary: "RM40k - 55k / annum",
-              },
-            ].map((job, index) => (
-              <div
-                key={index}
-                className="bg-white/60 backdrop-blur-sm rounded-xl border border-[#f0eef5] p-6"
+          {/* ========== BELOW: Existing Sections (Unchanged Layout) ========== */}
+          <div className="mt-10">
+            <h2 className="text-4xl md:text-4xl text-white font-bold text-center mb-8">
+               Inclusive Careers For You.
+            </h2>
+
+          <div className="relative">
+            {/* Carousel Container */}
+            <div className="overflow-hidden">
+              <div 
+                className="flex transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${currentJobIndex * 100}%)` }}
               >
-                <div className="flex justify-center mb-4">
-                  <Image
-                    src={job.logo}
-                    alt={job.alt}
-                    width={80}
-                    height={80}
-                    className="mx-auto object-contain"
-                    priority={index < 2} // Prioritize first 2 images
-                  />
-                </div>
-                <h3 className="text-lg font-semibold text-[#3a4043] mb-2 text-center">
-                  {job.title}
-                </h3>
-                <div className="text-center text-sm text-[#3a4043] space-y-1">
-                  <p>{job.location}</p>
-                  <p>{job.schedule}</p>
-                  <p>{job.salary}</p>
-                  <button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors mt-3">
-                    Apply Now
-                  </button>
+                {[0, 1].map((slideIndex) => (
+                  <div key={slideIndex} className="w-full flex-shrink-0 px-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {[
+                        {
+                          id: "1",
+                          logo: "/Google_logo.png",
+                          alt: "Google Logo",
+                          title: "UX Designer",
+                          location: "Hybrid",
+                          schedule: "Flexible work hour",
+                          salary: "RM65k - 85k / annum",
+                        },
+                        {
+                          id: "2",
+                          logo: "/PwC_Logo.png",
+                          alt: "PwC Logo",
+                          title: "Consultant",
+                          location: "Remote",
+                          schedule: "Flexible work hour",
+                          salary: "RM80k - 110k / annum",
+                        },
+                        {
+                          id: "3",
+                          logo: "/Gamuda_Logo.png",
+                          alt: "Gamuda Logo",
+                          title: "Developer",
+                          location: "Remote",
+                          schedule: "Flexible work hour",
+                          salary: "RM70k - 90k / annum",
+                        },
+                        {
+                          id: "4",
+                          logo: "/SLB_Logo.png",
+                          alt: "SLB Logo",
+                          title: "Data Analyst",
+                          location: "Part time",
+                          schedule: "Flexible work hour",
+                          salary: "RM40k - 55k / annum",
+                        },
+                        {
+                          id: "1",
+                          logo: "/Google_logo.png",
+                          alt: "Google Logo",
+                          title: "UX Designer",
+                          location: "Hybrid",
+                          schedule: "Flexible work hour",
+                          salary: "RM65k - 85k / annum",
+                        },
+                        {
+                          id: "2",
+                          logo: "/PwC_Logo.png",
+                          alt: "PwC Logo",
+                          title: "Consultant",
+                          location: "Remote",
+                          schedule: "Flexible work hour",
+                          salary: "RM80k - 110k / annum",
+                        },
+                        {
+                          id: "3",
+                          logo: "/Gamuda_Logo.png",
+                          alt: "Gamuda Logo",
+                          title: "Developer",
+                          location: "Remote",
+                          schedule: "Flexible work hour",
+                          salary: "RM70k - 90k / annum",
+                        },
+                        {
+                          id: "4",
+                          logo: "/SLB_Logo.png",
+                          alt: "SLB Logo",
+                          title: "Data Analyst",
+                          location: "Part time",
+                          schedule: "Flexible work hour",
+                          salary: "RM40k - 55k / annum",
+                        },
+                      ].slice(slideIndex * 4, (slideIndex + 1) * 4).map((job, index) => (
+                        <Card
+                          key={index}
+                          className="bg-white/60 backdrop-blur-sm rounded-xl border border-[#f0eef5]"
+                        >
+                          <CardHeader className="flex justify-center mb-4">
+                            <img
+                              src={job.logo}
+                              alt={job.alt}
+                              style={{ width: "auto", height: "80px" }}
+                              className="mx-auto"
+                            />
+                          </CardHeader>
+                          <CardTitle className="text-lg font-semibold text-[#3a4043] mb-2 text-center">
+                            {job.title}
+                          </CardTitle>
+                          <CardContent className="text-center text-sm text-[#3a4043] space-y-1">
+                            <p>{job.location}</p>
+                            <p>{job.schedule}</p>
+                            <p>{job.salary}</p>
+                            <Button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors mt-3">
+                              Apply Now
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                ))}
                 </div>
               </div>
-            ))}
+
+              {/* Navigation Buttons */}
+              <button
+                onClick={() => setCurrentJobIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentJobIndex === 0}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all z-10"
+              >
+                <svg className="w-6 h-6 text-[#635bff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => setCurrentJobIndex((prev) => Math.min(1, prev + 1))}
+                disabled={currentJobIndex === 1}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all z-10"
+              >
+                <svg className="w-6 h-6 text-[#635bff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {/* Dots Indicator */}
+              <div className="flex justify-center gap-2 mt-6">
+                {[...Array(2)].map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentJobIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${index === currentJobIndex
+                        ? "bg-[#635bff] w-8"
+                        : "bg-white/50 hover:bg-white/75"
+                      }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+          </div>
           </div>
 
-          {/* Job Coaches Section */}
-          <div className="mt-20">
+          <div className="mt-10">
             <h2 className="text-4xl md:text-4xl my-10 text-white font-bold text-center">
               Job Coaches Matches To You.
             </h2>
@@ -279,7 +547,7 @@ export default function HomePage() {
                   expertise: "Dyslexia and Dyspraxia",
                   image: "/DrIsaacEbi.png",
                   title:
-                    "Ph.D. in Occupational Psychology, ICF Professional Certified Coach.",
+                    "Ph.D. in Occupational Psychology, ICF Certified Coach.",
                   description:
                     "Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.",
                 },
@@ -289,13 +557,10 @@ export default function HomePage() {
                   className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200"
                 >
                   <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                    <Image
+                    <img
                       src={coach.image}
                       alt={`Profile photo of ${coach.name}`}
-                      width={96}
-                      height={96}
                       className="w-full h-full object-cover"
-                      loading="lazy"
                     />
                   </div>
                   <h3 className="text-xl font-semibold text-[#3a4043] mb-2">
@@ -314,250 +579,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </section>
-      
-      {/* Section 1: Our Story - Hero with Image Grid */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-[#3a4043] mb-8 leading-[0.95]">
-                <i> Where talents find their ideal setting</i>
-              </h1>
-              <p className="text-xl md:text-2xl text-[#3a4043]/80 leading-relaxed">
-                Talent Spectrum aims to support challenged individuals to find employment in workspaces they belong, and for employers to recruit unsung talent that can thrive in their environment.
-              </p>
-            </div>
-
-            {/* Image Grid - Inspired by Linktree later phase 2 i add */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-orange-200 to-orange-400 rounded-3xl h-48 flex items-center  justify-center text-black font-bold text-xl shadow-xl bg-cover"
-                  style={{
-                    backgroundImage: "url('/About_Discover.jpg')",
-                  }}>
-                  Discover
-                </div>
-                <div className="bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-3xl h-64 flex items-center justify-center text-gray-800 font-bold text-xl shadow-xl bg-cover"
-                  style={{
-                    backgroundImage: "url('/About_Connect.jpg')",
-                  }}>
-                  Connect
-                </div>
-              </div>
-              <div className="space-y-4 mt-8">
-                <div className="rounded-3xl h-64 flex items-center justify-center text-black font-bold text-xl shadow-xl bg-cover"
-                  style={{
-                    backgroundImage: "url('/About_Express.jpg')",
-                  }}>
-                  Express
-                </div>
-                <div className="bg-gradient-to-br from-indigo-300 to-indigo-500 rounded-3xl h-48 flex items-center justify-center text-black font-bold text-xl shadow-xl bg-cover"
-                  style={{
-                    backgroundImage: "url('/About_Employ.jpg')",
-                  }}>
-                  Employ
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-indigo-900 to-purple-900 text-white">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="mb-20 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#ffffff] mb-8 leading-[0.95]">
-              Our Team
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 mb-10">
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                <img src="/LeeCheeTat.png"
-                  alt="Profile photo of Lee Chee Tat"
-                  className="w-full h-full object-cover" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Lee Chee Tat</h3>
-              <p className="text-[#635bff] mb-3">Expert in <br></br>Autism Spectrum Condition</p>
-              <p className="text-sm text-[#3a4043] mb-3">
-                <em>Certified Professional Coach, Neurodiversity-Affirming Coach.</em>
-              </p>
-              <p className="text-sm text-[#3a4043]">
-                Guiding autistic adults through job search, interview preparation, and workplace communication for over 10 years, focusing on building sustainable careers.
-              </p>
-            </div>
-
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                <img src="/JohnStefan.png"
-                  alt="Profile photo of John Stefan"
-                  className="w-full h-full object-cover" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">John Stefan</h3>
-              <p className="text-[#635bff] mb-3">Expert in <br></br>ADHD and Dyslexia</p>
-              <p className="text-sm text-[#3a4043] mb-3">
-                <em>ADHD Coach Practitioner, Certified Career Services Provider.</em>
-              </p>
-              <p className="text-sm text-[#3a4043]">
-                8 years of experience leveraging neurodivergent strengths to passionately connect clients with roles that embrace unique cognitive styles.
-              </p>
-            </div>
-
-            <div className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                <img src="/DrIsaacEbi.png"
-                  alt="Profile photo of Dr. Isaac Ebi"
-                  className="w-full h-full object-cover" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#3a4043] mb-2">Dr. Isaac Ebi</h3>
-              <p className="text-[#635bff] mb-3">Expert in <br></br>Dyslexia and Dyspraxia</p>
-              <p className="text-sm text-[#3a4043] mb-3">
-                <em>Ph.D. in Occupational Psychology, ICF Professional Certified Coach.</em>
-              </p>
-              <p className="text-sm text-[#3a4043]">
-                Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: Who We Serve - Light Pink/Purple Background */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="mb-20 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-8 leading-[0.95]">
-              <i>Built to find the best connections</i>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-3xl p-10 shadow-xl border border-purple-100 hover:shadow-2xl transition-all">
-              <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center mb-6">
-                <span className="text-4xl">👤</span>
-              </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-4">
-                Job Seekers
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Find roles that match your talents, with the right environment for an optimally comfortable work life
-              </p>
-            </div>
-
-            <div className="bg-white rounded-3xl p-10 shadow-xl border border-emerald-100 hover:shadow-2xl transition-all">
-              <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6">
-                <span className="text-4xl">🏢</span>
-              </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-4">
-                Employers
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Hire people who fit your work environment, and provide transparency to interest willing applicants
-              </p>
-            </div>
-
-            <div className="bg-white rounded-3xl p-10 shadow-xl border border-orange-100 hover:shadow-2xl transition-all">
-              <div className="w-20 h-20 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <span className="text-4xl">🎓</span>
-              </div>
-              <h3 className="text-3xl font-bold text-[#3a4043] mb-4">
-                Job Coaches
-              </h3>
-              <p className="text-[#3a4043]/70 text-lg">
-                Guide clients with powerful insights, with their needs and preferences as a addressable priority
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 4: Our Values */}
-      <section className="relative w-full h-[600px] overflow-hidden text-white select-none">
-        {/* Slides Container */}
-        <div
-          className="flex h-full"
-          style={transitionStyle}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          {loopedSlides.map((slide, i) => (
-            <div
-              key={i}
-              className="w-full h-full flex-shrink-0 relative flex items-center justify-center text-center text-white bg-cover"
-              style={{
-                backgroundImage: `url(${slide.bg})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              {/* Overlay for readability */}
-              <div className="absolute inset-0 bg-black/50" />
-
-              {/* Text content */}
-              <div className="relative z-10 px-8">
-                <h3 className="text-5xl font-bold mb-4 drop-shadow-lg">
-                  {slide.title}
-                </h3>
-                <p className="text-lg text-white/90 max-w-2xl mx-auto drop-shadow-md">
-                  {slide.text}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Navigation Buttons */}
-        <button
-          onMouseDown={prevSlide}
-          className="absolute left-0 top-0 h-full w-[10%] flex items-center justify-center bg-black/10 hover:bg-black/20 transition"
-        >
-          <ChevronLeft size={40} />
-        </button>
-        <button
-          onMouseDown={nextSlide}
-          className="absolute right-0 top-0 h-full w-[10%] flex items-center justify-center bg-black/10 hover:bg-black/20 transition"
-        >
-          <ChevronRight size={40} />
-        </button>
-
-        {/* Dots */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onMouseDown={() => setCurrent(i + 1)} // +1 because of the clone offset
-              className={`w-3 h-3 rounded-full transition ${i + 1 === current ? "bg-white scale-125" : "bg-white/40"
-                }`}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Section 5: CTA Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-transparent">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#3a4043] mb-10 leading-tight">
-            <i>Start your journey today!</i>
-          </h2>
-          <p className="text-2xl md:text-3xl text-[#3a4043]/60 mb-14">
-            Find the perfect job for you
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link
-              href="/register"
-              className="bg-[#635bff] hover:bg-[#4f46e5] text-white px-12 py-5 rounded-full font-semibold text-xl transition-all shadow-2xl hover:shadow-[#635bff]/50 hover:scale-105"
-            >
-              Register Now
-            </Link>
-            <Link
-              href="/jobListing"
-              className="bg-white hover:bg-[#635bff] text-[#635bff] border-2 border-[#635bff] px-12 py-5 rounded-full font-semibold text-xl transition-all shadow-xl hover:shadow-2xl hover:scale-105 hover:text-white hover:border-[#4f46e5]"
-            >
-              Search For Jobs
-            </Link>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

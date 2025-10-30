@@ -322,7 +322,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: 'community/post/post1.png',
+      imageUrl: '/community/post/post1.png',
     },
     {
       id: 'p2',
@@ -336,7 +336,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: 'community/post/post3.png'
+      imageUrl: '/community/post/post3.png'
     },
     {
       id: 'p3',
@@ -350,7 +350,7 @@ const NeuroConnectPage: React.FC = () => {
       isLiked: false,
       showCommentBox: false,
       newCommentText: '',
-      imageUrl: 'community/post/post2.png'
+      imageUrl: '/community/post/post2.png'
     },
   ]);
 

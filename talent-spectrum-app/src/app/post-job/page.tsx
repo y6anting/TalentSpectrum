@@ -30,6 +30,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/app/components/accordion"; 
+import { useToastHelpers } from "@/components/ui/toast";
+import { trackSynchronousPlatformIOAccessInDev } from "next/dist/server/app-render/dynamic-rendering";
 
 /* SECTION IDs and titles (kept only the active sections) */
 const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
@@ -63,6 +65,7 @@ export default function PostJob() {
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
   const [accommodations, setAccommodations] = useState<string[]>([]);
+  const { success, error, warning, info } = useToastHelpers();
 
   const jobTypes = [
     "Full-time",
@@ -247,6 +250,7 @@ export default function PostJob() {
       });
 
       if (!res.ok) {
+        success("Job posted successfully!");
         const errorData = await res.json(); // Try to get error details from the response
         console.error("❌ Error response from server:", errorData);
         throw new Error(`Failed to post job: ${res.status} ${res.statusText}`);

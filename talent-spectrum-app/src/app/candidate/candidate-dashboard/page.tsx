@@ -127,6 +127,10 @@ export default function CandidateDashboard() {
     environment: Environment;
   };
 
+  // State for applications and saved jobs
+  const [applications, setApplications] = useState<any[]>([]);
+  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     name: "Aminah",
     email: "",
@@ -301,74 +305,7 @@ export default function CandidateDashboard() {
     'Visual Memorizer',
   ];
 
-  // Applications and saved jobs from API
-  const [applications, setApplications] = useState<any[]>([]);
-  const [savedJobs, setSavedJobs] = useState<any[]>([]);
 
-  // Fetch applications and saved jobs
-  useEffect(() => {
-    const email = typeof window !== 'undefined' 
-      ? (localStorage.getItem('userEmail') || session?.user?.email || '')
-      : '';
-
-    if (!email) return;
-
-    const formatDate = (d: string | Date | null | undefined) => {
-      try {
-        if (!d) return '';
-        const date = typeof d === 'string' ? new Date(d) : d;
-        return date ? date.toLocaleDateString() : '';
-      } catch {
-        return '';
-      }
-    };
-
-    const fetchData = async () => {
-      try {
-        const [appsRes, savedRes] = await Promise.all([
-          fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`),
-          fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`)
-        ]);
-
-        if (appsRes.ok) {
-          const apps = await appsRes.json();
-          const mappedApps = (apps || []).map((a: any) => ({
-            id: a.id,
-            jobTitle: a.job_title || a.jobTitle,
-            company: a.company,
-            appliedDate: a.applied_date ? formatDate(a.applied_date) : a.appliedDate,
-            status: a.status,
-            location: a.location,
-            salary: a.salary,
-            accommodationsRequested: a.accommodations_requested ?? a.accommodationsRequested ?? false,
-            interviewDate: a.interview_date ? formatDate(a.interview_date) : a.interviewDate,
-            score: a.score,
-          }));
-          setApplications(mappedApps);
-        }
-
-        if (savedRes.ok) {
-          const saved = await savedRes.json();
-          const mappedSaved = (saved || []).map((s: any) => ({
-            id: s.id,
-            title: s.job_title || s.title,
-            company: s.company,
-            location: s.location,
-            type: s.job_type || s.type,
-            salary: s.salary,
-            isInclusive: s.is_inclusive ?? s.isInclusive ?? false,
-            hasAccommodations: s.has_accommodations ?? s.hasAccommodations ?? false,
-            created_at: s.created_at,
-          }));
-          setSavedJobs(mappedSaved);
-        }
-      } catch (err) {
-        console.error('Failed to fetch applications/saved jobs:', err);
-      }
-    };
-
-    fetchData();
-  }, [status, session]);
 
   // Initialize email from localStorage on component mount
   useEffect(() => {
@@ -592,6 +529,96 @@ export default function CandidateDashboard() {
 
     fetchProfileData();
   }, [status, session]);
+
+  // Fetch applications data
+  useEffect(() => {
+    const fetchApplicationsData = async () => {
+      try {
+        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        
+        // If no email in localStorage but we have session email, use it
+        if (!localEmail && session?.user?.email) {
+          localEmail = session.user.email;
+        }
+        
+        if (!localEmail) {
+          console.error('No email found for fetching applications');
+          return;
+        }
+
+        const emailToUse = encodeURIComponent(localEmail);
+        console.log('Fetching applications for email:', emailToUse);
+        
+        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/applications`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Applications API Response:', data);
+          setApplications(data);
+        } else {
+          console.error('Failed to fetch applications:', response.status);
+          setApplications([]); // Set empty array if no applications found
+        }
+      } catch (error) {
+        console.error('Error fetching applications data:', error);
+        setApplications([]); // Set empty array on error
+      }
+    };
+
+    if (session?.user?.email || (typeof window !== 'undefined' && localStorage.getItem('userEmail'))) {
+      fetchApplicationsData();
+    }
+  }, [session]);
+
+  // Fetch saved jobs data
+  useEffect(() => {
+    const fetchSavedJobsData = async () => {
+      try {
+        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        
+        // If no email in localStorage but we have session email, use it
+        if (!localEmail && session?.user?.email) {
+          localEmail = session.user.email;
+        }
+        
+        if (!localEmail) {
+          console.error('No email found for fetching saved jobs');
+          return;
+        }
+
+        const emailToUse = encodeURIComponent(localEmail);
+        console.log('Fetching saved jobs for email:', emailToUse);
+        
+        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/saved-jobs`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Saved Jobs API Response:', data);
+          setSavedJobs(data);
+        } else {
+          console.error('Failed to fetch saved jobs:', response.status);
+          setSavedJobs([]); // Set empty array if no saved jobs found
+        }
+      } catch (error) {
+        console.error('Error fetching saved jobs data:', error);
+        setSavedJobs([]); // Set empty array on error
+      }
+    };
+
+    if (session?.user?.email || (typeof window !== 'undefined' && localStorage.getItem('userEmail'))) {
+      fetchSavedJobsData();
+    }
+  }, [session]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -1206,11 +1233,7 @@ export default function CandidateDashboard() {
                       </div>
                         ))}
                       </div>
-                       
-                    </CardContent>
-                  </Card>
-                   <hr className="my-3 border-gray-200" />
-                    <div className="flex justify-end">
+
                       <ProfileSubmission
                         candidateProfile={{
                           personalIdentifiers: candidateProfile.personalIdentifiers,
@@ -1222,7 +1245,8 @@ export default function CandidateDashboard() {
                           calculateProfileCompletion();
                         }}
                       />
-                    </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
@@ -1340,7 +1364,7 @@ export default function CandidateDashboard() {
                       + Add Education
                     </Button>
                   </div>
-              <hr className="my-3 border-gray-200" />
+
                 <div className="flex justify-end">
                   <EducationSubmission 
                     educations={educations} 
@@ -1514,7 +1538,6 @@ export default function CandidateDashboard() {
                   </div>
 
                   {/* Save Experience Button */}
-                  <hr className="my-3 border-gray-200" />
                   <div className="flex justify-end mt-4">
                     <ExperienceSkillsSubmission
                       experiences={experiences}
@@ -1524,7 +1547,6 @@ export default function CandidateDashboard() {
                       }}
                     />
                   </div>
-                  
                 </div>
               </div>
             )}
@@ -1566,7 +1588,13 @@ export default function CandidateDashboard() {
                           </div>
                         );
                       })}
-                      
+                      <SkillsSubmission 
+                        exp_skill={candidateProfile.exp_skill}
+                        languageProficiencies={languageProficiencies}
+                        onSave={() => {
+                          calculateProfileCompletion();
+                        }}
+                      />
                     </CardContent>
                   </Card>
 
@@ -1674,18 +1702,7 @@ export default function CandidateDashboard() {
                         </table>
                           </div>
                     </CardContent>
-                    
                   </Card>
-                  <hr className="my-3 border-gray-200" />
-                  <div className="flex justify-end">
-                    <SkillsSubmission 
-                          exp_skill={candidateProfile.exp_skill}
-                          languageProficiencies={languageProficiencies}
-                          onSave={() => {
-                            calculateProfileCompletion();
-                          }}
-                      />
-                    </div>
                 </div>
               </div>
             )}
@@ -1742,15 +1759,13 @@ export default function CandidateDashboard() {
                       </div>
                     </div>
                   )}
-                  <hr className="my-6 border-gray-200" />
-                <div className="flex justify-end mt-5">
+
                   <NeuroStrengthSubmission 
                     selectedStrengths={selectedStrengths}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
                   />
-                </div>
                 </div>
               </div>
             )}
@@ -1870,10 +1885,7 @@ export default function CandidateDashboard() {
                     </CardContent>
                   </Card>
 
-                 
-                </div>
-                 {/* Save Environment Button */}
-                 <hr className="my-3 border-gray-200" />
+                  {/* Save Environment Button */}
                   <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
@@ -1882,6 +1894,7 @@ export default function CandidateDashboard() {
                     }}
                   />
                   </div>
+                </div>
               </div>
             )}
           </div>

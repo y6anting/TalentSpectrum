@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, User, Building2, GraduationCap } from "lucide-react";
 
 // Types
 type UserType = "candidate" | "employer" | "job-coach";
@@ -30,125 +31,46 @@ interface SignupProgress {
   completedSteps: SignupStep[];
 }
 
-// ============================================================================
-// CONFIGURATION - User Type Settings
-// ============================================================================
-// Customize labels, titles, descriptions, and dashboard routes for each user type
+// User Type Configuration
 const USER_TYPE_CONFIG = {
   candidate: {
     label: "Job Seeker",
+    icon: User,
     title: "Find Your Perfect Role",
-    description:
-      "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
+    description: "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
     dashboard: "candidate/candidate-dashboard",
+    gradient: "from-purple-500 to-indigo-600",
+    bgImage: "/About_Express.jpg"
   },
   employer: {
     label: "Employer",
+    icon: Building2,
     title: "Discover Top Talent",
-    description:
-      "Build diverse teams with our neurodivergent-friendly hiring platform.",
+    description: "Build diverse teams with our neurodivergent-friendly hiring platform.",
     dashboard: "employer/employer-dashboard",
+    gradient: "from-indigo-600 to-purple-700",
+    bgImage: "/About_Connect.jpg"
   },
   "job-coach": {
     label: "Job Coach",
+    icon: GraduationCap,
     title: "Guide & Support Talent",
-    description:
-      "Help neurodivergent professionals succeed and support inclusive employers.",
+    description: "Help neurodivergent professionals succeed and support inclusive employers.",
     dashboard: "job-coach/dashboard",
+    gradient: "from-purple-700 to-indigo-800",
+    bgImage: "/About_Discover.jpg"
   },
 } as const;
 
-// ============================================================================
-// REUSABLE COMPONENTS
-// ============================================================================
-// Input Field Component - Reusable text/email/password input
-const InputField = ({
-  label,
-  type = "text",
-  name,
-  value,
-  onChange,
-  placeholder,
-  required = true,
-}: {
-  label: string;
-  type?: string;
-  name: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder: string;
-  required?: boolean;
-}) => (
-  <div className="mb-4 ">
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      {label}
-    </label>
-    {/* INPUT FIELD STYLING - Minimal and clean design */}
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className="w-full px-4 py-3 border-b-2 border-gray-200 focus:border-[#635bff] outline-none transition-all text-gray-900 bg-transparent placeholder:text-gray-400"
-      placeholder={placeholder}
-    />
-  </div>
-);
-
-// Divider Component - "or" separator line
-const Divider = () => (
-  <div className="my-6 flex items-center">
-    <div className="flex-grow border-t border-[#e8e6f0]" />
-    <span className="mx-2 text-sm text-[#3a4043]">or</span>
-    <div className="flex-grow border-t border-[#e8e6f0]" />
-  </div>
-);
-
-// Google Sign In Button Component
-const GoogleButton = ({ onClick }: { onClick: () => void }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="w-full flex items-center justify-center gap-2 bg-white border border-[#e8e6f0] hover:bg-[#faf9f7] text-[#3a4043] font-medium py-2.5 rounded-lg transition-colors"
-  >
-    <svg className="w-5 h-5" viewBox="0 0 24 24">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      />
-    </svg>
-    Continue with Google
-  </button>
-);
-
-// ============================================================================
-// MAIN LOGIN PAGE COMPONENT
-// ============================================================================
 const LoginPage = () => {
   const router = useRouter();
 
-  // ----------------------------------------------------------------------------
-  // STATE MANAGEMENT
-  // ----------------------------------------------------------------------------
+  // State Management
   const [activeTab, setActiveTab] = useState<TabType>("login");
   const [userType, setUserType] = useState<UserType>("candidate");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  
 
   const [loginData, setLoginData] = useState<LoginFormData>({
     email: "",
@@ -168,24 +90,13 @@ const LoginPage = () => {
     completedSteps: [],
   });
 
-  // ----------------------------------------------------------------------------
-  // EFFECTS - Header Management & Authentication Check
-  // ----------------------------------------------------------------------------
-  // Hide navigation header on login page and restore it when leaving
+  // Hide header on mount
   useEffect(() => {
     const header = document.querySelector("header") as HTMLElement;
-
     if (header) {
       document.body.classList.add("hide-header");
       header.style.display = "none";
     }
-
-    // // Redirect authenticated users to dashboard
-    // getSession().then((session) => {
-    //   if (session) router.push("/dashboard/candidate-dashboard");
-    // });
-
-    // Cleanup: restore header when component unmounts
     return () => {
       if (header) {
         document.body.classList.remove("hide-header");
@@ -194,9 +105,7 @@ const LoginPage = () => {
     };
   }, [router]);
 
-  // ----------------------------------------------------------------------------
-  // FORM INPUT HANDLERS
-  // ----------------------------------------------------------------------------
+  // Form Input Handlers
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setLoginData((prev) => ({
@@ -211,24 +120,12 @@ const LoginPage = () => {
       ...prev,
       [name]: value,
     }));
-
-    // Clear error when user starts typing (but don't validate yet)
     if (error && name === "email") {
       setError("");
     }
   };
 
-  // ----------------------------------------------------------------------------
-  // NAVIGATION HELPER
-  // ----------------------------------------------------------------------------
-  const redirectToDashboard = () => {
-    router.push(`/${USER_TYPE_CONFIG[userType].dashboard}`);
-  };
-
-  // ----------------------------------------------------------------------------
-  // FORM SUBMISSION HANDLERS
-  // ----------------------------------------------------------------------------
-  // Handle Login Form Submission
+  // Form Submission Handlers
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -239,13 +136,11 @@ const LoginPage = () => {
         email: loginData.email,
         password: loginData.password,
         userType: userType,
-        redirect: false, // we handle redirect manually
+        redirect: false,
       });
-  
+
       if (result?.ok) {
-        // get updated session first to determine role
         const session = await getSession();
-  
         if (!session?.user?.role) {
           setError("User role not found.");
           return;
@@ -254,21 +149,15 @@ const LoginPage = () => {
         // Save user email to localStorage based on role
         if (session.user.role === "EMPLOYER") {
           localStorage.setItem('employerEmail', loginData.email);
-        } else if (session.user.role === "CANDIDATE") {
-          localStorage.setItem('userEmail', loginData.email);
-        } else if (session.user.role === "JOB_COACH") {
-          localStorage.setItem('jobCoachEmail', loginData.email);
-        }
-  
-        // Redirect based on role using USER_TYPE_CONFIG
-        if (session.user.role === "EMPLOYER") {
           router.push(`/${USER_TYPE_CONFIG.employer.dashboard}`);
         } else if (session.user.role === "CANDIDATE") {
+          localStorage.setItem('userEmail', loginData.email);
           router.push(`/${USER_TYPE_CONFIG.candidate.dashboard}`);
         } else if (session.user.role === "JOB_COACH") {
+          localStorage.setItem('jobCoachEmail', loginData.email);
           router.push(`/${USER_TYPE_CONFIG["job-coach"].dashboard}`);
         } else {
-          router.push("/"); // fallback
+          router.push("/");
         }
       } else {
         setError("Invalid email or password. Please try again.");
@@ -280,12 +169,10 @@ const LoginPage = () => {
     }
   };
 
-  // Handle Sign Up Form Submission
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Validate password match
     if (signupData.password !== signupData.confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -294,7 +181,6 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      // Register new user
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -306,10 +192,8 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
-        // Store user email in localStorage immediately after successful registration
         localStorage.setItem('userEmail', signupData.email);
         
-        // Auto-login after successful registration
         const result = await signIn("credentials", {
           email: signupData.email,
           password: signupData.password,
@@ -330,60 +214,32 @@ const LoginPage = () => {
     }
   };
 
-  // Handle Google Sign In
   const handleGoogleSignIn = () => {
     signIn("google", { callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}` });
   };
 
-  // ----------------------------------------------------------------------------
-  // USER TYPE TOGGLE
-  // ----------------------------------------------------------------------------
-  const toggleUserType = (newType?: "candidate" | "employer" | "job-coach") => {
-    setUserType((prev) => {
-      if (newType && newType !== prev) return newType;
-  
-      // Define all roles for easier management
-      const roles: ("candidate" | "employer" | "job-coach")[] = [
-        "candidate",
-        "employer",
-        "job-coach",
-      ];
-  
-      // Cycle to the next role in order
-      const currentIndex = roles.indexOf(prev);
-      const nextIndex = (currentIndex + 1) % roles.length;
-      return roles[nextIndex];
-    });
-  };
-
-  // ----------------------------------------------------------------------------
-  // PROGRESSIVE SIGNUP HANDLERS
-  // ----------------------------------------------------------------------------
+  // Progressive Signup Handlers
   const handleNextStep = () => {
-  const { currentStep, completedSteps } = signupProgress;
+    const { currentStep, completedSteps } = signupProgress;
 
-  // Validate current step before proceeding
-  if (currentStep === "name" && signupData.name.trim()) {
-    setSignupProgress({
-      currentStep: "email",
-      completedSteps: [...completedSteps, "name"],
-    });
-  } else if (currentStep === "email" && signupData.email.trim()) {
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(signupData.email)) {
-      if (!signupData.email.includes("@")) {
+    if (currentStep === "name" && signupData.name.trim()) {
+      setSignupProgress({
+        currentStep: "email",
+        completedSteps: [...completedSteps, "name"],
+      });
+    } else if (currentStep === "email" && signupData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(signupData.email)) {
         setError("Please enter a valid email address");
-      } 
-      return;
+        return;
+      }
+      setError("");
+      setSignupProgress({
+        currentStep: "password",
+        completedSteps: [...completedSteps, "email"],
+      });
     }
-    setError(""); // Clear any previous error
-    setSignupProgress({
-      currentStep: "password",
-      completedSteps: [...completedSteps, "email"],
-    });
-  }
-};
+  };
 
   const handlePreviousStep = () => {
     const { currentStep, completedSteps } = signupProgress;
@@ -393,7 +249,7 @@ const LoginPage = () => {
         currentStep: "name",
         completedSteps: completedSteps.filter((s) => s !== "name"),
       });
-      setError(""); // Clear error when going back
+      setError("");
     } else if (currentStep === "password") {
       setSignupProgress({
         currentStep: "email",
@@ -416,437 +272,506 @@ const LoginPage = () => {
     setError("");
   };
 
-  // Get current user type configuration
   const currentConfig = USER_TYPE_CONFIG[userType];
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
   return (
     <>
-      {/* CSS to hide navigation header on login page and add animations */}
-      <style
-        dangerouslySetInnerHTML={{
-          //to ensure the nav bar doesnt show on login page and add fade animation
-          __html: `
-          body.hide-header header,
-          body header {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            overflow: hidden !important;
-          }
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.5s ease-out;
-          }
-        `,
-        }}
-      />
+      <style jsx global>{`
+        body.hide-header header {
+          display: none !important;
+        }
+      `}</style>
 
-      <div className="min-h-screen h-screen overflow-hidden bg-white flex">
-        {/* ====================================================================
-            LEFT SIDE - ILLUSTRATION PANEL
-            To change gradient colors, modify: from-[#color] to-[#color]
-            ==================================================================== */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#3a075a] to-[#635bff] p-12 flex-col justify-between">
-          {/* Brand Header */}
-          <div>
+      <div
+        className="h-screen bg-fixed bg-center bg-cover flex"
+        style={{
+          backgroundImage: "url('/TalentSpectrumBackground.png')",
+        }}
+      >
+        {/* Left Panel - Dynamic Content (Desktop Only) */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+          {/* Background with overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url('${currentConfig.bgImage}')`,
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 to-purple-900/90" />
+          </div>
+
+          {/* Content */}
+          <div className="relative z-10 p-12 flex flex-col justify-between w-full">
+            {/* Logo (Desktop) */}
+            <div>
+              <Image
+                src="/TalentSpectrumLogoDark.png"
+                alt="TalentSpectrum"
+                width={180} // Smaller width
+                height={60} // Smaller height
+                className="mb-4"
+                priority
+              />
+              <p className="text-white/90 text-lg font-medium">
+                Connecting diverse talent with inclusive opportunities
+              </p>
+            </div>
+
+            {/* Center Content */}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md">
+                {activeTab === "signup" && signupProgress.currentStep !== "name" ? (
+                  // Progressive signup messages
+                  <div className="space-y-6">
+                    {/* Progress dots */}
+                    <div className="flex justify-center gap-3">
+                      {["name", "email", "password"].map((step) => (
+                        <div
+                          key={step}
+                          className={`w-3 h-3 rounded-full transition-all ${
+                            signupProgress.completedSteps.includes(step as SignupStep)
+                              ? "bg-white"
+                              : signupProgress.currentStep === step
+                              ? "bg-white/70 ring-2 ring-white/30"
+                              : "bg-white/30"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {signupProgress.currentStep === "email" && (
+                      <div>
+                        <h2 className="text-4xl font-bold text-white mb-4">
+                          Great to meet you, {signupData.name}!
+                        </h2>
+                        <p className="text-white/80 text-lg">
+                          You're one step closer to amazing opportunities
+                        </p>
+                      </div>
+                    )}
+
+                    {signupProgress.currentStep === "password" && (
+                      <div>
+                        <h2 className="text-4xl font-bold text-white mb-4">
+                          Almost Ready to Shine!
+                        </h2>
+                        <p className="text-white/80 text-lg">
+                          Your dream job is just moments away
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Default welcome message
+                  <div>
+                    <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                      <i>{activeTab === "login" ? "Welcome Back" : "Where talents find their ideal setting"}</i>
+                    </h1>
+                    <p className="text-xl text-white/80">
+                      {currentConfig.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom stats or features */}
+            <div className="grid grid-cols-3 gap-4 text-white/80">
+              <div className="text-center">
+                <div className="text-2xl font-bold">1000+</div>
+                <div className="text-sm">Job Matches</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">500+</div>
+                <div className="text-sm">Companies</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">50+</div>
+                <div className="text-sm">Coaches</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Form */}
+        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 h-screen">
+          {/* Logo (Mobile Only) */}
+          <div className="lg:hidden w-full flex justify-start p-4 pb-0">
             <Image
               src="/TalentSpectrumLogoDark.png"
               alt="TalentSpectrum"
-              width={300}
-              height={100}
-              className="mb-4"
+              width={150} // Smaller for mobile
+              height={50} // Smaller for mobile
               priority
             />
-            <p className="text-white/90 text-lg">
-              Connecting diverse talent with inclusive opportunities
-            </p>
           </div>
 
-          {/* Center Content - Dynamic based on signup progress or user type */}
-          <div className="flex-1 flex items-center justify-center ">
-            {activeTab === "signup" ? (
-              // Progressive Signup Steps Display
-              <div className="text-center w-full max-w-md">
-                {/* Progress Indicator */}
-                <div className="mb-8">
-                  <div className="flex justify-center items-center gap-3 mb-4">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        signupProgress.completedSteps.includes("name")
-                          ? "bg-white"
-                          : signupProgress.currentStep === "name"
-                          ? "bg-white/70 ring-2 ring-white/30"
-                          : "bg-white/30"
+          <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-h-full overflow-y-auto mx-auto">
+            {/* User Type Selector */}
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">I am a</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.keys(USER_TYPE_CONFIG) as UserType[]).map((type) => {
+                  const config = USER_TYPE_CONFIG[type];
+                  const Icon = config.icon;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setUserType(type);
+                        resetSignupProgress();
+                      }}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        userType === type
+                          ? `border-purple-600 bg-gradient-to-r ${config.gradient} text-white`
+                          : "border-gray-200 hover:border-purple-300 bg-white text-gray-700"
                       }`}
-                    />
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        signupProgress.completedSteps.includes("email")
-                          ? "bg-white"
-                          : signupProgress.currentStep === "email"
-                          ? "bg-white/70 ring-2 ring-white/30"
-                          : "bg-white/30"
-                      }`}
-                    />
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        signupProgress.completedSteps.includes("password")
-                          ? "bg-white"
-                          : signupProgress.currentStep === "password"
-                          ? "bg-white/70 ring-2 ring-white/30"
-                          : "bg-white/30"
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Step-specific content */}
-                {signupProgress.currentStep === "name" && (
-                  <div className="animate-fadeIn">
-                    {/* <div className="text-7xl mb-6">🌋</div> */}
-                    <h2 className="text-white text-4xl font-bold mb-4">
-                      Your Journey Starts Here!
-                    </h2>
-                    <p className="text-white/90 text-lg">
-                      Join thousands finding their perfect match
-                    </p>
-                  </div>
-                )}
-
-                {signupProgress.currentStep === "email" && (
-                  <div className="animate-fadeIn">
-                    {/* <div className="text-7xl mb-6">💫</div> */}
-                    <h2 className="text-white text-4xl font-bold mb-4">
-                      Great to meet you, {signupData.name}!
-                    </h2>
-                    <p className="text-white/90 text-lg">
-                      You're one step closer to amazing opportunities
-                    </p>
-                  </div>
-                )}
-
-                {signupProgress.currentStep === "password" && (
-                  <div className="animate-fadeIn">
-                    {/* <div className="text-7xl mb-6">🎉</div> */}
-                    <h2 className="text-white text-4xl font-bold mb-4">
-                      Almost Ready to Shine!
-                    </h2>
-                    <p className="text-white/90 text-lg">
-                      Your dream job is just moments away
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Login View - Simple Welcome Back message
-              // <div className="text-center">
-              //   {/* <div className="text-9xl mb-6">🌻</div> */}
-              //   <h2 className="text-white text-7xl font-bold">Welcome Back</h2>
-              // </div>
-            <div className="relative w-full flex flex-col items-center justify-center text-center px-4 pt-20">
-                {/* Text Content */}
-                <h2 className="text-white text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-bold drop-shadow-lg mb-6">
-                  Welcome Back
-                </h2>
-
-                {/* <img
-                  src="/zzz.gif"
-                  alt="Cute cat"
-                  className="w-60 sm:w-72 md:w-96 lg:w-[500px] h-auto rounded-2xl object-contain"
-                /> */}
-              </div>
-                )}
+                    >
+                      <Icon className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-xs font-medium">{config.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            
-
-        {/* ====================================================================
-            RIGHT SIDE - FORM CONTAINER
-            Change background color with: bg-[#color]
-            ==================================================================== */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-b from-violet-50 to-background">
-          <div className="max-w-md w-full">
-            {/* User Type Badge - Shows current user type (Job Seeker/Employer) */}
-            <div className="text-center mb-8 text-4xl font-semibold text-gray-600">
-              Hello, <span className="inline-block rounded-xl text-4xl font-semibold text-[#635bff] mb-7">
-                {currentConfig.label}.
-              </span>
-              <div className="flex justify-center gap-3">
-                {[
-                  { type: "candidate", label: "Job Seeker" },
-                  { type: "employer", label: "Employer" },
-                  { type: "job-coach", label: "Job Coach" },
-                ].map(({ type, label }) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() =>
-                      toggleUserType(type as "candidate" | "employer" | "job-coach")
-                    }
-                    className={`px-5 py-2 text-sm font-medium rounded-full border transition-all duration-200 hover:cursor-pointer ${
-                      userType === type
-                        ? "bg-[#635bff] text-white border-[#635bff] shadow-md"
-                        : "text-[#635bff] border-[#635bff] hover:bg-[#635bff]/10"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-              
-
-            {/* ================================================================
-                TAB SWITCHER - Login / Sign up tabs
-                Change active tab colors: text-[#color] border-[#color]
-                ================================================================ */}
-            <div className="flex mb-8 border-b border-[#e8e6f0]">
-              {(["login", "signup"] as TabType[]).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(tab);
-                    if (tab === "signup") {
-                      resetSignupProgress();
-                    }
-                    setError("");
-                  }}
-                  className={`flex-1 pb-3 text-center font-semibold transition-all ${
-                    activeTab === tab
-                      ? "text-[#635bff] border-b-2 border-[#635bff]"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  {tab === "login" ? "Log in" : "Sign up"}
-                </button>
-              ))}
+            {/* Tab Switcher */}
+            <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => {
+                  setActiveTab("login");
+                  resetSignupProgress();
+                }}
+                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                  activeTab === "login"
+                    ? "bg-white text-purple-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("signup");
+                  resetSignupProgress();
+                }}
+                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                  activeTab === "signup"
+                    ? "bg-white text-purple-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                Sign Up
+              </button>
             </div>
 
-            {/* Error Message Display */}
+            {/* Error Message */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
+            {/* Success Message */}
             {message && (
-              <div className="mb-4 p-3 bg-purple-50 border border-purple-400 text-purple-600 rounded-lg text-sm">
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm">
                 {message}
               </div>
             )}
 
-            {/* ================================================================
-                LOGIN FORM
-                ================================================================ */}
+            {/* Login Form */}
             {activeTab === "login" && (
-              <>
-                {/* Login Heading - Change color: text-[#color]
-                <h2 className="text-3xl font-bold text-[#0d0d0e] mb-6 text-center">
-                   Welcome Back
-                </h2> */}
-
-                <form onSubmit={handleLoginSubmit} className="space-y-6">
-                  <InputField
-                    label="Email"
+              <form onSubmit={handleLoginSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
                     type="email"
                     name="email"
                     value={loginData.email}
                     onChange={handleLoginInputChange}
-                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                    placeholder="Enter your email"
+                    required
                   />
+                </div>
 
-                  <InputField
-                    label="Password"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
                     type="password"
                     name="password"
                     value={loginData.password}
                     onChange={handleLoginInputChange}
-                    placeholder="••••••••"
+                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                    placeholder="Enter your password"
+                    required
                   />
+                </div>
 
-                  {/* Remember Me & Forgot Password */}
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center">
-                      {/* Checkbox - Change color: text-[#color] focus:ring-[#color] */}
-                      <input
-                        type="checkbox"
-                        name="rememberMe"
-                        checked={loginData.rememberMe}
-                        onChange={handleLoginInputChange}
-                        className="rounded border-[#e8e6f0] text-[#635bff] focus:ring-[#635bff]"
-                      />
-                      <span className="ml-2 text-sm text-[#3a4043]">
-                        Remember me
-                      </span>
-                    </label>
-                    {/* Forgot Password Link - Change color: text-[#color] */}
-                    <a
-                      href="#"
-                      className="text-sm text-[#0d0d0e] hover:underline"
-                    >
-                      Forgot password?
-                    </a>
-                  </div>
-
-                  {/* Login Button - Change colors: bg-[#color] hover:bg-[#color] */}
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-[#635bff] hover:bg-[#4f46e5] text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 mt-8"
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="rememberMe"
+                      checked={loginData.rememberMe}
+                      onChange={handleLoginInputChange}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </button>
-                </form>
+                    Forgot password?
+                  </Link>
+                </div>
 
-                <Divider />
-                <GoogleButton onClick={handleGoogleSignIn} />
-              </>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${
+                    isLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
+                  }`}
+                >
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Sign in with Google
+                </button>
+              </form>
             )}
 
-            {/* ================================================================
-                PROGRESSIVE SIGN UP FORM - Shows one step at a time
-                ================================================================ */}
+            {/* Signup Form */}
             {activeTab === "signup" && (
-              <>
-                {/* Step 1: Name */}
+              <form onSubmit={handleSignupSubmit} className="space-y-6">
+                {/* Progressive Signup Steps */}
                 {signupProgress.currentStep === "name" && (
-                  <div className="space-y-6">
-                    <InputField
-                      label="Full Name"
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
                       name="name"
                       value={signupData.name}
                       onChange={handleSignupInputChange}
-                      placeholder="John Doe"
+                      className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                      placeholder="Enter your full name"
+                      autoFocus
+                      required
                     />
-
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      disabled={!signupData.name.trim()}
-                      className="w-full bg-[#635bff] hover:bg-[#4f46e5] text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
-                    >
-                      Continue
-                    </button>
-
-                    <Divider />
-                    <GoogleButton onClick={handleGoogleSignIn} />
                   </div>
                 )}
 
-                {/* Step 2: Email */}
                 {signupProgress.currentStep === "email" && (
-                  <div className="space-y-6">
-                    {/* Back button */}
-                    <button
-                      type="button"
-                      onClick={handlePreviousStep}
-                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                    >
-                      ← Back
-                    </button>
-
-                    <InputField
-                      label="Email"
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
                       type="email"
                       name="email"
                       value={signupData.email}
                       onChange={handleSignupInputChange}
-                      placeholder="your@email.com"
+                      className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                      placeholder="Enter your email"
+                      autoFocus
+                      required
                     />
-
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      disabled={!signupData.email.trim()}
-                      className="w-full bg-[#635bff] hover:bg-[#4f46e5] text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
-                    >
-                      Continue
-                    </button>
                   </div>
                 )}
 
-                {/* Step 3: Password */}
                 {signupProgress.currentStep === "password" && (
-                  <form onSubmit={handleSignupSubmit} className="space-y-6">
-                    {/* Back button */}
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={signupData.password}
+                        onChange={handleSignupInputChange}
+                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                        placeholder="Create a password"
+                        autoFocus
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm Password
+                      </label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={signupData.confirmPassword}
+                        onChange={handleSignupInputChange}
+                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                        placeholder="Confirm your password"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex gap-3">
+                  {signupProgress.currentStep !== "name" && (
                     <button
                       type="button"
                       onClick={handlePreviousStep}
-                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                      className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                     >
-                      ← Back
+                      <ChevronLeft className="w-4 h-4" />
+                      Back
                     </button>
+                  )}
 
-                    <InputField
-                      label="Password"
-                      type="password"
-                      name="password"
-                      value={signupData.password}
-                      onChange={handleSignupInputChange}
-                      placeholder="••••••••"
-                    />
-
-                    <InputField
-                      label="Confirm Password"
-                      type="password"
-                      name="confirmPassword"
-                      value={signupData.confirmPassword}
-                      onChange={handleSignupInputChange}
-                      placeholder="••••••••"
-                    />
-
-                    {/* Sign Up Button - Change colors: bg-[#color] hover:bg-[#color] */}
+                  {signupProgress.currentStep !== "password" ? (
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      disabled={
+                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" && !signupData.email.trim())
+                      }
+                      className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 ${
+                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" && !signupData.email.trim())
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
+                      }`}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  ) : (
                     <button
                       type="submit"
-                      disabled={
-                        isLoading ||
-                        !signupData.password.trim() ||
-                        !signupData.confirmPassword.trim()
-                      }
-                      className="w-full bg-[#635bff] hover:bg-[#4f46e5] text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
+                      disabled={isLoading || !signupData.password || !signupData.confirmPassword}
+                      className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all ${
+                        isLoading || !signupData.password || !signupData.confirmPassword
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
+                      }`}
                     >
                       {isLoading ? "Creating account..." : "Create Account"}
                     </button>
-                  </form>
+                  )}
+                </div>
+
+                {signupProgress.currentStep === "name" && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                      Sign up with Google
+                    </button>
+                  </>
                 )}
-              </>
+              </form>
             )}
 
-            {/* ================================================================
-                USER TYPE TOGGLE - Switch between Job Seeker/Employer/Job Coach
-                Change text/button colors: text-[#color] hover:text-[#color]
-                ================================================================ */}
-            {/* <div className="mt-6 pt-6 border-t border-[#e8e6f0]"> */}
-              {/* <p className="text-center text-md text-gray-600 mb-3">
-                {userType === "candidate"
-                  ? "Are you an employer or job coach?"
-                  : userType === "employer"
-                  ? "Are you a job seeker or job coach?"
-                  : "Are you a job seeker or employer?"}
-              </p> */}
-              
+            {/* Footer Links */}
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600">
+                {activeTab === "login" ? "Don't have an account? " : "Already have an account? "}
+                <button
+                  onClick={() => {
+                    setActiveTab(activeTab === "login" ? "signup" : "login");
+                    resetSignupProgress();
+                  }}
+                  className="text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  {activeTab === "login" ? "Sign up" : "Sign in"}
+                </button>
+              </p>
+            </div>
 
-            {/* </div> */}
+            {/* Back to Home */}
+            <div className="mt-4 text-center">
+              <Link
+                href="/"
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                ← Back to home
+              </Link>
+            </div>
           </div>
         </div>
       </div>
     </>
   );
-};
+}
 
 export default LoginPage;

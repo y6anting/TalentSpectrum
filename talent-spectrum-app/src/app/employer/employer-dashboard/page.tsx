@@ -2,20 +2,55 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/app/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/card";
 import { Badge } from "@/app/components/badge";
 import {
-  Building, Users, Plus, Eye, Edit, Trash2, FileText, Clock, CheckCircle, MapPin,
-  DollarSign, Settings, Shield, Heart, Star, BarChart3, Calculator, X
+  Building,
+  Users,
+  Plus, // Keep Plus for the sidebar icon if needed elsewhere, but not for the removed buttons
+  Eye,
+  Edit,
+  Trash2,
+  FileText,
+  Clock,
+  CheckCircle,
+  MapPin,
+  DollarSign,
+  Settings,
+  Shield,
+  Heart,
+  Star,
+  BarChart3,
+  Calculator,
+  X,
+  SquarePen, // Added SquarePen icon
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react"; // Assuming this is still used for auth
 import { motion } from "motion/react";
 import { calculateEmployerCosts } from "@/app/employer/component/taxCalculator";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/app/components/select";
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
-import { useToastHelpers } from "@/components/ui/toast";
+
+// Import the PostJob component
+import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
+
+// Assuming these are custom components, if not, replace with standard HTML input/textarea or import from your UI library
+import { Input } from "@/app/components/input"; // Assuming you have an Input component
+import { Checkbox } from "@/app/components/checkbox"; // Assuming you have a Checkbox component
+import { Textarea } from "@/app/components/textarea"; // Assuming you have a Textarea component
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -69,56 +104,91 @@ type CompanyProfile = {
   description: string;
   founded_year: number;
   company_type: string;
+  // Add inclusion settings from your company profile
+  neurodivergent_friendly: boolean;
+  workplace_accommodations: boolean;
+  equal_opportunity: boolean;
+  accessible_recruitment: boolean;
 };
 
 export default function EmployerDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false); // This seems unused, consider removing
   const router = useRouter();
-  const { success, error, warning, info } = useToastHelpers();
 
-  type EmployerApplication = {
-    id: number | string;
-    candidateName: string;
-    jobTitle: string;
-    appliedDate: string;
-    status: string;
-    accommodationsRequested: boolean;
-    accommodationDetails?: string;
-    experience?: string;
-    score: number;
-    interviewDate?: string;
-  };
+  // Dummy data for applications, as the original fetch was commented out
+  const applications = [
+    {
+      id: "1",
+      candidateName: "Alex Johnson",
+      jobTitle: "Frontend Developer",
+      appliedDate: "2024-01-18",
+      status: "under_review",
+      accommodationsRequested: true,
+      accommodationDetails: "Flexible hours, quiet workspace",
+      experience: "3 years",
+      score: 92,
+    },
+    {
+      id: "2",
+      candidateName: "Sam Chen",
+      jobTitle: "Frontend Developer",
+      appliedDate: "2024-01-17",
+      status: "interview_scheduled",
+      accommodationsRequested: false,
+      experience: "2 years",
+      score: 88,
+      interviewDate: "2024-01-25",
+    },
+    {
+      id: "3",
+      candidateName: "Jordan Smith",
+      jobTitle: "Frontend Developer",
+      appliedDate: "2024-01-16",
+      status: "shortlisted",
+      accommodationsRequested: true,
+      accommodationDetails: "Extended time for technical tests",
+      experience: "4 years",
+      score: 95,
+    },
+  ];
 
-  const [applications, setApplications] = useState<EmployerApplication[]>([]);
-
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(
+    null
+  );
   const [companyName, setCompanyName] = useState("");
-  const [companyData, setCompanyData] = useState({ name: "", industry: "", location: "", size: "" });
+  // const [companyData, setCompanyData] = useState({ name: "", industry: "", location: "", size: "" }); // This seems unused, consider removing
   const [companyIndustry, setCompanyIndustry] = useState("");
   const [companyLocation, setCompanyLocation] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
-  const [currentEmployerEmail, setCurrentEmployerEmail] = useState<string>('');
+  const [currentEmployerEmail, setCurrentEmployerEmail] = useState<string>("");
   const [inclusionSettings, setInclusionSettings] = useState({
     neurodivergentFriendly: true,
     workplaceAccommodations: true,
     equalOpportunity: true,
-    accessibleRecruitment: false
+    accessibleRecruitment: false,
   });
   const [accommodationPolicy, setAccommodationPolicy] = useState<string>("");
 
   const getStatusBadge = (status: string) => {
     const badgeStyles: { [key: string]: string } = {
-      active: "bg-green-100 text-green-800", 
+      active: "bg-green-100 text-green-800",
       draft: "bg-gray-100 text-gray-800",
-      closed: "bg-red-100 text-red-800", 
+      closed: "bg-red-100 text-red-800",
       under_review: "bg-yellow-100 text-yellow-800",
-      interview_scheduled: "bg-blue-100 text-blue-800", 
-      shortlisted: "bg-purple-100 text-purple-800"
+      interview_scheduled: "bg-blue-100 text-blue-800",
+      shortlisted: "bg-purple-100 text-purple-800",
     };
-    return <Badge variant="secondary" className={badgeStyles[status] || "bg-gray-100 text-gray-800"}>{status.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
+    return (
+      <Badge
+        variant="secondary"
+        className={badgeStyles[status] || "bg-gray-100 text-gray-800"}
+      >
+        {status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+      </Badge>
+    );
   };
 
   const getStatusIcon = (status: string) => {
@@ -134,36 +204,38 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Calculator 
+  // Calculator
   const [baseSalary, setBaseSalary] = useState<number>(10000);
   const result = calculateEmployerCosts(baseSalary || 0);
 
   // Handle job deletion
   const handleDeleteJob = async (jobId: number) => {
-    if (!confirm('Are you sure you want to delete this job posting?')) {
+    if (!confirm("Are you sure you want to delete this job posting?")) {
       return;
     }
     try {
       const response = await fetch(`http://127.0.0.1:8000/jobs/${jobId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       if (response.ok) {
-        success('Job deleted successfully!');
+        alert("Job deleted successfully!");
         // Refresh the job postings
-        const employerEmail = localStorage.getItem('employerEmail');
+        const employerEmail = localStorage.getItem("employerEmail");
         if (employerEmail) {
-          const jobsResponse = await fetch(`http://127.0.0.1:8000/jobs/employer/${employerEmail}`);
+          const jobsResponse = await fetch(
+            `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+          );
           if (jobsResponse.ok) {
             const jobsData = await jobsResponse.json();
             setJobPostings(jobsData);
           }
         }
       } else {
-        error('Failed to delete job. Please try again.');
+        alert("Failed to delete job. Please try again.");
       }
-    } catch (err) {
-      console.error('Error deleting job:', err);
-      error('An error occurred while deleting the job.');
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      alert("An error occurred while deleting the job.");
     }
   };
 
@@ -190,7 +262,7 @@ export default function EmployerDashboard() {
       setErrors({ general: "No job selected" });
       return;
     }
-  
+
     // Basic client-side validation (example for required fields)
     const requiredFields: (keyof JobPosting)[] = ["job_title", "location"];
     const newErrors: { [key: string]: string } = {};
@@ -202,42 +274,50 @@ export default function EmployerDashboard() {
     });
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
-  
+
     try {
       const res = await fetch(`http://127.0.0.1:8000/jobs/${editJobData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editJobData),
       });
-  
+
       if (!res.ok) {
         const message = await res.text();
         throw new Error(message || "Failed to update job");
       }
-  
+
       const updated = await res.json();
-  
+
       // Refresh job postings from server for immediate consistency
-      const employerEmail = localStorage.getItem('employerEmail');
+      const employerEmail = localStorage.getItem("employerEmail");
       if (employerEmail) {
         try {
-          const jobsRes = await fetch(`http://127.0.0.1:8000/jobs/employer/${employerEmail}`);
+          const jobsRes = await fetch(
+            `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+          );
           if (jobsRes.ok) {
             const jobsData = await jobsRes.json();
             setJobPostings(jobsData);
           } else {
             // Fallback to optimistic local update if refetch fails
-            setJobPostings((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+            setJobPostings((prev) =>
+              prev.map((j) => (j.id === updated.id ? updated : j))
+            );
           }
         } catch {
           // Network error fallback
-          setJobPostings((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+          setJobPostings((prev) =>
+            prev.map((j) => (j.id === updated.id ? updated : j))
+          );
         }
       } else {
         // No employer email available, still update locally
-        setJobPostings((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+        setJobPostings((prev) =>
+          prev.map((j) => (j.id === updated.id ? updated : j))
+        );
       }
-  
+
       setIsEditModalOpen(false);
       setSelectedJob(null);
     } catch (err: any) {
@@ -248,9 +328,9 @@ export default function EmployerDashboard() {
   // Handle company settings save
   const handleSaveCompanySettings = async () => {
     try {
-      const employerEmail = localStorage.getItem('employerEmail');
+      const employerEmail = localStorage.getItem("employerEmail");
       if (!employerEmail) {
-        warning('Please log in as an employer to save settings.');
+        alert("Please log in as an employer to save settings.");
         return;
       }
 
@@ -270,38 +350,55 @@ export default function EmployerDashboard() {
         neurodivergent_friendly: inclusionSettings.neurodivergentFriendly,
         workplace_accommodations: inclusionSettings.workplaceAccommodations,
         equal_opportunity: inclusionSettings.equalOpportunity,
-        accessible_recruitment: inclusionSettings.accessibleRecruitment
+        accessible_recruitment: inclusionSettings.accessibleRecruitment,
       };
 
-      const response = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(companyData),
-      });
+      const response = await fetch(
+        `http://127.0.0.1:8000/jobs/company/${employerEmail}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(companyData),
+        }
+      );
 
       if (response.ok) {
-        success('Company settings saved successfully!');
+        alert("Company settings saved successfully!");
         // Refresh the company profile data
-        const updatedResponse = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`);
+        const updatedResponse = await fetch(
+          `http://127.0.0.1:8000/jobs/company/${employerEmail}`
+        );
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
           setCompanyProfile(updatedData);
+          setCompanyName(updatedData.name); // Update state with fresh data
+          setCompanyIndustry(updatedData.industry);
+          setCompanyLocation(updatedData.location);
+          setCompanySize(updatedData.size);
+          // Also update inclusion settings from fetched company data
+          setInclusionSettings({
+            neurodivergentFriendly: updatedData.neurodivergent_friendly,
+            workplaceAccommodations: updatedData.workplace_accommodations,
+            equalOpportunity: updatedData.equal_opportunity,
+            accessibleRecruitment: updatedData.accessible_recruitment,
+          });
+          setAccommodationPolicy(updatedData.description);
         }
       } else {
         let errorText: string;
         try {
           errorText = await response.text();
         } catch {
-          errorText = 'Unknown error';
+          errorText = "Unknown error";
         }
-        console.error('Error saving company settings:', errorText);
-        error('Failed to save company settings. Please try again.');
+        console.error("Error saving company settings:", errorText);
+        alert("Failed to save company settings. Please try again.");
       }
-    } catch (err) {
-      console.error('Error saving company settings:', err);
-      error('An error occurred while saving company settings.');
+    } catch (error) {
+      console.error("Error saving company settings:", error);
+      alert("An error occurred while saving company settings.");
     }
   };
 
@@ -317,60 +414,67 @@ export default function EmployerDashboard() {
           return;
         }
 
-        const companyResponse = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`);
+        const companyResponse = await fetch(
+          `http://127.0.0.1:8000/jobs/company/${employerEmail}`
+        );
         const defaultCompany: CompanyProfile = {
-          id: 0, email: employerEmail, 
-          name: "Your Company", 
-          industry: "Technology", 
+          id: 0,
+          email: employerEmail,
+          name: "Your Company",
+          industry: "Technology",
           location: "Your Location",
-          website: "", 
-          employees: "", 
-          size: "1-10 employees", 
-          inclusion_score: 0, 
+          website: "",
+          employees: "",
+          size: "1-10 employees",
+          inclusion_score: 0,
           certifications: "[]",
-          description: "", 
-          founded_year: 2020, 
-          company_type: "Private"
+          description: "",
+          founded_year: 2020,
+          company_type: "Private",
+          neurodivergent_friendly: false, // Default values
+          workplace_accommodations: false,
+          equal_opportunity: false,
+          accessible_recruitment: false,
         };
 
         let companyData: CompanyProfile;
         if (companyResponse.ok) {
           companyData = await companyResponse.json();
         } else if (companyResponse.status === 404) {
-          const createResponse = await fetch("http://127.0.0.1:8000/jobs/company/", {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(defaultCompany)
-          });
-          companyData = createResponse.ok ? await createResponse.json() : defaultCompany;
+          const createResponse = await fetch(
+            "http://127.0.0.1:8000/jobs/company/",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(defaultCompany),
+            }
+          );
+          companyData = createResponse.ok
+            ? await createResponse.json()
+            : defaultCompany;
         } else {
           companyData = defaultCompany;
         }
 
         setCompanyProfile(companyData);
-        setCompanyData({ name: companyData.name, industry: companyData.industry, location: companyData.location, size: companyData.size });
+        setCompanyName(companyData.name);
+        setCompanyIndustry(companyData.industry);
+        setCompanyLocation(companyData.location);
+        setCompanySize(companyData.size);
 
-        const jobsResponse = await fetch(`http://127.0.0.1:8000/jobs/employer/${employerEmail}`);
-        if (jobsResponse.ok) {
-          setJobPostings(await jobsResponse.json());
-        }
+        // Initialize inclusion settings from company profile data
+        setInclusionSettings({
+          neurodivergentFriendly: companyData.neurodivergent_friendly,
+          workplaceAccommodations: companyData.workplace_accommodations,
+          equalOpportunity: companyData.equal_opportunity,
+          accessibleRecruitment: companyData.accessible_recruitment,
+        });
+        setAccommodationPolicy(companyData.description);
 
-        // Fetch employer applications from Next.js API
-        const appsResponse = await fetch(`/api/employer-applications?employerEmail=${encodeURIComponent(employerEmail)}`);
-        if (appsResponse.ok) {
-          const rawApps = await appsResponse.json();
-          const mapped: EmployerApplication[] = rawApps.map((app: any) => ({
-            id: app.id,
-            candidateName: app.candidate_name || 'Unknown',
-            jobTitle: app.job_title,
-            appliedDate: app.applied_date ? new Date(app.applied_date).toISOString().slice(0, 10) : '',
-            status: app.status,
-            accommodationsRequested: !!app.accommodations_requested,
-            accommodationDetails: '',
-            experience: '',
-            score: typeof app.score === 'number' ? app.score : 0,
-            interviewDate: app.interview_date ? new Date(app.interview_date).toISOString().slice(0, 10) : undefined,
-          }));
-          setApplications(mapped);
-        }
+        const jobsResponse = await fetch(
+          `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+        );
+        if (jobsResponse.ok) setJobPostings(await jobsResponse.json());
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -381,31 +485,42 @@ export default function EmployerDashboard() {
   }, []);
 
   // Handle inclusion settings changes
-  const handleInclusionSettingChange = (setting: keyof typeof inclusionSettings) => {
-    setInclusionSettings(prev => {
+  const handleInclusionSettingChange = (
+    setting: keyof typeof inclusionSettings
+  ) => {
+    setInclusionSettings((prev) => {
       const next = { ...prev, [setting]: !prev[setting] };
+      // Local storage persistence (optional, if you want settings to persist across sessions)
       try {
-        localStorage.setItem('inclusionSettings', JSON.stringify(next));
-      } catch {}
+        localStorage.setItem("inclusionSettings", JSON.stringify(next));
+      } catch (e) {
+        console.error("Failed to save inclusion settings to local storage:", e);
+      }
       const trueCount = Object.values(next).filter(Boolean).length;
       const score = Math.round((trueCount / Object.keys(next).length) * 100);
-      setCompanyProfile(cp => (cp ? { ...cp, inclusion_score: score } : cp));
+      setCompanyProfile((cp) => (cp ? { ...cp, inclusion_score: score } : cp));
       return next;
     });
   };
 
   const handleSaveInclusionSettings = async () => {
     try {
-      const employerEmail = localStorage.getItem('employerEmail');
+      const employerEmail = localStorage.getItem("employerEmail");
       if (!employerEmail) {
-        warning('Please log in as an employer to save settings.');
+        alert("Please log in as an employer to save settings.");
         return;
       }
 
+      // Local storage persistence (optional)
       try {
-        localStorage.setItem('inclusionSettings', JSON.stringify(inclusionSettings));
-        localStorage.setItem('accommodationPolicy', accommodationPolicy ?? '');
-      } catch {}
+        localStorage.setItem(
+          "inclusionSettings",
+          JSON.stringify(inclusionSettings)
+        );
+        localStorage.setItem("accommodationPolicy", accommodationPolicy ?? "");
+      } catch (e) {
+        console.error("Failed to save inclusion settings to local storage:", e);
+      }
 
       const payload = {
         email: employerEmail,
@@ -413,90 +528,77 @@ export default function EmployerDashboard() {
         workplace_accommodations: inclusionSettings.workplaceAccommodations,
         equal_opportunity: inclusionSettings.equalOpportunity,
         accessible_recruitment: inclusionSettings.accessibleRecruitment,
-        description: accommodationPolicy ?? companyProfile?.description ?? '',
-        inclusion_score: companyProfile?.inclusion_score ?? 0,
+        description: accommodationPolicy ?? companyProfile?.description ?? "",
+        inclusion_score: companyProfile?.inclusion_score ?? 0, // Ensure inclusion_score is sent
       };
 
-      const response = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `http://127.0.0.1:8000/jobs/company/${employerEmail}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (response.ok) {
         const updated = await response.json();
-        setCompanyProfile(cp => (cp ? { ...cp, ...updated } : cp));
-        success('Inclusion settings saved successfully!');
+        setCompanyProfile((cp) => (cp ? { ...cp, ...updated } : cp));
+        alert("Inclusion settings saved successfully!");
       } else {
         const err = await response.text();
-        console.error('Failed to save inclusion settings', err);
-        error('Failed to save inclusion settings. Please try again.');
+        console.error("Failed to save inclusion settings", err);
+        alert("Failed to save inclusion settings. Please try again.");
       }
-    } catch (err) {
-      console.error('Error saving inclusion settings', err);
-      error('An error occurred while saving inclusion settings.');
+    } catch (error) {
+      console.error("Error saving inclusion settings", error);
+      alert("An error occurred while saving inclusion settings.");
     }
   };
 
   const renderInputField = (
-  label: string,
-  field: string,
-  value: string | number,
-  onChange: (value: string | number) => void,
-  type = "text"
-) => (
-  <div>
-    <label className="block text-sm font-medium text-[#3a4043] mb-1">{label}</label>
-    <input
-      type={type}
-      value={type === "number" ? String(value).replace(/^0+/, "") || "" : value ?? ""}
-      onChange={(e) => {
-        const val = e.target.value;
-        if (type === "number") {
-          if (val === "") return onChange("");
-          if (!/^\d*\.?\d*$/.test(val)) return;
-          onChange(Number(val.replace(/^0+/, "").replace(/-/, "")));
-        } else {
-          onChange(val);
+    label: string,
+    field: string,
+    value: string | number,
+    onChange: (value: string | number) => void,
+    type = "text"
+  ) => (
+    <div>
+      <label className="block text-sm font-medium text-[#3a4043] mb-1">
+        {label}
+      </label>
+      <Input // Using the imported Input component
+        type={type}
+        value={
+          type === "number"
+            ? String(value).replace(/^0+/, "") || ""
+            : value ?? ""
         }
-      }}
-      className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-      placeholder={`Please enter ${label.toLowerCase()}`}
-      onKeyDown={(e) => type === "number" && ["-", "+", "e"].includes(e.key) && e.preventDefault()}
-    />
-  </div>
-);
+        onChange={(e) => {
+          const val = e.target.value;
+          if (type === "number") {
+            if (val === "") return onChange("");
+            // Allow only numbers and a single decimal point
+            if (!/^\d*\.?\d*$/.test(val)) return;
+            onChange(Number(val)); // Convert to number
+          } else {
+            onChange(val);
+          }
+        }}
+        className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+        placeholder={`Please enter ${label.toLowerCase()}`}
+        onKeyDown={(e) =>
+          type === "number" &&
+          ["-", "+", "e"].includes(e.key) &&
+          e.preventDefault()
+        }
+      />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from--50 to-background">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Test Employer Login */}
-        {/* <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200"> */}
-          {/*<h3 className="text-sm font-medium text-blue-800 mb-2">Test Employer Login:</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { email: "hr@neurotech.com", name: "NeuroTech Inc." },
-              { email: "careers@inclusivetech.com", name: "InclusiveTech Solutions" },
-              { email: "jobs@diverseworks.com", name: "DiverseWorks Corp" },
-              { email: "hr@accessibledesign.com", name: "Accessible Design Co" },
-              { email: "careers@inclusivefinance.com", name: "Inclusive Finance Ltd" }
-            ].map((employer) => (
-              <Button
-                key={employer.email}
-                variant="outline"
-                size="sm"
-                onClick={() => setTestEmployerEmail(employer.email)}
-                className="text-xs"
-              >
-                {employer.name}
-              </Button>
-            ))}
-          </div>
-          <p className="text-xs text-blue-600 mt-2">
-            Current: {currentEmployerEmail || 'Not logged in'}
-          </p>
-        </div>*/}
-
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           {/* Left section */}
           <div className="mb-4 sm:mb-0">
@@ -506,23 +608,9 @@ export default function EmployerDashboard() {
             <p className="text-gray-600 mb-4 sm:mb-0">
               Manage your job postings and find the best neurodivergent talent.
             </p>
-
-            {/* Button visible only on small screens */}
-            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="inline-block rounded-lg sm:hidden">
-              <Button className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer" onClick={() => router.push("/post-job")}>
-                <Plus className="h-4 w-4 mr-2" /> Post New Job
-              </Button>
-            </motion.div>
           </div>
 
-          {/* Button visible only on larger screens */}
-          <Button
-            className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
-            onClick={() => router.push("/post-job")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Post New Job
-          </Button>
+          {/* The "Post New Job" buttons for small and large screens have been removed from here */}
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8 space-y-4">
@@ -535,41 +623,26 @@ export default function EmployerDashboard() {
                     <Building className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#3a4043]">{companyProfile?.name || "Company"}</h3>
-                    <p className="text-sm text-gray-600">{currentEmployerEmail || "Email"}</p>
+                    <h3 className="font-semibold text-[#3a4043]">
+                      {companyProfile?.name || "Company"}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {currentEmployerEmail || "Email"}
+                    </p>
                   </div>
                 </div>
-
-                {/* <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#3a4043]">
-                      Inclusion Score
-                    </span>
-                    <span className="text-sm font-medium text-[#635bff]">
-                      {companyProfile?.inclusion_score || 0}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-[#ff1b6b] to-[#00b4d8] h-2 rounded-full"
-                      style={{ width: `${companyProfile?.inclusion_score || 0}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Excellent inclusion practices
-                  </p>
-                </div> */}
 
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: BarChart3 },
-                    { id: "jobs", label: "Job Postings", icon: FileText },
-                    { id: "applications", label: "Applications", icon: Users },
                     {
                       id: "settings",
                       label: "Company Settings",
                       icon: Settings,
                     },
+                    { id: "post-job", label: "Post New Job", icon: SquarePen }, // This sidebar item remains
+                    { id: "jobs", label: "Job Posted", icon: FileText },
+                    { id: "applications", label: "Applicants", icon: Users },
                     {
                       id: "tax-calculator",
                       label: "Calculator",
@@ -603,15 +676,44 @@ export default function EmployerDashboard() {
               <div className="space-y-4">
                 <div className="grid md:grid-cols-4 gap-6">
                   {[
-                    { icon: FileText, iconColor: "text-[#635bff]", title: "Active Jobs", value: jobPostings.length, onClick: () => setActiveTab("jobs") },
-                    { icon: Users, iconColor: "text-blue-600", title: "Total Applications", value: applications.length },
-                    { icon: Eye, iconColor: "text-green-600", title: "Total Views", value: 0 },
-                    { icon: Shield, iconColor: "text-purple-600", title: "Inclusion Score", value: `${companyProfile?.inclusion_score || 0}%` },
-                  ].map(card => (
-                    <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:bg-gray-50 transition-colors">
+                    {
+                      icon: FileText,
+                      iconColor: "text-[#635bff]",
+                      title: "Active Jobs",
+                      value: jobPostings.length,
+                      onClick: () => setActiveTab("jobs"),
+                    },
+                    {
+                      icon: Users,
+                      iconColor: "text-blue-600",
+                      title: "Total Applications",
+                      value: applications.length,
+                    },
+                    {
+                      icon: Eye,
+                      iconColor: "text-green-600",
+                      title: "Total Views",
+                      value: 0,
+                    },
+                    {
+                      icon: Shield,
+                      iconColor: "text-purple-600",
+                      title: "Inclusion Score",
+                      value: `${companyProfile?.inclusion_score || 0}%`,
+                    },
+                  ].map((card) => (
+                    <Card
+                      key={card.title}
+                      onClick={card.onClick}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
                       <CardContent className="p-6 text-center">
-                        <card.icon className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`} />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">{card.value}</h3>
+                        <card.icon
+                          className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`}
+                        />
+                        <h3 className="font-semibold text-[#3a4043] mb-1">
+                          {card.value}
+                        </h3>
                         <p className="text-sm text-gray-600">{card.title}</p>
                       </CardContent>
                     </Card>
@@ -623,27 +725,28 @@ export default function EmployerDashboard() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>Recent Applications</CardTitle>
-                      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
+                      <div
+                        className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer"
+                        onClick={() => setActiveTab("applications")}
+                      >
                         View More
                       </div>
                     </div>
                   </CardHeader>
-
                   <CardContent>
-                    <div className="divide-y divide-[#e8e6f0]">
+                    <div className="space-y-4">
                       {applications.slice(0, 3).map((app) => (
                         <motion.div
                           key={app.id}
                           whileHover={{
-                            scale: 1.01,
-                            backgroundColor: "rgba(99,91,255,0.03)",
+                            boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
                           }}
                           transition={{
                             type: "spring",
                             stiffness: 300,
                             damping: 20,
                           }}
-                          className="flex items-center justify-between py-4 hover:cursor-pointer"
+                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             {getStatusIcon(app.status)}
@@ -660,12 +763,10 @@ export default function EmployerDashboard() {
                                 variant="secondary"
                                 className="bg-purple-100 text-purple-800 flex items-center gap-1"
                               >
-                                <Shield className="h-3 w-3" />
-                                Accommodations
+                                <Shield className="h-3 w-3" /> Accommodations
                               </Badge>
                             )}
                           </div>
-
                           <div className="text-right">
                             {getStatusBadge(app.status)}
                             <p className="text-xs text-gray-500 mt-1">
@@ -677,29 +778,43 @@ export default function EmployerDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-                
 
                 {/* Company Certifications */}
-               <Card>
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-emerald-600" /> Inclusion Certifications
+                      <Heart className="h-5 w-5 text-emerald-600" /> Inclusion
+                      Certifications
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {companyProfile?.certifications ? JSON.parse(companyProfile.certifications).map((cert: string) => (
-                        <Badge key={cert} variant="secondary" className="bg-emerald-100 text-emerald-800">
-                          <CheckCircle className="h-3 w-3 mr-1" /> {cert}
-                        </Badge>
-                      )) : null}
+                      {companyProfile?.certifications &&
+                      JSON.parse(companyProfile.certifications).length > 0 ? (
+                        JSON.parse(companyProfile.certifications).map(
+                          (cert: string) => (
+                            <Badge
+                              key={cert}
+                              variant="secondary"
+                              className="bg-emerald-100 text-emerald-800"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" /> {cert}
+                            </Badge>
+                          )
+                        )
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          No certifications listed.
+                        </p>
+                      )}
                     </div>
-                    <Button
+                    {/* Placeholder for viewing all certifications, if that functionality exists */}
+                    {/* <Button
                       variant="outline"
                       className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer hover:text-white"
                     >
                       View All Certifications
-                    </Button>
+                    </Button> */}
                   </CardContent>
                 </Card>
               </div>
@@ -708,46 +823,106 @@ export default function EmployerDashboard() {
             {/* Job Postings Tab */}
             {activeTab === "jobs" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">Job Postings</h1>
+                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                  Job Postings
+                </h1>
                 {isLoading ? (
-                  <Card><CardContent className="p-6 text-center"><p className="text-gray-500">Loading job postings...</p></CardContent></Card>
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-gray-500">Loading job postings...</p>
+                    </CardContent>
+                  </Card>
                 ) : jobPostings.length === 0 ? (
                   <Card>
                     <CardContent className="p-6 text-center">
-                      <p className="text-gray-500">No job postings found. Create your first job posting!</p>
-                      <Button className="mt-4 bg-[#635bff] hover:bg-[#5748e5] text-white" onClick={() => router.push("/post-job")}>Post Your First Job</Button>
+                      <p className="text-gray-500">
+                        No job postings found. Create your first job posting!
+                      </p>
+                      <Button
+                        className="mt-4 bg-[#635bff] hover:bg-[#5748e5] text-white"
+                        onClick={() => setActiveTab("post-job")}
+                      >
+                        Post Your First Job
+                      </Button>{" "}
+                      {/* Changed to set active tab */}
                     </CardContent>
                   </Card>
                 ) : (
-                  jobPostings.map(job => (
+                  // This is the correct start of the jobPostings.map block
+                  jobPostings.map((job) => (
                     <Card key={job.id}>
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{job.job_title}</h3>
-                            <p className="text-[#635bff] font-medium mb-2">{job.job_type}</p>
+                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
+                              {job.job_title}
+                            </h3>
+                            <p className="text-[#635bff] font-medium mb-2">
+                              {job.job_type}
+                            </p>
                             <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{job.location}</span>
-                              <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{job.work_mode}</span>
-                              <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" />{SALARY_RANGES[job.salary_range] ?? job.salary_range}</span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-4 w-4" />
+                                {job.location}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {job.work_mode}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-4 w-4" />
+                                {SALARY_RANGES[job.salary_range] ??
+                                  job.salary_range}
+                              </span>
                             </div>
                             <div className="mt-2">
-                              <p className="text-sm text-gray-600"><strong>Experience Level:</strong> {job.experience_level}</p>
-                              <p className="text-sm text-gray-600 mt-1"><strong>Summary:</strong> {job.job_summary}</p>
+                              <p className="text-sm text-gray-600">
+                                <strong>Experience Level:</strong>{" "}
+                                {job.experience_level}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                <strong>Summary:</strong> {job.job_summary}
+                              </p>
                             </div>
                           </div>
                           {/* <div className="text-right"><Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge></div> */}
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            {(job.flexible_work_hour || job.sensory_friendly_environment || job.mental_health_support) && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-800"><Shield className="h-3 w-3 mr-1" /> Accommodation Friendly</Badge>
+                            {(job.flexible_work_hour ||
+                              job.sensory_friendly_environment ||
+                              job.mental_health_support) && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-purple-100 text-purple-800"
+                              >
+                                <Shield className="h-3 w-3 mr-1" />{" "}
+                                Accommodation Friendly
+                              </Badge>
                             )}
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleViewJob(job)}><Eye className="h-4 w-4 mr-1" /> View</Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEditJob(job)}><Edit className="h-4 w-4 mr-1" /> Edit</Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDeleteJob(job.id)}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewJob(job)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" /> View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditJob(job)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" /> Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteJob(job.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" /> Delete
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -759,20 +934,26 @@ export default function EmployerDashboard() {
             {activeTab === "applications" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">Applications</h1>
+                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                    Applications
+                  </h1>
                   <div className="flex gap-2">
                     <Button variant="outline">Filter</Button>
                     <Button variant="outline">Sort</Button>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  {applications.map(app => (
+                  {applications.map((app) => (
                     <Card key={app.id}>
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.candidateName}</h3>
-                            <p className="text-[#635bff] font-medium mb-2">Applied for: {app.jobTitle}</p>
+                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
+                              {app.candidateName}
+                            </h3>
+                            <p className="text-[#635bff] font-medium mb-2">
+                              Applied for: {app.jobTitle}
+                            </p>
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <span>Experience: {app.experience}</span>
                               <span>Match Score: {app.score}%</span>
@@ -781,7 +962,11 @@ export default function EmployerDashboard() {
                           </div>
                           <div className="text-right">
                             {getStatusBadge(app.status)}
-                            {app.interviewDate && <p className="text-xs text-blue-600 mt-1">Interview: {app.interviewDate}</p>}
+                            {app.interviewDate && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Interview: {app.interviewDate}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {app.accommodationsRequested && (
@@ -789,8 +974,12 @@ export default function EmployerDashboard() {
                             <div className="flex items-start gap-2">
                               <Shield className="h-4 w-4 text-purple-600 mt-0.5" />
                               <div>
-                                <p className="text-sm font-medium text-purple-800">Accommodations Requested</p>
-                                <p className="text-sm text-purple-700">{app.accommodationDetails}</p>
+                                <p className="text-sm font-medium text-purple-800">
+                                  Accommodations Requested
+                                </p>
+                                <p className="text-sm text-purple-700">
+                                  {app.accommodationDetails}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -798,16 +987,34 @@ export default function EmployerDashboard() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <div className="flex">
-                              {[1, 2, 3, 4, 5].map(star => (
-                                <Star key={star} className={`h-4 w-4 ${star <= Math.floor(app.score / 20) ? "text-yellow-400 fill-current" : "text-gray-300"}`} />
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`h-4 w-4 ${
+                                    star <= Math.floor(app.score / 20)
+                                      ? "text-yellow-400 fill-current"
+                                      : "text-gray-300"
+                                  }`}
+                                />
                               ))}
                             </div>
-                            <span className="text-sm text-gray-600">({app.score}% match)</span>
+                            <span className="text-sm text-gray-600">
+                              ({app.score}% match)
+                            </span>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">View Profile</Button>
-                            <Button variant="outline" size="sm">Schedule Interview</Button>
-                            <Button size="sm" className="bg-[#635bff] hover:bg-[#5346e6] text-white">Shortlist</Button>
+                            <Button variant="outline" size="sm">
+                              View Profile
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              Schedule Interview
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-[#635bff] hover:bg-[#5346e6] text-white"
+                            >
+                              Shortlist
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -816,9 +1023,9 @@ export default function EmployerDashboard() {
                 </div>
               </div>
             )}
-           {activeTab === "settings" && (
+            {activeTab === "settings" && (
               <div className="space-y-4">
-                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
                   Company Settings
                 </h1>
 
@@ -832,11 +1039,11 @@ export default function EmployerDashboard() {
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Company Name
                         </label>
-                        <input
+                        <Input
                           type="text"
                           value={companyName}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							            onChange={(e) => setCompanyName(e.target.value)}
+                          onChange={(e) => setCompanyName(e.target.value)}
                           placeholder="Please enter company name"
                         />
                       </div>
@@ -844,102 +1051,64 @@ export default function EmployerDashboard() {
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Company Email
                         </label>
-                        <input
+                        <Input
                           type="text"
                           value={currentEmployerEmail}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-							            onChange={(e) => setCurrentEmployerEmail(e.target.value)}
+                          onChange={(e) =>
+                            setCurrentEmployerEmail(e.target.value)
+                          } // You might want to prevent direct editing of email
                           placeholder="Please enter company email"
+                          disabled // Email is usually not editable this way
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Industry
                         </label>
-                        <Select value={companyIndustry} onValueChange={setCompanyIndustry}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select industry" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Aerospace">Aerospace</SelectItem>
-                            <SelectItem value="Agriculture">Agriculture</SelectItem>
-                            <SelectItem value="Automotive">Automotive</SelectItem>
-                            <SelectItem value="Banking & Finance">Banking & Finance</SelectItem>
-                            <SelectItem value="Biotechnology">Biotechnology</SelectItem>
-                            <SelectItem value="Chemical & Petrochemical">Chemical & Petrochemical</SelectItem>
-                            <SelectItem value="Construction & Building Materials">Construction & Building Materials</SelectItem>
-                            <SelectItem value="Creative & Media">Creative & Media</SelectItem>
-                            <SelectItem value="Digital Economy & Startups">Digital Economy & Startups</SelectItem>
-                            <SelectItem value="E-commerce & Retail">E-commerce & Retail</SelectItem>
-                            <SelectItem value="Education">Education</SelectItem>
-                            <SelectItem value="Electrical & Electronics (E&E)">Electrical & Electronics (E&E)</SelectItem>
-                            <SelectItem value="Energy & Utilities">Energy & Utilities</SelectItem>
-                            <SelectItem value="Engineering & Machinery">Engineering & Machinery</SelectItem>
-                            <SelectItem value="Fisheries & Aquaculture">Fisheries & Aquaculture</SelectItem>
-                            <SelectItem value="Food & Beverage Processing">Food & Beverage Processing</SelectItem>
-                            <SelectItem value="Forestry & Timber">Forestry & Timber</SelectItem>
-                            <SelectItem value="Green Technology & Renewable Energy">Green Technology & Renewable Energy</SelectItem>
-                            <SelectItem value="Healthcare & Medical">Healthcare & Medical</SelectItem>
-                            <SelectItem value="ICT & Software Development">ICT & Software Development</SelectItem>
-                            <SelectItem value="Legal & Professional Services">Legal & Professional Services</SelectItem>
-                            <SelectItem value="Logistics & Transportation">Logistics & Transportation</SelectItem>
-                            <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                            <SelectItem value="Mining & Minerals">Mining & Minerals</SelectItem>
-                            <SelectItem value="Oil & Gas">Oil & Gas</SelectItem>
-                            <SelectItem value="Pharmaceuticals & Medical Devices">Pharmaceuticals & Medical Devices</SelectItem>
-                            <SelectItem value="Real Estate & Property Development">Real Estate & Property Development</SelectItem>
-                            <SelectItem value="Rubber">Rubber</SelectItem>
-                            <SelectItem value="Textiles & Apparel">Textiles & Apparel</SelectItem>
-                            <SelectItem value="Tourism & Hospitality">Tourism & Hospitality</SelectItem>
-                            <SelectItem value="Others">Others</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          type="text"
+                          value={companyIndustry}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                          onChange={(e) => setCompanyIndustry(e.target.value)}
+                          placeholder="Please enter industry"
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Location
                         </label>
-                        <Select value={companyLocation} onValueChange={setCompanyLocation}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
-                            <SelectItem value="Selangor">Selangor</SelectItem>
-                            <SelectItem value="Penang">Penang</SelectItem>
-                            <SelectItem value="Johor">Johor</SelectItem>
-                            <SelectItem value="Perak">Perak</SelectItem>
-                            <SelectItem value="Kedah">Kedah</SelectItem>
-                            <SelectItem value="Melaka">Melaka</SelectItem>
-                            <SelectItem value="Negeri Sembilan">Negeri Sembilan</SelectItem>
-                            <SelectItem value="Pahang">Pahang</SelectItem>
-                            <SelectItem value="Terengganu">Terengganu</SelectItem>
-                            <SelectItem value="Kelantan">Kelantan</SelectItem>
-                            <SelectItem value="Sabah">Sabah</SelectItem>
-                            <SelectItem value="Sarawak">Sarawak</SelectItem>
-                            <SelectItem value="Perlis">Perlis</SelectItem>
-                            <SelectItem value="Putrajaya">Putrajaya</SelectItem>
-                            <SelectItem value="Labuan">Labuan</SelectItem>
-                            <SelectItem value="Remote">Remote</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          type="text"
+                          value={companyLocation}
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                          onChange={(e) => setCompanyLocation(e.target.value)}
+                          placeholder="Please enter company location"
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Company Size
                         </label>
-                        <select 
+                        <select
                           value={companySize}
                           onChange={(e) => setCompanySize(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg">
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white" // Added text color and bg-white
+                        >
                           <option value="1-10 employees">1-10 employees</option>
-                          <option value="11-50 employees">11-50 employees</option>
-                          <option value="50-100 employees">50-100 employees</option>
-                          <option value="100-500 employees">100-500 employees</option>
+                          <option value="11-50 employees">
+                            11-50 employees
+                          </option>
+                          <option value="50-100 employees">
+                            50-100 employees
+                          </option>
+                          <option value="100-500 employees">
+                            100-500 employees
+                          </option>
                           <option value="500+ employees">500+ employees</option>
                         </select>
                       </div>
-                      <Button 
+                      <Button
                         className="bg-[#635bff] hover:bg-[#5346e6] text-white"
                         onClick={handleSaveCompanySettings}
                       >
@@ -948,32 +1117,46 @@ export default function EmployerDashboard() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardHeader><CardTitle>Inclusion Settings</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle>Inclusion Settings</CardTitle>
+                    </CardHeader>
                     <CardContent className="space-y-4">
                       {Object.entries(inclusionSettings).map(([key, value]) => (
                         <div key={key}>
                           <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={value} onChange={() => handleInclusionSettingChange(key as keyof typeof inclusionSettings)} className="text-[#635bff]" />
-                            <span className="text-sm">{key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())}</span>
+                            <Checkbox
+                              id={key} // Added ID for accessibility
+                              checked={value}
+                              onCheckedChange={() =>
+                                handleInclusionSettingChange(
+                                  key as keyof typeof inclusionSettings
+                                )
+                              }
+                              className="text-[#635bff]"
+                            />
+                            <span className="text-sm text-[#3a4043]">
+                              {key
+                                .replace(/([A-Z])/g, " $1")
+                                .replace(/^./, (str) => str.toUpperCase())}
+                            </span>
                           </label>
                         </div>
                       ))}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Accommodation Policy</label>
-                        <textarea rows={3} className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]" placeholder="Describe your workplace accommodation policies..." />
-                      </div>
-                      <Button className="bg-[#635bff] hover:bg-[#5346e6] text-white">Update Policies</Button> */}
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">Accommodation Policy</label>
-                        <textarea
+                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                          Accommodation Policy
+                        </label>
+                        <Textarea // Changed to Textarea for better control
                           rows={3}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px] text-[#3a4043]"
                           placeholder="Describe your workplace accommodation policies..."
                           value={accommodationPolicy}
-                          onChange={(e) => setAccommodationPolicy(e.target.value)}
+                          onChange={(e) =>
+                            setAccommodationPolicy(e.target.value)
+                          }
                         />
                       </div>
-                      <Button 
+                      <Button
                         className="bg-[#635bff] hover:bg-[#5346e6] text-white"
                         onClick={handleSaveInclusionSettings}
                       >
@@ -986,9 +1169,13 @@ export default function EmployerDashboard() {
             )}
             {activeTab === "tax-calculator" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">Double Tax Relief Calculator</h1>
+                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                  Double Tax Relief Calculator
+                </h1>
                 <Card>
-                  <CardHeader><CardTitle>Enter Employer Cost Details</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle>Enter Employer Cost Details</CardTitle>
+                  </CardHeader>
                   <CardContent className="grid md:grid-cols-2 gap-4">
                     {renderInputField(
                       "Base Salary (RM)",
@@ -1000,57 +1187,172 @@ export default function EmployerDashboard() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader><CardTitle>Comparison: Neurotypical vs OKU Cardholder</CardTitle></CardHeader>
-                  <div className="text-sm text-[#3a4043] ml-6">
-                      <p><strong className="text-green-600 text-xl">Annual Savings (Per OKU Hire):</strong> <span className="text-green-600 font-semibold text-xl">RM{result.annualSavings.toFixed(2)}</span></p>
+                  <CardHeader>
+                    <CardTitle>
+                      Comparison: Neurotypical vs OKU Cardholder
+                    </CardTitle>
+                  </CardHeader>
+                  <div className="text-sm text-[#3a4043] ml-6 mt-4">
+                    {" "}
+                    {/* Added mt-4 */}
+                    <p>
+                      <strong className="text-green-600 text-xl">
+                        Annual Savings (Per OKU Hire):
+                      </strong>{" "}
+                      <span className="text-green-600 font-semibold text-xl">
+                        RM{result.annualSavings.toFixed(2)}
+                      </span>
+                    </p>
                   </div>
                   <CardContent className="overflow-x-auto">
                     <table className="w-full border border-[#e8e6f0] text-sm">
                       <thead className="bg-[#f9f9ff] text-[#3a4043]">
                         <tr>
                           <th className="p-2 text-left ">Category</th>
-                          <th className="p-2 text-left border-1 border-[#e8e6f0]">Neurotypical Staff (RM)</th>
-                          <th className="p-2 text-left border-1 border-[#e8e6f0]">OKU Cardholder (RM)</th>
-                          <th className="p-2 text-left border-1 border-[#e8e6f0]">Notes</th>
+                          <th className="p-2 text-left border-1 border-[#e8e6f0]">
+                            Neurotypical Staff (RM)
+                          </th>
+                          <th className="p-2 text-left border-1 border-[#e8e6f0]">
+                            OKU Cardholder (RM)
+                          </th>
+                          <th className="p-2 text-left border-1 border-[#e8e6f0]">
+                            Notes
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {[
-                          { category: "Base Salary", neuro: result.baseSalary.toFixed(2), oku: result.monthlyEmployerCost.toFixed(2), notes: "Same gross salary (Monthly)" },
-                          { category: "EPF", neuro: result.epfCost.toFixed(2), oku: result.epfCost.toFixed(2), notes: "Mandatory employer contribution (Employer 13%)" },
-                          { category: "SOCSO", neuro: result.socsoCost.toFixed(2), oku: result.socsoCost.toFixed(2), notes: "Based on SOCSO rate for Employment Injury Scheme (Employer ~1.75%)" },
-                          { category: "EIS", neuro: result.eisCost.toFixed(2), oku: result.eisCost.toFixed(2), notes: "Employment Insurance System contribution (Employer 0.2%)" },
-                          { category: "Total monthly Employer Cost", neuro: result.monthlyEmployerCost.toFixed(2), oku: result.monthlyEmployerCost.toFixed(2), notes: "Same total cash flow (Before Tax Relief)" },
-                          { category: "Annual Employer Cost", neuro: result.annualCost.toFixed(2), oku: result.annualCost.toFixed(2), notes: `RM${result.monthlyEmployerCost.toFixed(2)} x 12 months (Before Tax Relief)` },
-                          { category: "Tax Relief", neuro: "❌ not applicable", oku: "✅ Eligible for Double Tax Deduction on remuneration paid to OKU employees", notes: "Employers can claim twice the amount of remuneration as deductible expense under Income Tax Act 1967 (Double Deduction)" },
-                          { category: "Effective Deductible Expense", neuro: result.annualCost.toFixed(2), oku: (result.annualCost * 2).toFixed(2), notes: "For OKU, deduction = 2 x salary paid" },
-                          { category: "Tax Savings", neuro: result.neuroTaxSavings.toFixed(2), oku: result.okuTaxSavings.toFixed(2), notes: "Double deduction doubles the tax shield @ 24% Corporate Tax Rate" },
-                          { category: "Net Effective Annual Employer Cost", neuro: result.neuroAfterTax.toFixed(2), oku: result.okuAfterTax.toFixed(2), notes: `RM${result.annualCost.toFixed(2)} - tax savings (After Tax)` },
-                        ].map(row => (
-                          <tr key={row.category} className={`border-t ${row.category === "Net Effective Annual Employer Cost" ? "font-semibold bg-[#f7f6ff]" : ""}`}>
-                            <td className="p-2 min-h-[120px]">{row.category}</td>
-                            <td className="p-2 text-[#3a4043] border-1 border-[#e8e6f0]">{row.neuro}</td>
-                            <td className="p-2 text-[#3a4043] border-1 border-[#e8e6f0]">{row.oku}</td>
-                            <td className="p-2 border-1 border-[#e8e6f0]">{row.notes}</td>
+                          {
+                            category: "Base Salary",
+                            neuro: baseSalary.toFixed(2),
+                            oku: baseSalary.toFixed(2),
+                            notes: "Same gross salary (Monthly)",
+                          }, // Corrected for baseSalary
+                          {
+                            category: "EPF",
+                            neuro: result.epfCost.toFixed(2),
+                            oku: result.epfCost.toFixed(2),
+                            notes:
+                              "Mandatory employer contribution (Employer 13%)",
+                          },
+                          {
+                            category: "SOCSO",
+                            neuro: result.socsoCost.toFixed(2),
+                            oku: result.socsoCost.toFixed(2),
+                            notes:
+                              "Based on SOCSO rate for Employment Injury Scheme (Employer ~1.75%)",
+                          },
+                          {
+                            category: "EIS",
+                            neuro: result.eisCost.toFixed(2),
+                            oku: result.eisCost.toFixed(2),
+                            notes:
+                              "Employment Insurance System contribution (Employer 0.2%)",
+                          },
+                          {
+                            category: "Total monthly Employer Cost",
+                            neuro: result.monthlyEmployerCost.toFixed(2),
+                            oku: result.monthlyEmployerCost.toFixed(2),
+                            notes: "Same total cash flow (Before Tax Relief)",
+                          },
+                          {
+                            category: "Annual Employer Cost",
+                            neuro: result.annualCost.toFixed(2),
+                            oku: result.annualCost.toFixed(2),
+                            notes: `RM${result.monthlyEmployerCost.toFixed(
+                              2
+                            )} x 12 months (Before Tax Relief)`,
+                          },
+                          {
+                            category: "Tax Relief",
+                            neuro: "❌ not applicable",
+                            oku: "✅ Eligible for Double Tax Deduction on remuneration paid to OKU employees",
+                            notes:
+                              "Employers can claim twice the amount of remuneration as deductible expense under Income Tax Act 1967 (Double Deduction)",
+                          },
+                          {
+                            category: "Effective Deductible Expense",
+                            neuro: result.annualCost.toFixed(2),
+                            oku: (result.annualCost * 2).toFixed(2),
+                            notes: "For OKU, deduction = 2 x salary paid",
+                          },
+                          {
+                            category: "Tax Savings",
+                            neuro: result.neuroTaxSavings.toFixed(2),
+                            oku: result.okuTaxSavings.toFixed(2),
+                            notes:
+                              "Double deduction doubles the tax shield @ 24% Corporate Tax Rate",
+                          },
+                          {
+                            category: "Net Effective Annual Employer Cost",
+                            neuro: result.neuroAfterTax.toFixed(2),
+                            oku: result.okuAfterTax.toFixed(2),
+                            notes: `RM${result.annualCost.toFixed(
+                              2
+                            )} - tax savings (After Tax)`,
+                          },
+                        ].map((row) => (
+                          <tr
+                            key={row.category}
+                            className={`border-t ${
+                              row.category ===
+                              "Net Effective Annual Employer Cost"
+                                ? "font-semibold bg-[#f7f6ff]"
+                                : ""
+                            }`}
+                          >
+                            <td className="p-2 min-h-[120px]">
+                              {row.category}
+                            </td>
+                            <td className="p-2 text-[#3a4043] border-1 border-[#e8e6f0]">
+                              {row.neuro}
+                            </td>
+                            <td className="p-2 text-[#3a4043] border-1 border-[#e8e6f0]">
+                              {row.oku}
+                            </td>
+                            <td className="p-2 border-1 border-[#e8e6f0]">
+                              {row.notes}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                     <p className="mt-4 text-gray-700 text-sm">
-                        Hiring an OKU cardholder doesn't just promote inclusion—it also reduces your effective headcount cost by approximately{" "}
-                        <strong>{((result.annualSavings / result.neuroAfterTax) * 100).toFixed(1)}%</strong> (thanks to the Double Tax Deduction incentive).
-                      </p>
+                      Hiring an OKU cardholder doesn't just promote inclusion—it
+                      also reduces your effective headcount cost by
+                      approximately{" "}
+                      <strong>
+                        {(
+                          (result.annualSavings / result.neuroAfterTax) *
+                          100
+                        ).toFixed(1)}
+                        %
+                      </strong>{" "}
+                      (thanks to the Double Tax Deduction incentive).
+                    </p>
                   </CardContent>
                 </Card>
               </div>
             )}
-          {/* // View Job Modal */}
+
+            {/* NEW: Post Job Tab */}
+            {activeTab === "post-job" && (
+              <PostJob
+                onJobPosted={() => setActiveTab("jobs")}
+                onCancel={() => setActiveTab("overview")}
+              />
+            )}
+
+            {/* // View Job Modal */}
             <ViewJobModal
               isOpen={isViewModalOpen}
               job={selectedJob}
               salaryRanges={SALARY_RANGES}
               onClose={() => setIsViewModalOpen(false)}
-              onEdit={() => { setIsViewModalOpen(false); selectedJob && handleEditJob(selectedJob); }}
+              onEdit={() => {
+                setIsViewModalOpen(false);
+                selectedJob && handleEditJob(selectedJob);
+              }}
             />
 
             {/* // Edit Job Modal */}

@@ -1,9 +1,8 @@
-// post-job/page.tsx
-
 "use client";
 
 import React, { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+// Remove useRouter as we'll use props for navigation
+// import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/button";
 import { Input } from "@/app/components/input";
 import { Textarea } from "@/app/components/textarea";
@@ -16,22 +15,14 @@ import {
 } from "@/app/components/select";
 import { Checkbox } from "@/app/components/checkbox";
 import { Badge } from "@/app/components/badge";
-import {
-  ArrowLeft,
-  Shield,
-  Plus,
-  X,
-  Eye,
-} from "lucide-react";
+import { ArrowLeft, Shield, Plus, X, Eye } from "lucide-react";
 
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/app/components/accordion"; 
-import { useToastHelpers } from "@/components/ui/toast";
-import { trackSynchronousPlatformIOAccessInDev } from "next/dist/server/app-render/dynamic-rendering";
+} from "@/app/components/accordion";
 
 /* SECTION IDs and titles (kept only the active sections) */
 const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
@@ -43,8 +34,14 @@ const SECTION_TITLES: Record<string, string> = {
   "neuro-friendly": "Neurodivergent-Friendly Accommodations",
 };
 
-export default function PostJob() {
-  const router = useRouter();
+// Define props for the PostJob component
+interface PostJobProps {
+  onJobPosted: () => void; // Callback when a job is successfully posted
+  onCancel: () => void; // Callback when the user cancels
+}
+
+export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
+  // const router = useRouter(); // No longer needed
 
   const [openSection, setOpenSection] = useState<string>("job-info");
 
@@ -65,7 +62,6 @@ export default function PostJob() {
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
   const [accommodations, setAccommodations] = useState<string[]>([]);
-  const { success, error, warning, info } = useToastHelpers();
 
   const jobTypes = [
     "Full-time",
@@ -83,15 +79,15 @@ export default function PostJob() {
     "Non-Executive",
   ];
 
-  const salaryRanges = [ 
-  "Below RM 3,000",
-  "RM 3,000 - RM 5,000",
-  "RM 5,001 - RM 8,000",
-  "RM 8,001 - RM 12,000",
-  "RM 12,001 - RM 18,000",
-  "RM 18,001 - RM 25,000",
-  "Above RM 25,000",
-];
+  const salaryRanges = [
+    "Below RM 3,000",
+    "RM 3,000 - RM 5,000",
+    "RM 5,001 - RM 8,000",
+    "RM 8,001 - RM 12,000",
+    "RM 12,001 - RM 18,000",
+    "RM 18,001 - RM 25,000",
+    "Above RM 25,000",
+  ];
 
   const availableAccommodations = [
     "Flexible work hours",
@@ -155,7 +151,8 @@ export default function PostJob() {
     if (!jobTitle.trim()) next.jobTitle = "Job title is required.";
     if (!jobType.trim()) next.jobType = "Job type is required.";
     if (!workLocation.trim()) next.workLocation = "Work mode is required.";
-    if (!experienceLevel.trim()) next.experienceLevel = "Experience level is required.";
+    if (!experienceLevel.trim())
+      next.experienceLevel = "Experience level is required.";
     if (!jobLocation.trim()) next.jobLocation = "Location is required.";
     if (!salaryRange.trim()) next.salaryRange = "Salary range is required.";
     if (!jobSummary.trim()) next.jobSummary = "Job summary is required.";
@@ -167,7 +164,16 @@ export default function PostJob() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("🚀 Form submitted");
-    console.log("📝 Form state:", { jobTitle, jobType, workLocation, experienceLevel, jobLocation, salaryRange, jobSummary, jobRequirements });
+    console.log("📝 Form state:", {
+      jobTitle,
+      jobType,
+      workLocation,
+      experienceLevel,
+      jobLocation,
+      salaryRange,
+      jobSummary,
+      jobRequirements,
+    });
 
     const validation = runValidation();
     const keys = Object.keys(validation);
@@ -190,9 +196,9 @@ export default function PostJob() {
     }
 
     // Get employer email from localStorage
-    const employerEmail = localStorage.getItem('employerEmail');
+    const employerEmail = localStorage.getItem("employerEmail");
     if (!employerEmail) {
-      alert('Please log in as an employer to post jobs.');
+      alert("Please log in as an employer to post jobs.");
       return;
     }
 
@@ -250,7 +256,6 @@ export default function PostJob() {
       });
 
       if (!res.ok) {
-        success("Job posted successfully!");
         const errorData = await res.json(); // Try to get error details from the response
         console.error("❌ Error response from server:", errorData);
         throw new Error(`Failed to post job: ${res.status} ${res.statusText}`);
@@ -259,7 +264,22 @@ export default function PostJob() {
       const data = await res.json();
       console.log("✅ Job posted successfully:", data);
       alert("Job posted successfully!");
-      router.push("/employer/employer-dashboard");
+      // Call the callback to switch tabs
+      onJobPosted();
+      // Reset form fields after successful submission (optional)
+      setJobTitle("");
+      setJobType("");
+      setJobSummary("");
+      setWorkLocation("");
+      setSalaryRange("");
+      setJobRequirements("");
+      setExperienceLevel("");
+      setJobLocation("");
+      setSkills([]);
+      setNewSkill("");
+      setAccommodations([]);
+      setErrors({});
+      setOpenSection("job-info"); // Return to first section
     } catch (err) {
       console.error("❌ Error posting job:", err);
       alert(`Failed to post job: ${err}`);
@@ -271,18 +291,12 @@ export default function PostJob() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background p-4 md:p-6">
+      {" "}
+      {/* Adjusted for consistency with dashboard bg */}
       <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/employer/employer-dashboard")}
-              className="mb-2 text-[#3a4043] hover:text-[#635bff]"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
             <h1 className="text-2xl font-bold text-black">Post a New Job</h1>
             <p className="text-gray-600 mt-1">
               Create an inclusive job posting that attracts neurodivergent
@@ -456,7 +470,8 @@ export default function PostJob() {
 
                             <div>
                               <label className="block text-[#3a4043] mb-2">
-                                Experience Level <span className="text-red-500">*</span>
+                                Experience Level{" "}
+                                <span className="text-red-500">*</span>
                               </label>
                               <Select
                                 value={experienceLevel}
@@ -513,7 +528,8 @@ export default function PostJob() {
                             </div>
                             <div>
                               <label className="block text-[#3a4043] mb-2">
-                                Salary Range <span className="text-red-500">*</span>
+                                Salary Range{" "}
+                                <span className="text-red-500">*</span>
                               </label>
                               <Select
                                 value={salaryRange}
@@ -528,7 +544,9 @@ export default function PostJob() {
                                   } text-[#3a4043]`}
                                 >
                                   <SelectValue placeholder="Select salary range">
-                                    {salaryRange !== "" ? salaryRanges[parseInt(salaryRange)] : "Select salary range"}
+                                    {salaryRange !== ""
+                                      ? salaryRanges[parseInt(salaryRange)]
+                                      : "Select salary range"}
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#f9fafb] border border-[#e8e6f0] shadow-md rounded-lg">
@@ -592,7 +610,9 @@ export default function PostJob() {
                               placeholder="List requirements..."
                               rows={6}
                               value={jobRequirements}
-                              onChange={(e) => setJobRequirements(e.target.value)}
+                              onChange={(e) =>
+                                setJobRequirements(e.target.value)
+                              }
                               className="border border-gray-300 text-[#3a4043]"
                             />
                           </div>
@@ -663,14 +683,14 @@ export default function PostJob() {
                                   className="flex items-center space-x-2"
                                 >
                                   <Checkbox
-                                    id={acc}
+                                    id={acc} // Added ID for accessibility
                                     checked={accommodations.includes(acc)}
                                     onCheckedChange={() =>
                                       toggleAccommodation(acc)
                                     }
                                   />
                                   <label
-                                    htmlFor={acc}
+                                    htmlFor={acc} // Linked to checkbox ID
                                     className="text-[#3a4043] cursor-pointer"
                                   >
                                     {acc}
@@ -693,7 +713,7 @@ export default function PostJob() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("employer/employer-dashboard")}
+              onClick={onCancel} // Use onCancel prop here
             >
               Cancel
             </Button>

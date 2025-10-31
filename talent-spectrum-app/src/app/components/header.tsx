@@ -70,27 +70,28 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   // Show loading skeleton instead of hiding header
   if (status === "loading") {
     return (
-      <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/90 shadow-sm border-b border-indigo-100">
+      // MODIFIED: Increased shadow to shadow-lg, increased blur to backdrop-blur-lg, slightly reduced opacity to /80
+      <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/80 shadow-lg backdrop-blur-lg">
         <div className="w-full px-6 py-2">
           <div className="flex justify-between items-center h-16">
             {/* Logo Skeleton */}
             <div className="flex items-center gap-3">
               <div className="w-[110px] h-[110px] bg-gray-200 rounded-md animate-pulse"></div>
             </div>
-            
+
             {/* Navigation Skeleton */}
             <nav className="hidden md:flex items-center space-x-2">
               <div className="h-8 w-20 bg-gray-200 rounded-xl animate-pulse"></div>
               <div className="h-8 w-24 bg-gray-200 rounded-xl animate-pulse"></div>
               <div className="h-8 w-20 bg-gray-200 rounded-xl animate-pulse"></div>
             </nav>
-            
+
             {/* Auth Area Skeleton */}
             <div className="hidden md:flex items-center space-x-4">
               <div className="h-8 w-16 bg-gray-200 rounded-full animate-pulse"></div>
               <div className="h-8 w-20 bg-gray-200 rounded-full animate-pulse"></div>
             </div>
-            
+
             {/* Mobile Menu Skeleton */}
             <div className="md:hidden">
               <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
@@ -125,7 +126,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
       // { href: "/job-coach/homepage", label: "Homepage" },
       { href: "/job-coach/Candidate", label: "Candidates" },
       { href: "/job-coach/Company", label: "Companies" },
-      {href: "/job-coach/ManualBook", label:" Manual Book" },
+      { href: "/job-coach/ManualBook", label: " Manual Book" },
     ];
   } else {
     // Default (no session)
@@ -148,7 +149,8 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/90 shadow-sm border-b border-indigo-100">
+    // MODIFIED: Increased shadow to shadow-lg, increased blur to backdrop-blur-lg, slightly reduced opacity to /80
+    <header className="w-full sticky top-0 z-50 bg-[#E9E8FF]/80 shadow-lg backdrop-blur-lg">
       <div className="w-full py-2 sm:px-6 md:px-16 lg:px-20 ">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -188,11 +190,14 @@ export default function Header({ setCurrentPage }: HeaderProps) {
             {session?.user ? (
               <>
                 <span className="text-[#3a4043]">
-                  Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
+                  Hi,{" "}
+                  <span className="font-semibold">
+                    {displayName ?? session?.user?.name ?? "User"}
+                  </span>
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all duration-200"
+                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Sign out
                 </button>
@@ -202,14 +207,14 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 <Link
                   href="/login"
                   onClick={() => setCurrentPage?.("login")}
-                  className="text-[#635bff] hover:text-[#524aff] font-semibold transition-all duration-200"
+                  className="text-[#635bff] hover:text-[#524aff] font-semibold transition-all cursor-pointer duration-200"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/login"
                   onClick={() => setCurrentPage?.("login")}
-                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all duration-200"
+                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Get Started
                 </Link>
@@ -224,7 +229,11 @@ export default function Header({ setCurrentPage }: HeaderProps) {
             aria-label="Toggle mobile menu"
             aria-expanded={isMobileMenuOpen}
           >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
           </button>
         </div>
 
@@ -251,14 +260,17 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 {session?.user ? (
                   <>
                     <span className="text-center text-[#3a4043] py-2">
-                     Hi, <span className="font-semibold">{displayName ?? session?.user?.name ?? "User"}</span>
+                      Hi,{" "}
+                      <span className="font-semibold">
+                        {displayName ?? session?.user?.name ?? "User"}
+                      </span>
                     </span>
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
                         signOut({ callbackUrl: "/login" });
                       }}
-                      className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all"
+                      className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all cursor-pointer"
                     >
                       Sign out
                     </button>

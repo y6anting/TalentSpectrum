@@ -74,7 +74,7 @@ export function ExperienceSkillsSubmission({ experiences, exp_skill, onSave }: E
         onClick={handleSubmitExperienceSkills}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Saving...' : 'Save Experience & Skills'}
+        {isSubmitting ? 'Saving...' : 'Save Experience'}
       </Button>
     </div>
   );

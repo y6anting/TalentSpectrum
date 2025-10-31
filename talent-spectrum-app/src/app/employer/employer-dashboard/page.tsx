@@ -55,7 +55,8 @@ export type JobPosting = {
   near_public_transport: boolean;
 };
 
-type CompanyProfile = {
+
+export type CompanyProfile = {
   id: number;
   email: string;
   name: string;
@@ -66,9 +67,14 @@ type CompanyProfile = {
   size: string;
   inclusion_score: number;
   certifications: string; // JSON string
-  description: string;
+  description: string; // This will store the accommodation policy
   founded_year: number;
   company_type: string;
+  // Add these fields as they are part of the company data being saved and fetched
+  neurodivergent_friendly?: boolean;
+  workplace_accommodations?: boolean;
+  equal_opportunity?: boolean;
+  accessible_recruitment?: boolean;
 };
 
 export default function EmployerDashboard() {
@@ -319,18 +325,22 @@ export default function EmployerDashboard() {
 
         const companyResponse = await fetch(`http://127.0.0.1:8000/jobs/company/${employerEmail}`);
         const defaultCompany: CompanyProfile = {
-          id: 0, email: employerEmail, 
-          name: "Your Company", 
-          industry: "Technology", 
+          id: 0, email: employerEmail,
+          name: "Your Company",
+          industry: "Technology",
           location: "Your Location",
-          website: "", 
-          employees: "", 
-          size: "1-10 employees", 
-          inclusion_score: 0, 
+          website: "",
+          employees: "",
+          size: "1-10 employees",
+          inclusion_score: 0,
           certifications: "[]",
-          description: "", 
-          founded_year: 2020, 
-          company_type: "Private"
+          description: "", // Added this
+          founded_year: 2020,
+          company_type: "Private",
+          neurodivergent_friendly: true, // Added this
+          workplace_accommodations: true, // Added this
+          equal_opportunity: true, // Added this
+          accessible_recruitment: false, // Added this
         };
 
         let companyData: CompanyProfile;
@@ -346,7 +356,21 @@ export default function EmployerDashboard() {
         }
 
         setCompanyProfile(companyData);
-        setCompanyData({ name: companyData.name, industry: companyData.industry, location: companyData.location, size: companyData.size });
+        // --- ADD THESE LINES TO POPULATE FORM FIELDS ---
+        setCompanyName(companyData.name || "");
+        setCompanyIndustry(companyData.industry || "");
+        setCompanyLocation(companyData.location || "");
+        setCompanySize(companyData.size || "1-10 employees"); // Ensure a default is set if not present
+        setAccommodationPolicy(companyData.description || ""); // Populate accommodation policy
+
+        // Populate inclusion settings
+        setInclusionSettings({
+          neurodivergentFriendly: companyData.neurodivergent_friendly ?? true,
+          workplaceAccommodations: companyData.workplace_accommodations ?? true,
+          equalOpportunity: companyData.equal_opportunity ?? true,
+          accessibleRecruitment: companyData.accessible_recruitment ?? false,
+        });
+        // --- END ADDITIONS ---
 
         const jobsResponse = await fetch(`http://127.0.0.1:8000/jobs/employer/${employerEmail}`);
         if (jobsResponse.ok) {

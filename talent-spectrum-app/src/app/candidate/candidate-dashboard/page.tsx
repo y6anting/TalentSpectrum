@@ -1129,7 +1129,7 @@ export default function CandidateDashboard() {
                       <div className="grid md:grid-cols-2 gap-6">
                         {[
                           { label: "Full Name", key: "fullName", type: "text", required: true },
-                          { label: "NRIC", key: "nric", type: "text" },
+                          // { label: "NRIC", key: "nric", type: "text" },
                           { label: "Email", key: "emailAddress", type: "email", required: true },
                           { label: "Phone Number", key: "phoneNumber", type: "tel", required: true },
                           { label: "Date of Birth", key: "dateOfBirth", type: "date", required: true },
@@ -1234,17 +1234,19 @@ export default function CandidateDashboard() {
                         ))}
                       </div>
 
-                      <ProfileSubmission
-                        candidateProfile={{
-                          personalIdentifiers: candidateProfile.personalIdentifiers,
-                          name: candidateProfile.name,
-                          email: candidateProfile.email,
-                          location: candidateProfile.location,
-                        }}
-                        onSave={() => {
-                          calculateProfileCompletion();
-                        }}
-                      />
+                      <div className="flex justify-end mt-4">
+                        <ProfileSubmission
+                          candidateProfile={{
+                            personalIdentifiers: candidateProfile.personalIdentifiers,
+                            name: candidateProfile.name,
+                            email: candidateProfile.email,
+                            location: candidateProfile.location,
+                          }}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                          }}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -1511,7 +1513,7 @@ export default function CandidateDashboard() {
                   ))}
 
                   {/* Add Experience Button */}
-                  <div className="flex justify-end mt-4">
+                  <div className="flex justify-end">
                     <Button
                       onClick={() =>
                         setExperiences([
@@ -1538,7 +1540,7 @@ export default function CandidateDashboard() {
                   </div>
 
                   {/* Save Experience Button */}
-                  <div className="flex justify-end mt-4">
+                  <div className="flex justify-end">
                     <ExperienceSkillsSubmission
                       experiences={experiences}
                       exp_skill={candidateProfile.exp_skill}
@@ -1716,45 +1718,35 @@ export default function CandidateDashboard() {
 
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-3">
-                    {strengthOptions.map((strength) => (
-                      <Button
-                        key={strength}
-                        variant="outline"
-                        className={`rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50 ${
-                          selectedStrengths.includes(strength) ? 'bg-purple-100' : ''
-                        }`}
-                        onClick={() => toggleStrength(strength)}
-                      >
-                        {strength}
-                        {selectedStrengths.includes(strength) ? (
-                          <X className="ml-2 h-4 w-4" />
-                        ) : (
+                    {strengthOptions
+                      .filter((strength) => !selectedStrengths.includes(strength))
+                      .map((strength) => (
+                        <Button
+                          key={strength}
+                          variant="outline"
+                          className="rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50"
+                          onClick={() => toggleStrength(strength)}
+                        >
+                          {strength}
                           <Plus className="ml-2 h-4 w-4" />
-                        )}
-                      </Button>
-                    ))}
+                        </Button>
+                      ))}
                   </div>
 
                   {selectedStrengths.length > 0 && (
                     <div className="mt-4">
                       <h3 className="text-sm font-medium text-[#3a4043] mb-2">Selected Strengths:</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-3">
                         {selectedStrengths.map((strength) => (
-                          <Badge
+                          <Button
                             key={strength}
-                            variant="secondary"
-                            className="bg-purple-100 border border-purple-400 text-purple-600 flex items-center gap-1"
+                            variant="outline"
+                            className="rounded-full border border-purple-400 bg-purple-100 text-purple-600 hover:bg-purple-200"
+                            onClick={() => toggleStrength(strength)}
                           >
                             {strength}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0 hover:bg-transparent"
-                              onClick={() => toggleStrength(strength)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
+                            <X className="ml-2 h-4 w-4" />
+                          </Button>
                         ))}
                       </div>
                     </div>
@@ -1884,6 +1876,7 @@ export default function CandidateDashboard() {
                       })}
                     </CardContent>
                   </Card>
+                  </div>
 
                   {/* Save Environment Button */}
                   <div className="flex justify-end mt-4">
@@ -1895,8 +1888,7 @@ export default function CandidateDashboard() {
                   />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </div>

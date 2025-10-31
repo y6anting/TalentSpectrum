@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, User, Building2, GraduationCap } from "lucide-react";
+import { ChevronLeft, ChevronRight, User, Building2, GraduationCap, AlignCenter } from "lucide-react";
 
 // Types
 type UserType = "candidate" | "employer" | "job-coach";
@@ -37,7 +37,7 @@ const USER_TYPE_CONFIG = {
     label: "Job Seeker",
     icon: User,
     title: "Find Your Perfect Role",
-    description: "Join our platform designed for neurodivergent professionals to thrive in inclusive workplaces.",
+    description: "Access resources, showcase your strengths, and connect with coaches to help you thrive in your career, whether as a job seeker or entrepreneur.",
     dashboard: "candidate/candidate-dashboard",
     gradient: "from-purple-500 to-indigo-600",
     bgImage: "/About_Express.jpg"
@@ -46,7 +46,7 @@ const USER_TYPE_CONFIG = {
     label: "Employer",
     icon: Building2,
     title: "Discover Top Talent",
-    description: "Build diverse teams with our neurodivergent-friendly hiring platform.",
+    description: "Position your brand as a leader in diversity and inclusion as you commit to ESG values and support CSR that enhance your corporate reputation through our platform.",
     dashboard: "employer/employer-dashboard",
     gradient: "from-indigo-600 to-purple-700",
     bgImage: "/About_Connect.jpg"
@@ -55,7 +55,7 @@ const USER_TYPE_CONFIG = {
     label: "Job Coach",
     icon: GraduationCap,
     title: "Guide & Support Talent",
-    description: "Help neurodivergent professionals succeed and support inclusive employers.",
+    description: "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
     dashboard: "job-coach/dashboard",
     gradient: "from-purple-700 to-indigo-800",
     bgImage: "/About_Discover.jpg"
@@ -129,6 +129,7 @@ const LoginPage = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
     setIsLoading(true);
 
     try {
@@ -303,18 +304,17 @@ const LoginPage = () => {
           {/* Content */}
           <div className="relative z-10 p-12 flex flex-col justify-between w-full">
             {/* Logo (Desktop) */}
-            <div>
-              <Image
-                src="/TalentSpectrumLogoDark.png"
-                alt="TalentSpectrum"
-                width={180} // Smaller width
-                height={60} // Smaller height
-                className="mb-4"
-                priority
-              />
-              <p className="text-white/90 text-lg font-medium">
-                Connecting diverse talent with inclusive opportunities
-              </p>
+            <div className="flex justify-center">
+              <Link href="/" className="cursor-pointer">
+                <Image
+                  src="/TalentSpectrumLogoDark.png"
+                  alt="TalentSpectrum"
+                  width={180} // Smaller width
+                  height={60} // Smaller height
+                  className="mb-4"
+                  priority
+                />
+              </Link>
             </div>
 
             {/* Center Content */}
@@ -323,7 +323,7 @@ const LoginPage = () => {
                 {activeTab === "signup" && signupProgress.currentStep !== "name" ? (
                   // Progressive signup messages
                   <div className="space-y-6">
-                    {/* Progress dots */}
+                    {/* Progress dots
                     <div className="flex justify-center gap-3">
                       {["name", "email", "password"].map((step) => (
                         <div
@@ -337,7 +337,7 @@ const LoginPage = () => {
                           }`}
                         />
                       ))}
-                    </div>
+                    </div> */}
 
                     {signupProgress.currentStep === "email" && (
                       <div>
@@ -365,7 +365,7 @@ const LoginPage = () => {
                   // Default welcome message
                   <div>
                     <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                      <i>{activeTab === "login" ? "Welcome Back" : "Where talents find their ideal setting"}</i>
+                      <i>{activeTab === "login" ? "Welcome Back" : "Join Us Now"}</i>
                     </h1>
                     <p className="text-xl text-white/80">
                       {currentConfig.description}
@@ -396,14 +396,16 @@ const LoginPage = () => {
         {/* Right Panel - Form */}
         <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 h-screen">
           {/* Logo (Mobile Only) */}
-          <div className="lg:hidden w-full flex justify-start p-4 pb-0">
-            <Image
-              src="/TalentSpectrumLogoDark.png"
-              alt="TalentSpectrum"
-              width={150} // Smaller for mobile
-              height={50} // Smaller for mobile
-              priority
-            />
+          <div className="lg:hidden w-full flex justify-center p-4 pb-0">
+            <Link href="/" className="cursor-pointer">
+              <Image
+                src="/TalentSpectrumLogoDark.png"
+                alt="TalentSpectrum"
+                width={150} // Smaller for mobile
+                height={50} // Smaller for mobile
+                priority
+              />
+            </Link>
           </div>
 
           <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-h-full overflow-y-auto mx-auto">
@@ -544,11 +546,8 @@ const LoginPage = () => {
                 </button>
 
                 <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                    <span className="px-2 text-gray-500">OR</span>
                   </div>
                 </div>
 
@@ -704,11 +703,8 @@ const LoginPage = () => {
                 {signupProgress.currentStep === "name" && (
                   <>
                     <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                      </div>
                       <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                        <span className="px-2 text-gray-500">OR</span>
                       </div>
                     </div>
 
@@ -741,32 +737,6 @@ const LoginPage = () => {
                 )}
               </form>
             )}
-
-            {/* Footer Links */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
-                {activeTab === "login" ? "Don't have an account? " : "Already have an account? "}
-                <button
-                  onClick={() => {
-                    setActiveTab(activeTab === "login" ? "signup" : "login");
-                    resetSignupProgress();
-                  }}
-                  className="text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  {activeTab === "login" ? "Sign up" : "Sign in"}
-                </button>
-              </p>
-            </div>
-
-            {/* Back to Home */}
-            <div className="mt-4 text-center">
-              <Link
-                href="/"
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                ← Back to home
-              </Link>
-            </div>
           </div>
         </div>
       </div>

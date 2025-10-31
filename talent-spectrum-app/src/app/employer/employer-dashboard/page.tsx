@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   Building, Users, Plus, Eye, Edit, Trash2, FileText, Clock, CheckCircle, MapPin,
-  DollarSign, Settings, Shield, Heart, Star, BarChart3, Calculator, X
+  DollarSign, Settings, Shield, Heart, Star, BarChart3, Calculator, X, BotMessageSquare
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -16,6 +16,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
 import { useToastHelpers } from "@/components/ui/toast";
+import * as ChatBot from "@/app/chat-bot";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -575,6 +576,11 @@ export default function EmployerDashboard() {
                       label: "Calculator",
                       icon: Calculator,
                     },
+                    {
+                      id: "consult-ai",
+                      label: "Consult AI",
+                      icon: BotMessageSquare
+                    },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -995,6 +1001,13 @@ export default function EmployerDashboard() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+            {activeTab === "consult-ai" && (
+              <>
+                <Card>
+                  <ChatBot.Chat></ChatBot.Chat>
+                </Card>
+              </>
             )}
           {/* // View Job Modal */}
             <ViewJobModal

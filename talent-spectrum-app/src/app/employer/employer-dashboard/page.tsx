@@ -636,19 +636,11 @@ export default function EmployerDashboard() {
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: BarChart3 },
-                    {
-                      id: "settings",
-                      label: "Company Settings",
-                      icon: Settings,
-                    },
                     { id: "post-job", label: "Post New Job", icon: SquarePen }, // This sidebar item remains
                     { id: "jobs", label: "Job Posted", icon: FileText },
                     { id: "applications", label: "Applicants", icon: Users },
-                    {
-                      id: "tax-calculator",
-                      label: "Calculator",
-                      icon: Calculator,
-                    },
+                    { id: "tax-calculator", label: "Calculator", icon: Calculator,},
+                    { id: "settings", label: "Company Setting", icon: Settings,},
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -1067,25 +1059,73 @@ export default function EmployerDashboard() {
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Industry
                         </label>
-                        <Input
-                          type="text"
-                          value={companyIndustry}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                          onChange={(e) => setCompanyIndustry(e.target.value)}
-                          placeholder="Please enter industry"
-                        />
+                        <Select value={companyIndustry} onValueChange={setCompanyIndustry}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select industry" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Aerospace">Aerospace</SelectItem>
+                            <SelectItem value="Agriculture">Agriculture</SelectItem>
+                            <SelectItem value="Automotive">Automotive</SelectItem>
+                            <SelectItem value="Banking & Finance">Banking & Finance</SelectItem>
+                            <SelectItem value="Biotechnology">Biotechnology</SelectItem>
+                            <SelectItem value="Chemical & Petrochemical">Chemical & Petrochemical</SelectItem>
+                            <SelectItem value="Construction & Building Materials">Construction & Building Materials</SelectItem>
+                            <SelectItem value="Creative & Media">Creative & Media</SelectItem>
+                            <SelectItem value="Digital Economy & Startups">Digital Economy & Startups</SelectItem>
+                            <SelectItem value="E-commerce & Retail">E-commerce & Retail</SelectItem>
+                            <SelectItem value="Education">Education</SelectItem>
+                            <SelectItem value="Electrical & Electronics (E&E)">Electrical & Electronics (E&E)</SelectItem>
+                            <SelectItem value="Energy & Utilities">Energy & Utilities</SelectItem>
+                            <SelectItem value="Engineering & Machinery">Engineering & Machinery</SelectItem>
+                            <SelectItem value="Fisheries & Aquaculture">Fisheries & Aquaculture</SelectItem>
+                            <SelectItem value="Food & Beverage Processing">Food & Beverage Processing</SelectItem>
+                            <SelectItem value="Forestry & Timber">Forestry & Timber</SelectItem>
+                            <SelectItem value="Green Technology & Renewable Energy">Green Technology & Renewable Energy</SelectItem>
+                            <SelectItem value="Healthcare & Medical">Healthcare & Medical</SelectItem>
+                            <SelectItem value="ICT & Software Development">ICT & Software Development</SelectItem>
+                            <SelectItem value="Legal & Professional Services">Legal & Professional Services</SelectItem>
+                            <SelectItem value="Logistics & Transportation">Logistics & Transportation</SelectItem>
+                            <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                            <SelectItem value="Mining & Minerals">Mining & Minerals</SelectItem>
+                            <SelectItem value="Oil & Gas">Oil & Gas</SelectItem>
+                            <SelectItem value="Pharmaceuticals & Medical Devices">Pharmaceuticals & Medical Devices</SelectItem>
+                            <SelectItem value="Real Estate & Property Development">Real Estate & Property Development</SelectItem>
+                            <SelectItem value="Rubber">Rubber</SelectItem>
+                            <SelectItem value="Textiles & Apparel">Textiles & Apparel</SelectItem>
+                            <SelectItem value="Tourism & Hospitality">Tourism & Hospitality</SelectItem>
+                            <SelectItem value="Others">Others</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Location
                         </label>
-                        <Input
-                          type="text"
-                          value={companyLocation}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                          onChange={(e) => setCompanyLocation(e.target.value)}
-                          placeholder="Please enter company location"
-                        />
+                        <Select value={companyLocation} onValueChange={setCompanyLocation}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
+                            <SelectItem value="Selangor">Selangor</SelectItem>
+                            <SelectItem value="Penang">Penang</SelectItem>
+                            <SelectItem value="Johor">Johor</SelectItem>
+                            <SelectItem value="Perak">Perak</SelectItem>
+                            <SelectItem value="Kedah">Kedah</SelectItem>
+                            <SelectItem value="Melaka">Melaka</SelectItem>
+                            <SelectItem value="Negeri Sembilan">Negeri Sembilan</SelectItem>
+                            <SelectItem value="Pahang">Pahang</SelectItem>
+                            <SelectItem value="Terengganu">Terengganu</SelectItem>
+                            <SelectItem value="Kelantan">Kelantan</SelectItem>
+                            <SelectItem value="Sabah">Sabah</SelectItem>
+                            <SelectItem value="Sarawak">Sarawak</SelectItem>
+                            <SelectItem value="Perlis">Perlis</SelectItem>
+                            <SelectItem value="Putrajaya">Putrajaya</SelectItem>
+                            <SelectItem value="Labuan">Labuan</SelectItem>
+                            <SelectItem value="Remote">Remote</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">

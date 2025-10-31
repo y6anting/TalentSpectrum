@@ -1,9 +1,8 @@
-// post-job/page.tsx
-
 "use client";
 
 import React, { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+// Remove useRouter as we'll use props for navigation
+// import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/button";
 import { Input } from "@/app/components/input";
 import { Textarea } from "@/app/components/textarea";
@@ -35,8 +34,14 @@ const SECTION_TITLES: Record<string, string> = {
   "neuro-friendly": "Neurodivergent-Friendly Accommodations",
 };
 
-export default function PostJob() {
-  const router = useRouter();
+// Define props for the PostJob component
+interface PostJobProps {
+  onJobPosted: () => void; // Callback when a job is successfully posted
+  onCancel: () => void; // Callback when the user cancels
+}
+
+export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
+  // const router = useRouter(); // No longer needed
 
   const [openSection, setOpenSection] = useState<string>("job-info");
 
@@ -259,7 +264,22 @@ export default function PostJob() {
       const data = await res.json();
       console.log("✅ Job posted successfully:", data);
       alert("Job posted successfully!");
-      router.push("/employer/employer-dashboard");
+      // Call the callback to switch tabs
+      onJobPosted();
+      // Reset form fields after successful submission (optional)
+      setJobTitle("");
+      setJobType("");
+      setJobSummary("");
+      setWorkLocation("");
+      setSalaryRange("");
+      setJobRequirements("");
+      setExperienceLevel("");
+      setJobLocation("");
+      setSkills([]);
+      setNewSkill("");
+      setAccommodations([]);
+      setErrors({});
+      setOpenSection("job-info"); // Return to first section
     } catch (err) {
       console.error("❌ Error posting job:", err);
       alert(`Failed to post job: ${err}`);
@@ -271,18 +291,12 @@ export default function PostJob() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background p-4 md:p-6">
+      {" "}
+      {/* Adjusted for consistency with dashboard bg */}
       <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/employer/employer-dashboard")}
-              className="mb-2 text-[#3a4043] hover:text-[#635bff]"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
             <h1 className="text-2xl font-bold text-black">Post a New Job</h1>
             <p className="text-gray-600 mt-1">
               Create an inclusive job posting that attracts neurodivergent
@@ -669,14 +683,14 @@ export default function PostJob() {
                                   className="flex items-center space-x-2"
                                 >
                                   <Checkbox
-                                    id={acc}
+                                    id={acc} // Added ID for accessibility
                                     checked={accommodations.includes(acc)}
                                     onCheckedChange={() =>
                                       toggleAccommodation(acc)
                                     }
                                   />
                                   <label
-                                    htmlFor={acc}
+                                    htmlFor={acc} // Linked to checkbox ID
                                     className="text-[#3a4043] cursor-pointer"
                                   >
                                     {acc}
@@ -699,7 +713,7 @@ export default function PostJob() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("employer/employer-dashboard")}
+              onClick={onCancel} // Use onCancel prop here
             >
               Cancel
             </Button>

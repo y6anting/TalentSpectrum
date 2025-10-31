@@ -15,6 +15,7 @@ export default function HomePage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("employer");
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
+  const [currentCoachIndex, setCurrentCoachIndex] = useState(0);
   const images = ["/1.png", "/2.png", "/3.png", "/4.png", "/5.png"];
 
   useEffect(() => {
@@ -33,11 +34,7 @@ export default function HomePage() {
 
   return (
     <div
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat py-0 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
-      style={{
-        backgroundImage: "url('/TalentSpectrumBackground.png')",
-        backgroundAttachment: "fixed",
-      }}
+      className="relative min-h-screen bg-violet-50 py-0 px-4 font-['Plus_Jakarta_Sans',_sans-serif]"
     >
       {/* Main Content */}
       <div className="flex items-center justify-center pt-10 pb-12 px-4 overflow-visible">
@@ -64,7 +61,7 @@ export default function HomePage() {
                   Innovation Beyond Inclusion.
                 </span> */}
               </h1>
-              <p className="block text-[clamp(1rem,10vw,2.5rem)] width-0 font-semibold text-white mt-3">
+              <p className="block text-[clamp(1rem,10vw,2.5rem)] width-0 font-semibold text-[#635bff] mt-3">
                 Bridging neurodivergent<br />talents to inclusive career
               </p>
 
@@ -83,7 +80,7 @@ export default function HomePage() {
                   <button
                     type="submit"
                     className="absolute left-130 top-1/2 transform -translate-y-1/2 
-                      bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors"
+                      bg-[#635bff] hover:bg-[#827CFF] text-white p-2 rounded-lg transition-colors cursor-pointer"
                   >
                     <svg
                       className="w-5 h-5"
@@ -103,7 +100,7 @@ export default function HomePage() {
 
                 {/* Search Suggestions */}
                 <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-white/80 font-medium">Popular searches:</span>
+                  <span className="text-sm text-[#635bff] font-medium">Popular searches:</span>
                   {["Analyst", "Content Marketing", "Designer", "Engineer", "HR"].map(
                     (tag) => (
                       <button
@@ -111,7 +108,7 @@ export default function HomePage() {
                         onClick={() => setSearchQuery(tag)}
                         className="px-3 py-1 bg-white/60 border border-[#e8e6f0] 
                           rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white 
-                          transition-colors"
+                          transition-colors cursor-pointer"
                       >
                         {tag}
                       </button>
@@ -152,7 +149,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10">
-            <h2 className="text-4xl md:text-4xl my-10 text-white font-bold text-center">
+            <h2 className="text-4xl md:text-4xl my-10 text-[#635bff] font-bold text-center">
               Why Talent Spectrum?
             </h2>
 
@@ -163,7 +160,7 @@ export default function HomePage() {
                 className={`px-8 py-3 rounded-full font-semibold transition-all ${
                   activeTab === "employer"
                     ? "bg-[#635bff] text-white shadow-lg"
-                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                    : "bg-white/60 border border-[#e8e6f0] text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors cursor-pointer"
                 }`}
               >
                 Employer
@@ -173,7 +170,7 @@ export default function HomePage() {
                 className={`px-8 py-3 rounded-full font-semibold transition-all ${
                   activeTab === "employee"
                     ? "bg-[#635bff] text-white shadow-lg"
-                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                    : "bg-white/60 border border-[#e8e6f0] text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors cursor-pointer"
                 }`}
               >
                 Neurodivergent Talent
@@ -183,7 +180,7 @@ export default function HomePage() {
                 className={`px-8 py-3 rounded-full font-semibold transition-all ${
                   activeTab === "jobCoach"
                     ? "bg-[#635bff] text-white shadow-lg"
-                    : "bg-white/60 text-[#3a4043] hover:bg-white/80"
+                    : "bg-white/60 border border-[#e8e6f0] text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors cursor-pointer"
                 }`}
               >
                 Job Coach
@@ -360,7 +357,7 @@ export default function HomePage() {
 
           {/* ========== BELOW: Existing Sections (Unchanged Layout) ========== */}
           <div className="mt-10">
-            <h2 className="text-4xl md:text-4xl text-white font-bold text-center mb-8">
+            <h2 className="text-4xl md:text-4xl text-[#635bff] font-bold text-center mb-8">
                Inclusive Careers For You.
             </h2>
 
@@ -467,7 +464,7 @@ export default function HomePage() {
                             <p>{job.location}</p>
                             <p>{job.schedule}</p>
                             <p>{job.salary}</p>
-                            <Button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors mt-3">
+                            <Button className="text-sm md:text-base bg-[#635bff] text-white px-5 py-3 rounded-full hover:bg-[#827CFF] transition-colors cursor-pointer mt-3">
                               Apply Now
                             </Button>
                           </CardContent>
@@ -518,64 +515,130 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10">
-            <h2 className="text-4xl md:text-4xl my-10 text-white font-bold text-center">
+            <h2 className="text-4xl md:text-4xl my-10 text-[#635bff] font-bold text-center">
               Job Coaches Matches To You.
             </h2>
 
-            <div className="grid md:grid-cols-3 gap-8 mb-10">
-              {[
-                {
-                  name: "Lee Chee Tat",
-                  expertise: "Autism Spectrum Condition",
-                  image: "/LeeCheeTat.png",
-                  title:
-                    "Certified Professional Coach, Neurodiversity-Affirming Coach.",
-                  description:
-                    "Guiding autistic adults through job search, interview preparation, and workplace communication for over 10 years, focusing on building sustainable careers.",
-                },
-                {
-                  name: "John Stefan",
-                  expertise: "ADHD and Dyslexia",
-                  image: "/JohnStefan.png",
-                  title:
-                    "ADHD Coach Practitioner, Certified Career Services Provider.",
-                  description:
-                    "8 years of experience leveraging neurodivergent strengths to passionately connect clients with roles that embrace unique cognitive styles.",
-                },
-                {
-                  name: "Dr. Isaac Ebi",
-                  expertise: "Dyslexia and Dyspraxia",
-                  image: "/DrIsaacEbi.png",
-                  title:
-                    "Ph.D. in Occupational Psychology, ICF Certified Coach.",
-                  description:
-                    "Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.",
-                },
-              ].map((coach, i) => (
-                <div
-                  key={i}
-                  className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+            <div className="relative">
+              {/* Carousel Container */}
+              <div className="overflow-hidden">
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${currentCoachIndex * 100}%)` }}
                 >
-                  <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                    <img
-                      src={coach.image}
-                      alt={`Profile photo of ${coach.name}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <h3 className="text-xl font-semibold text-[#3a4043] mb-2">
-                    {coach.name}
-                  </h3>
-                  <p className="text-[#635bff] mb-3">
-                    Expert in <br />
-                    {coach.expertise}
-                  </p>
-                  <p className="text-sm text-[#3a4043] mb-3">
-                    <em>{coach.title}</em>
-                  </p>
-                  <p className="text-sm text-[#3a4043]">{coach.description}</p>
+                  {[0, 1].map((slideIndex) => (
+                    <div key={slideIndex} className="w-full flex-shrink-0 px-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[
+                          {
+                            name: "Lee Chee Tat",
+                            expertise: "Autism Spectrum Condition",
+                            image: "/LeeCheeTat.png",
+                            title: "Certified Professional Coach, Neurodiversity-Affirming Coach.",
+                            description: "Guiding autistic adults through job search, interview preparation, and workplace communication for over 10 years, focusing on building sustainable careers.",
+                          },
+                          {
+                            name: "John Stefan",
+                            expertise: "ADHD and Dyslexia",
+                            image: "/JohnStefan.png",
+                            title: "ADHD Coach Practitioner, Certified Career Services Provider.",
+                            description: "8 years of experience leveraging neurodivergent strengths to passionately connect clients with roles that embrace unique cognitive styles.",
+                          },
+                          {
+                            name: "Dr. Isaac Ebi",
+                            expertise: "Dyslexia and Dyspraxia",
+                            image: "/DrIsaacEbi.png",
+                            title: "Ph.D. in Occupational Psychology, ICF Certified Coach.",
+                            description: "Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.",
+                          },
+                          {
+                            name: "Grace Gan",
+                            expertise: "Autism Spectrum Condition",
+                            image: "/GraceGan.png",
+                            title: "Certified Professional Coach, Neurodiversity-Affirming Coach.",
+                            description: "Guiding autistic adults through job search, interview preparation, and workplace communication for over 10 years, focusing on building sustainable careers.",
+                          },
+                          {
+                            name: "Mohammed Syafiq",
+                            expertise: "ADHD and Dyslexia",
+                            image: "/MohammedSyafiq.png",
+                            title: "ADHD Coach Practitioner, Certified Career Services Provider.",
+                            description: "8 years of experience leveraging neurodivergent strengths to passionately connect clients with roles that embrace unique cognitive styles.",
+                          },
+                          {
+                            name: "Dr. Preshanth Kumar",
+                            expertise: "Dyslexia and Dyspraxia",
+                            image: "/DrPreshanthKumar.png",
+                            title: "Ph.D. in Occupational Psychology, ICF Certified Coach.",
+                            description: "Over 15 years of expertise in career development and organizational psychology, specializing in guiding career transitions and advising employers on inclusive practices.",
+                          },
+                        ].slice(slideIndex * 3, (slideIndex + 1) * 3).map((coach, i) => (
+                          <div
+                            key={i}
+                            className="text-center bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+                          >
+                            <div className="w-24 h-24 bg-[#6b8a7a] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                              <img
+                                src={coach.image}
+                                alt={`Profile photo of ${coach.name}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <h3 className="text-xl font-semibold text-[#3a4043] mb-2">
+                              {coach.name}
+                            </h3>
+                            <p className="text-[#635bff] mb-3">
+                              Expert in <br />
+                              {coach.expertise}
+                            </p>
+                            <p className="text-sm text-[#3a4043] mb-3">
+                              <em>{coach.title}</em>
+                            </p>
+                            <p className="text-sm text-[#3a4043]">{coach.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Navigation Buttons */}
+              <button
+                onClick={() => setCurrentCoachIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentCoachIndex === 0}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all z-10"
+              >
+                <svg className="w-6 h-6 text-[#635bff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => setCurrentCoachIndex((prev) => Math.min(1, prev + 1))}
+                disabled={currentCoachIndex === 1}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all z-10"
+              >
+                <svg className="w-6 h-6 text-[#635bff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {/* Dots Indicator */}
+              <div className="flex justify-center gap-2 mt-6">
+                {[...Array(2)].map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentCoachIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentCoachIndex
+                        ? "bg-[#635bff] w-8"
+                        : "bg-white/50 hover:bg-white/75"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

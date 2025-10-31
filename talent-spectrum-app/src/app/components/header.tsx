@@ -192,7 +192,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all duration-200"
+                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Sign out
                 </button>
@@ -202,14 +202,14 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 <Link
                   href="/login"
                   onClick={() => setCurrentPage?.("login")}
-                  className="text-[#635bff] hover:text-[#524aff] font-semibold transition-all duration-200"
+                  className="text-[#635bff] hover:text-[#524aff] font-semibold transition-all cursor-pointer duration-200"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/login"
                   onClick={() => setCurrentPage?.("login")}
-                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all duration-200"
+                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Get Started
                 </Link>
@@ -258,7 +258,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                         setIsMobileMenuOpen(false);
                         signOut({ callbackUrl: "/login" });
                       }}
-                      className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all"
+                      className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all cursor-pointer"
                     >
                       Sign out
                     </button>

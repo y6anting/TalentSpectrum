@@ -298,19 +298,19 @@ export const jobPositions = [
     level: "mid" as const,
     industry: "Design"
   },
-  // {
-  //   title: "Product Manager",
-  //   description: "Lead product development from conception to launch",
-  //   requirements: ["Product Strategy", "Agile", "Analytics", "Stakeholder Management", "Market Research"],
-  //   level: "senior" as const,
-  //   industry: "Technology"
-  // },
-  // {
-  //   title: "Software Engineer",
-  //   description: "Design and develop scalable software solutions",
-  //   requirements: ["Java", "Spring Boot", "Microservices", "Docker", "Kubernetes"],
-  //   level: "mid" as const,
-  //   industry: "Technology"
-  // }
+  {
+    title: "Product Manager",
+    description: "Lead product development from conception to launch",
+    requirements: ["Product Strategy", "Agile", "Analytics", "Stakeholder Management", "Market Research"],
+    level: "senior" as const,
+    industry: "Technology"
+  },
+  {
+    title: "Software Engineer",
+    description: "Design and develop scalable software solutions",
+    requirements: ["Java", "Spring Boot", "Microservices", "Docker", "Kubernetes"],
+    level: "mid" as const,
+    industry: "Technology"
+  }
 ];
 

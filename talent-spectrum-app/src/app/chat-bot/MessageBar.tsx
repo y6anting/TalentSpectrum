@@ -6,7 +6,17 @@ interface MessageBarProps {
   onSend: () => void;
 }
 
-export default function MessageBar({ value, onChange, onSend }: MessageBarProps) {
+export default function MessageBar({
+  value,
+  onChange,
+  onSend,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSend: () => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
       <input
@@ -14,14 +24,23 @@ export default function MessageBar({ value, onChange, onSend }: MessageBarProps)
         placeholder="Ask our AI about neurodivergent talent..."
         value={value}
         onChange={onChange}
-        className="flex-grow bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
+        className={`flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none ${
+          disabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
+        }`}
+        disabled={disabled}
         onKeyDown={(e) => e.key === "Enter" && onSend()}
       />
       <button
         onClick={onSend}
-        className="text-[#635bff] hover:text-[#4a43d3] transition cursor-pointer"
+        disabled={disabled}
+        className={`flex items-center gap-2 border rounded-full px-4 py-2 transition ${
+          disabled
+            ? "border-gray-300 text-gray-400 cursor-not-allowed"
+            : "border-[#635bff] text-[#635bff] hover:bg-purple-50 cursor-pointer"
+        }`}
       >
         <Send className="w-5 h-5" />
+        {disabled ? "..." : "Send"}
       </button>
     </div>
   );

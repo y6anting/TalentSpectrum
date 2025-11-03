@@ -13,10 +13,11 @@ interface ChatMessage {
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Simulate AI response
   const sendMessage = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const newUserMessage: ChatMessage = {
       id: Date.now(),
@@ -26,6 +27,7 @@ export default function Chat() {
 
     setMessages((prev) => [...prev, newUserMessage]);
     setInput("");
+    setIsLoading(true); // 🔹 disable message bar
 
     // Simulate AI reply after delay
     setTimeout(() => {
@@ -35,6 +37,7 @@ export default function Chat() {
         text: generateAIResponse(newUserMessage.text),
       };
       setMessages((prev) => [...prev, aiReply]);
+      setIsLoading(false); // 🔹 re-enable after AI reply
     }, 800);
   };
 
@@ -43,7 +46,10 @@ export default function Chat() {
     return `You said: "${text}". I'm an AI, how can I help further?`;
   };
 
-  const handleRefresh = () => setMessages([]);
+  const handleRefresh = () => {
+    setMessages([]);
+    setIsLoading(false);
+  };
 
   return (
     <Card>

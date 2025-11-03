@@ -59,8 +59,16 @@ def handle_message(message: MessageIn, db: Session = Depends(get_db)):
 
     return ai_msg
 
+# ---------- Clear history endpoint ----------
+@app.delete("/clear_all")
+def clear_all_messages(db: Session = Depends(get_db)):
+    db.query(Message).delete()
+    db.commit()
+    return {"message": "All chat messages have been cleared."}
+
 # ---------- Chat history endpoint ----------
 @app.get("/history", response_model=list[MessageOut])
 def get_history(db: Session = Depends(get_db)):
     messages = db.query(Message).order_by(Message.id).all()
     return messages
+

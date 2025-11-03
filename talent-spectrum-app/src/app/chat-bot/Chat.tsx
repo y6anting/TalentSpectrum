@@ -53,6 +53,7 @@ export default function Chat() {
 
   return (
     <Card>
+      <div className="relative text-right">
       <RefreshButton onClick={handleRefresh} />
 
       <ChatScroller>
@@ -77,6 +78,7 @@ export default function Chat() {
           onChange={(e) => setInput(e.target.value)}
           onSend={sendMessage}
         />
+      </div>
       </div>
     </Card>
   );

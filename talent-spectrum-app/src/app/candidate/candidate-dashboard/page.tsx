@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, 
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ export default function CandidateDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
+  const [jobCoachSearch, setJobCoachSearch] = useState('');
 
   type Environment = {
     patternRecognition: string;
@@ -796,6 +797,58 @@ export default function CandidateDashboard() {
       </div>
     );
   }
+
+  const jobCoachTemporary = [
+    {
+      name: "Megeara",
+      appointments: [
+        {
+          time: 1730617200
+        },
+        {
+          time: 1730649600
+        },
+        {
+          time: 1730667600
+        }
+      ]
+    },
+    {
+      name: "Alecto",
+      appointments: [
+        {
+          time: 1730624400
+        },
+        {
+          time: 1730628000
+        },
+        {
+          time: 1730671200
+        }
+      ]
+    },
+    {
+      name: "Tisiphone",
+      appointments: [
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730631600
+        },
+      ]
+    },
+  ]
+  
+
+  const filteredJobCoachSearch = jobCoachTemporary.filter(coach =>
+    coach.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
+  );
+
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -1979,8 +2032,34 @@ export default function CandidateDashboard() {
                   )}
 
             {activeTab === "Appointment" && (
-              <div>
-                
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <div className="m-5 flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
+                    <input 
+                      className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
+                      placeholder="Find and select a job coach:"
+                      onChange={(e) => setJobCoachSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <ul className="mt-4 space-y-2">
+                    {filteredJobCoachSearch.length > 0 ? (
+                      filteredJobCoachSearch.map((coach, index) => (
+                        <li
+                          key={index}
+                          className="p-3 border rounded-lg hover:bg-[#f5f3ff] cursor-pointer transition"
+                        >
+                          <p className="font-semibold text-gray-800">{coach.name}</p>
+                        </li>
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-sm mt-2">No matching coaches found.</p>
+                    )}
+                  </ul>
+                </Card>
+                <Card>
+
+                </Card>
               </div>
             )}
               

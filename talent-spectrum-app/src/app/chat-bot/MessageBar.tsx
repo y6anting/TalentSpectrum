@@ -14,7 +14,7 @@ export default function MessageBar({ value, onChange, onSend }: MessageBarProps)
         placeholder="Ask our AI about neurodivergent talent..."
         value={value}
         onChange={onChange}
-        className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
+        className="flex-grow bg-transparent outline-none text-gray-700 placeholder-gray-400"
         onKeyDown={(e) => e.key === "Enter" && onSend()}
       />
       <button

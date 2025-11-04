@@ -12,7 +12,7 @@ import { Badge } from "@/app/components/badge";
 import {
   Building,
   Users,
-  Plus, // Keep Plus for the sidebar icon if needed elsewhere, but not for the removed buttons
+  Plus,
   Eye,
   Edit,
   Trash2,
@@ -28,10 +28,17 @@ import {
   BarChart3,
   Calculator,
   X,
-  SquarePen, // Added SquarePen icon
+  SquarePen,
+  Briefcase,
+  Book,
+  Info,
+  XCircle,
+  Calendar,
+  Search,
+  User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react"; // Assuming this is still used for auth
+import { useSession } from "next-auth/react";
 import { motion } from "motion/react";
 import { calculateEmployerCosts } from "@/app/employer/component/taxCalculator";
 import {
@@ -43,14 +50,12 @@ import {
 } from "@/app/components/select";
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
-
-// Import the PostJob component
-import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
-
-// Assuming these are custom components, if not, replace with standard HTML input/textarea or import from your UI library
-import { Input } from "@/app/components/input"; // Assuming you have an Input component
-import { Checkbox } from "@/app/components/checkbox"; // Assuming you have a Checkbox component
-import { Textarea } from "@/app/components/textarea"; // Assuming you have a Textarea component
+import PostJob from "@/app/employer/post-job/page";
+import { Input } from "@/app/components/input";
+import { Checkbox } from "@/app/components/checkbox";
+import { Textarea } from "@/app/components/textarea";
+import CandidateList from "@/app/employer/component/CandidateSearch";
+import MatchedCandidates from "@/app/employer/component/MatchedCandidates";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -61,6 +66,7 @@ const SALARY_RANGES = [
   "RM 18,001 - RM 25,000",
   "Above RM 25,000",
 ];
+
 export type JobPosting = {
   id: number;
   employer_email: string;
@@ -100,65 +106,81 @@ type CompanyProfile = {
   employees: string;
   size: string;
   inclusion_score: number;
-  certifications: string; // JSON string
+  certifications: string;
   description: string;
   founded_year: number;
   company_type: string;
-  // Add inclusion settings from your company profile
   neurodivergent_friendly: boolean;
   workplace_accommodations: boolean;
   equal_opportunity: boolean;
   accessible_recruitment: boolean;
 };
 
+// Matched Candidate Types
+type EnvironmentPreference = {
+  patternRecognition: string;
+  attention: string;
+  systematicThinking: string;
+  bigVsDetail: string;
+  taskSwitching: string;
+  hyperfocus: string;
+  communicationMedium: string;
+  clarity: string;
+  teamStyle: string;
+  presentationComfort: string;
+  checkIns: string;
+  jobCoach: string;
+  auditory: string;
+  visual: string;
+  workspace: string;
+  workdayStructure: string;
+};
+
+type CandidateProfileSummary = {
+  id: string;
+  name: string;
+  email: string;
+  location: string;
+  skills: string[];
+  accommodations: string[];
+  preferences: {
+    workType: string;
+    communication: string;
+    schedule: string;
+  };
+  experienceSummary: string;
+  educationSummary: string;
+  environment: EnvironmentPreference;
+};
+
+interface MatchBreakdown {
+  percentage: number;
+  comments: string;
+  matchedPoints: string[];
+  mismatchedPoints?: string[];
+  aiRecommendation?: string;
+}
+
+interface MatchedCandidate {
+  id: string;
+  candidateId: string;
+  jobTitle: string;
+  overallMatchPercentage: number;
+  candidateSummary: CandidateProfileSummary;
+  primaryMatch: MatchBreakdown;
+  secondaryMatch: MatchBreakdown;
+  tertiaryMatch: MatchBreakdown;
+}
+
 export default function EmployerDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false); // This seems unused, consider removing
   const router = useRouter();
-
-  // Dummy data for applications, as the original fetch was commented out
-  const applications = [
-    {
-      id: "1",
-      candidateName: "Alex Johnson",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-18",
-      status: "under_review",
-      accommodationsRequested: true,
-      accommodationDetails: "Flexible hours, quiet workspace",
-      experience: "3 years",
-      score: 92,
-    },
-    {
-      id: "2",
-      candidateName: "Sam Chen",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-17",
-      status: "interview_scheduled",
-      accommodationsRequested: false,
-      experience: "2 years",
-      score: 88,
-      interviewDate: "2024-01-25",
-    },
-    {
-      id: "3",
-      candidateName: "Jordan Smith",
-      jobTitle: "Frontend Developer",
-      appliedDate: "2024-01-16",
-      status: "shortlisted",
-      accommodationsRequested: true,
-      accommodationDetails: "Extended time for technical tests",
-      experience: "4 years",
-      score: 95,
-    },
-  ];
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(
     null
   );
   const [companyName, setCompanyName] = useState("");
-  // const [companyData, setCompanyData] = useState({ name: "", industry: "", location: "", size: "" }); // This seems unused, consider removing
   const [companyIndustry, setCompanyIndustry] = useState("");
   const [companyLocation, setCompanyLocation] = useState("");
   const [companySize, setCompanySize] = useState("");
@@ -171,6 +193,22 @@ export default function EmployerDashboard() {
     accessibleRecruitment: false,
   });
   const [accommodationPolicy, setAccommodationPolicy] = useState<string>("");
+
+  // Job posting states
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editJobData, setEditJobData] = useState<Partial<JobPosting>>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [selectedJobForApplicants, setSelectedJobForApplicants] =
+    useState<JobPosting | null>(null);
+
+  // Matched candidates states
+  const [shortlistedCandidates, setShortlistedCandidates] = useState<any[]>([]);
+
+  // Calculator
+  const [baseSalary, setBaseSalary] = useState<number>(10000);
+  const result = calculateEmployerCosts(baseSalary || 0);
 
   const getStatusBadge = (status: string) => {
     const badgeStyles: { [key: string]: string } = {
@@ -204,11 +242,28 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Calculator
-  const [baseSalary, setBaseSalary] = useState<number>(10000);
-  const result = calculateEmployerCosts(baseSalary || 0);
+  // Handle shortlist
+  const handleShortlist = (candidate: MatchedCandidate) => {
+    const newApplicant = {
+      id: candidate.id,
+      candidateName: candidate.candidateSummary.name,
+      jobTitle: candidate.jobTitle,
+      appliedDate: new Date().toISOString().split("T")[0],
+      status: "shortlisted",
+      accommodationsRequested:
+        candidate.candidateSummary.accommodations.length > 0,
+      accommodationDetails:
+        candidate.candidateSummary.accommodations.join(", "),
+      experience: candidate.candidateSummary.experienceSummary,
+      score: candidate.overallMatchPercentage,
+    };
 
-  // Handle job deletion
+    setShortlistedCandidates((prev) => [...prev, newApplicant]);
+    alert(
+      `${candidate.candidateSummary.name} has been shortlisted and added to Applicants tab!`
+    );
+  };
+
   const handleDeleteJob = async (jobId: number) => {
     if (!confirm("Are you sure you want to delete this job posting?")) {
       return;
@@ -219,7 +274,6 @@ export default function EmployerDashboard() {
       });
       if (response.ok) {
         alert("Job deleted successfully!");
-        // Refresh the job postings
         const employerEmail = localStorage.getItem("employerEmail");
         if (employerEmail) {
           const jobsResponse = await fetch(
@@ -239,18 +293,11 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Handle job view
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editJobData, setEditJobData] = useState<Partial<JobPosting>>({});
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const handleViewJob = (job: JobPosting) => {
     setSelectedJob(job);
     setIsViewModalOpen(true);
   };
 
-  // Handle job edit
   const handleEditJob = (job: JobPosting) => {
     setSelectedJob(job);
     setEditJobData(job);
@@ -263,7 +310,6 @@ export default function EmployerDashboard() {
       return;
     }
 
-    // Basic client-side validation (example for required fields)
     const requiredFields: (keyof JobPosting)[] = ["job_title", "location"];
     const newErrors: { [key: string]: string } = {};
     requiredFields.forEach((field) => {
@@ -289,7 +335,6 @@ export default function EmployerDashboard() {
 
       const updated = await res.json();
 
-      // Refresh job postings from server for immediate consistency
       const employerEmail = localStorage.getItem("employerEmail");
       if (employerEmail) {
         try {
@@ -300,19 +345,16 @@ export default function EmployerDashboard() {
             const jobsData = await jobsRes.json();
             setJobPostings(jobsData);
           } else {
-            // Fallback to optimistic local update if refetch fails
             setJobPostings((prev) =>
               prev.map((j) => (j.id === updated.id ? updated : j))
             );
           }
         } catch {
-          // Network error fallback
           setJobPostings((prev) =>
             prev.map((j) => (j.id === updated.id ? updated : j))
           );
         }
       } else {
-        // No employer email available, still update locally
         setJobPostings((prev) =>
           prev.map((j) => (j.id === updated.id ? updated : j))
         );
@@ -325,7 +367,6 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Handle company settings save
   const handleSaveCompanySettings = async () => {
     try {
       const employerEmail = localStorage.getItem("employerEmail");
@@ -366,18 +407,16 @@ export default function EmployerDashboard() {
 
       if (response.ok) {
         alert("Company settings saved successfully!");
-        // Refresh the company profile data
         const updatedResponse = await fetch(
           `http://127.0.0.1:8000/jobs/company/${employerEmail}`
         );
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
           setCompanyProfile(updatedData);
-          setCompanyName(updatedData.name); // Update state with fresh data
+          setCompanyName(updatedData.name);
           setCompanyIndustry(updatedData.industry);
           setCompanyLocation(updatedData.location);
           setCompanySize(updatedData.size);
-          // Also update inclusion settings from fetched company data
           setInclusionSettings({
             neurodivergentFriendly: updatedData.neurodivergent_friendly,
             workplaceAccommodations: updatedData.workplace_accommodations,
@@ -402,7 +441,6 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Fetch company profile and job postings from database
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -431,7 +469,7 @@ export default function EmployerDashboard() {
           description: "",
           founded_year: 2020,
           company_type: "Private",
-          neurodivergent_friendly: false, // Default values
+          neurodivergent_friendly: false,
           workplace_accommodations: false,
           equal_opportunity: false,
           accessible_recruitment: false,
@@ -462,7 +500,6 @@ export default function EmployerDashboard() {
         setCompanyLocation(companyData.location);
         setCompanySize(companyData.size);
 
-        // Initialize inclusion settings from company profile data
         setInclusionSettings({
           neurodivergentFriendly: companyData.neurodivergent_friendly,
           workplaceAccommodations: companyData.workplace_accommodations,
@@ -484,13 +521,11 @@ export default function EmployerDashboard() {
     fetchData();
   }, []);
 
-  // Handle inclusion settings changes
   const handleInclusionSettingChange = (
     setting: keyof typeof inclusionSettings
   ) => {
     setInclusionSettings((prev) => {
       const next = { ...prev, [setting]: !prev[setting] };
-      // Local storage persistence (optional, if you want settings to persist across sessions)
       try {
         localStorage.setItem("inclusionSettings", JSON.stringify(next));
       } catch (e) {
@@ -511,7 +546,6 @@ export default function EmployerDashboard() {
         return;
       }
 
-      // Local storage persistence (optional)
       try {
         localStorage.setItem(
           "inclusionSettings",
@@ -529,7 +563,7 @@ export default function EmployerDashboard() {
         equal_opportunity: inclusionSettings.equalOpportunity,
         accessible_recruitment: inclusionSettings.accessibleRecruitment,
         description: accommodationPolicy ?? companyProfile?.description ?? "",
-        inclusion_score: companyProfile?.inclusion_score ?? 0, // Ensure inclusion_score is sent
+        inclusion_score: companyProfile?.inclusion_score ?? 0,
       };
 
       const response = await fetch(
@@ -567,7 +601,7 @@ export default function EmployerDashboard() {
       <label className="block text-sm font-medium text-[#3a4043] mb-1">
         {label}
       </label>
-      <Input // Using the imported Input component
+      <Input
         type={type}
         value={
           type === "number"
@@ -578,9 +612,8 @@ export default function EmployerDashboard() {
           const val = e.target.value;
           if (type === "number") {
             if (val === "") return onChange("");
-            // Allow only numbers and a single decimal point
             if (!/^\d*\.?\d*$/.test(val)) return;
-            onChange(Number(val)); // Convert to number
+            onChange(Number(val));
           } else {
             onChange(val);
           }
@@ -600,7 +633,6 @@ export default function EmployerDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          {/* Left section */}
           <div className="mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
               Welcome back, {companyProfile?.name || "Company"}!
@@ -609,8 +641,6 @@ export default function EmployerDashboard() {
               Manage your job postings and find the best neurodivergent talent.
             </p>
           </div>
-
-          {/* The "Post New Job" buttons for small and large screens have been removed from here */}
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8 space-y-4">
@@ -635,18 +665,24 @@ export default function EmployerDashboard() {
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: BarChart3 },
-                    {
-                      id: "settings",
-                      label: "Company Settings",
-                      icon: Settings,
-                    },
-                    { id: "post-job", label: "Post New Job", icon: SquarePen }, // This sidebar item remains
+
+                    { id: "post-job", label: "Post New Job", icon: SquarePen },
                     { id: "jobs", label: "Job Posted", icon: FileText },
+                    {
+                      id: "search-candidates",
+                      label: "Search Candidates",
+                      icon: Search,
+                    },
                     { id: "applications", label: "Applicants", icon: Users },
                     {
                       id: "tax-calculator",
                       label: "Calculator",
                       icon: Calculator,
+                    },
+                    {
+                      id: "settings",
+                      label: "Company Settings",
+                      icon: Settings,
                     },
                   ].map((item) => {
                     const Icon = item.icon;
@@ -686,8 +722,8 @@ export default function EmployerDashboard() {
                     {
                       icon: Users,
                       iconColor: "text-blue-600",
-                      title: "Total Applications",
-                      value: applications.length,
+                      title: "Total Applicants",
+                      value: shortlistedCandidates.length,
                     },
                     {
                       icon: Eye,
@@ -720,11 +756,10 @@ export default function EmployerDashboard() {
                   ))}
                 </div>
 
-                {/* Recent Applications */}
                 <Card>
                   <CardHeader>
                     <div className="flex justify-between items-center">
-                      <CardTitle>Recent Applications</CardTitle>
+                      <CardTitle>Recent Applicants</CardTitle>
                       <div
                         className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer"
                         onClick={() => setActiveTab("applications")}
@@ -735,7 +770,7 @@ export default function EmployerDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {applications.slice(0, 3).map((app) => (
+                      {shortlistedCandidates.slice(0, 3).map((app) => (
                         <motion.div
                           key={app.id}
                           whileHover={{
@@ -755,7 +790,7 @@ export default function EmployerDashboard() {
                                 {app.candidateName}
                               </h4>
                               <p className="text-sm text-gray-600">
-                                {app.jobTitle} • {app.experience} experience
+                                {app.jobTitle} • {app.experience}
                               </p>
                             </div>
                             {app.accommodationsRequested && (
@@ -775,11 +810,15 @@ export default function EmployerDashboard() {
                           </div>
                         </motion.div>
                       ))}
+                      {shortlistedCandidates.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">
+                          No applicants yet. Start matching candidates!
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Company Certifications */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -808,134 +847,212 @@ export default function EmployerDashboard() {
                         </p>
                       )}
                     </div>
-                    {/* Placeholder for viewing all certifications, if that functionality exists */}
-                    {/* <Button
-                      variant="outline"
-                      className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer hover:text-white"
-                    >
-                      View All Certifications
-                    </Button> */}
                   </CardContent>
                 </Card>
               </div>
             )}
 
-            {/* Job Postings Tab */}
+            {/* Job Postings Tab - Split View with Matched Candidates */}
             {activeTab === "jobs" && (
-              <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
-                  Job Postings
-                </h1>
-                {isLoading ? (
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <p className="text-gray-500">Loading job postings...</p>
-                    </CardContent>
-                  </Card>
-                ) : jobPostings.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <p className="text-gray-500">
-                        No job postings found. Create your first job posting!
-                      </p>
-                      <Button
-                        className="mt-4 bg-[#635bff] hover:bg-[#5748e5] text-white"
-                        onClick={() => setActiveTab("post-job")}
-                      >
-                        Post Your First Job
-                      </Button>{" "}
-                      {/* Changed to set active tab */}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  // This is the correct start of the jobPostings.map block
-                  jobPostings.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
-                              {job.job_title}
-                            </h3>
-                            <p className="text-[#635bff] font-medium mb-2">
-                              {job.job_type}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {job.location}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {job.work_mode}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4" />
-                                {SALARY_RANGES[job.salary_range] ??
-                                  job.salary_range}
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600">
-                                <strong>Experience Level:</strong>{" "}
-                                {job.experience_level}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Left Side - Job Postings List */}
+                <div className="lg:col-span-1 space-y-4">
+                  <h2 className="text-xl font-bold text-[#3a4043]">
+                    Job Postings ({jobPostings.length})
+                  </h2>
+                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+                    {isLoading ? (
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <p className="text-gray-500 text-sm">Loading...</p>
+                        </CardContent>
+                      </Card>
+                    ) : jobPostings.length === 0 ? (
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <p className="text-gray-500 text-sm mb-3">
+                            No job postings found.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                            onClick={() => setActiveTab("post-job")}
+                          >
+                            Post Your First Job
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      jobPostings.map((job) => (
+                        <motion.div
+                          key={job.id}
+                          whileHover={{ x: 4 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          <Card
+                            className={`cursor-pointer transition-all ${
+                              selectedJobForApplicants?.id === job.id
+                                ? "border-2 border-[#635bff] bg-violet-50"
+                                : "hover:border-[#635bff]/50"
+                            }`}
+                            onClick={() => setSelectedJobForApplicants(job)}
+                          >
+                            <CardContent className="p-4">
+                              <h3 className="font-semibold text-[#3a4043] mb-1 line-clamp-1">
+                                {job.job_title}
+                              </h3>
+                              <p className="text-sm text-[#635bff] mb-2">
+                                {job.job_type}
                               </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                <strong>Summary:</strong> {job.job_summary}
+                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {job.location}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3 w-3" />
+                                  {SALARY_RANGES[job.salary_range] ??
+                                    job.salary_range}
+                                </span>
+                              </div>
+                              {(job.flexible_work_hour ||
+                                job.sensory_friendly_environment ||
+                                job.mental_health_support) && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-purple-100 text-purple-800 mt-2 text-xs"
+                                >
+                                  <Shield className="h-3 w-3 mr-1" />
+                                  Inclusive
+                                </Badge>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Side - Selected Job Details & Matched Candidates */}
+                <div className="lg:col-span-2 space-y-4">
+                  {selectedJobForApplicants ? (
+                    <>
+                      {/* Job Details Card */}
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-2xl">
+                                {selectedJobForApplicants.job_title}
+                              </CardTitle>
+                              <p className="text-[#635bff] font-medium mt-1">
+                                {selectedJobForApplicants.job_type}
                               </p>
                             </div>
-                          </div>
-                          {/* <div className="text-right"><Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge></div> */}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            {(job.flexible_work_hour ||
-                              job.sensory_friendly_environment ||
-                              job.mental_health_support) && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-purple-100 text-purple-800"
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleViewJob(selectedJobForApplicants)
+                                }
                               >
-                                <Shield className="h-3 w-3 mr-1" />{" "}
-                                Accommodation Friendly
-                              </Badge>
-                            )}
+                                <Eye className="h-4 w-4 mr-1" /> View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleEditJob(selectedJobForApplicants)
+                                }
+                              >
+                                <Edit className="h-4 w-4 mr-1" /> Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDeleteJob(selectedJobForApplicants.id)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" /> Delete
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewJob(job)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" /> View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditJob(job)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" /> Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteJob(job.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" /> Delete
-                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm mb-4">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <MapPin className="h-4 w-4" />
+                              {selectedJobForApplicants.location}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Clock className="h-4 w-4" />
+                              {selectedJobForApplicants.work_mode}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <DollarSign className="h-4 w-4" />
+                              {SALARY_RANGES[
+                                selectedJobForApplicants.salary_range
+                              ] ?? selectedJobForApplicants.salary_range}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Briefcase className="h-4 w-4" />
+                              {selectedJobForApplicants.experience_level}
+                            </div>
                           </div>
+                          <p className="text-sm text-gray-700">
+                            {selectedJobForApplicants.job_summary}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Matched Candidates Section */}
+                      <MatchedCandidates
+                        jobTitle={selectedJobForApplicants.job_title}
+                        onShortlist={handleShortlist}
+                      />
+                    </>
+                  ) : (
+                    <Card className="h-full">
+                      <CardContent className="flex items-center justify-center h-96">
+                        <div className="text-center text-gray-500">
+                          <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                          <p className="text-lg font-medium">
+                            Select a job posting
+                          </p>
+                          <p className="text-sm">
+                            View details and matched candidates
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
-                  ))
-                )}
+                  )}
+                </div>
               </div>
             )}
+
+            {/* Search Candidates Tab */}
+            {activeTab === "search-candidates" && (
+              <div>
+                {/* Import and use CandidateList component here */}
+                <p className="text-gray-600 mb-4">
+                  Search through all available candidates in the talent pool
+                </p>
+                {/* You'll need to import CandidateList component from document 3 */}
+                <CandidateList />
+              </div>
+            )}
+
+            {/* Applicants Tab */}
             {activeTab === "applications" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
-                    Applications
+                    Shortlisted Applicants
                   </h1>
                   <div className="flex gap-2">
                     <Button variant="outline">Filter</Button>
@@ -943,86 +1060,108 @@ export default function EmployerDashboard() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  {applications.map((app) => (
-                    <Card key={app.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
-                              {app.candidateName}
-                            </h3>
-                            <p className="text-[#635bff] font-medium mb-2">
-                              Applied for: {app.jobTitle}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span>Experience: {app.experience}</span>
-                              <span>Match Score: {app.score}%</span>
-                              <span>Applied: {app.appliedDate}</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            {app.interviewDate && (
-                              <p className="text-xs text-blue-600 mt-1">
-                                Interview: {app.interviewDate}
+                  {shortlistedCandidates.length > 0 ? (
+                    shortlistedCandidates.map((app) => (
+                      <Card key={app.id}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
+                                {app.candidateName}
+                              </h3>
+                              <p className="text-[#635bff] font-medium mb-2">
+                                Applied for: {app.jobTitle}
                               </p>
-                            )}
-                          </div>
-                        </div>
-                        {app.accommodationsRequested && (
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                            <div className="flex items-start gap-2">
-                              <Shield className="h-4 w-4 text-purple-600 mt-0.5" />
-                              <div>
-                                <p className="text-sm font-medium text-purple-800">
-                                  Accommodations Requested
-                                </p>
-                                <p className="text-sm text-purple-700">
-                                  {app.accommodationDetails}
-                                </p>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span>Experience: {app.experience}</span>
+                                <span>Match Score: {app.score}%</span>
+                                <span>Shortlisted: {app.appliedDate}</span>
                               </div>
                             </div>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`h-4 w-4 ${
-                                    star <= Math.floor(app.score / 20)
-                                      ? "text-yellow-400 fill-current"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
+                            <div className="text-right">
+                              {getStatusBadge(app.status)}
                             </div>
-                            <span className="text-sm text-gray-600">
-                              ({app.score}% match)
-                            </span>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View Profile
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Schedule Interview
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="bg-[#635bff] hover:bg-[#5346e6] text-white"
-                            >
-                              Shortlist
-                            </Button>
+                          {app.accommodationsRequested && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                              <div className="flex items-start gap-2">
+                                <Shield className="h-4 w-4 text-purple-600 mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium text-purple-800">
+                                    Accommodations Requested
+                                  </p>
+                                  <p className="text-sm text-purple-700">
+                                    {app.accommodationDetails}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <div className="flex">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= Math.floor(app.score / 20)
+                                        ? "text-yellow-400 fill-current"
+                                        : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-sm text-gray-600">
+                                ({app.score}% match)
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm">
+                                View Profile
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-green-600 text-green-600 hover:bg-green-50"
+                              >
+                                <Calendar className="h-4 w-4 mr-1" />
+                                Schedule Interview
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-[#635bff] hover:bg-[#5346e6] text-white"
+                              >
+                                Contact
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-[#3a4043] mb-2">
+                          No Shortlisted Candidates Yet
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Start shortlisting candidates from your job postings
+                          to see them here.
+                        </p>
+                        <Button
+                          className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                          onClick={() => setActiveTab("jobs")}
+                        >
+                          View Job Postings
+                        </Button>
                       </CardContent>
                     </Card>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
+
             {activeTab === "settings" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
@@ -1057,9 +1196,9 @@ export default function EmployerDashboard() {
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                           onChange={(e) =>
                             setCurrentEmployerEmail(e.target.value)
-                          } // You might want to prevent direct editing of email
+                          }
                           placeholder="Please enter company email"
-                          disabled // Email is usually not editable this way
+                          disabled
                         />
                       </div>
                       <div>
@@ -1081,7 +1220,7 @@ export default function EmployerDashboard() {
                         <Input
                           type="text"
                           value={companyLocation}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px"
                           onChange={(e) => setCompanyLocation(e.target.value)}
                           placeholder="Please enter company location"
                         />
@@ -1093,7 +1232,7 @@ export default function EmployerDashboard() {
                         <select
                           value={companySize}
                           onChange={(e) => setCompanySize(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white" // Added text color and bg-white
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white"
                         >
                           <option value="1-10 employees">1-10 employees</option>
                           <option value="11-50 employees">
@@ -1125,7 +1264,7 @@ export default function EmployerDashboard() {
                         <div key={key}>
                           <label className="flex items-center gap-2">
                             <Checkbox
-                              id={key} // Added ID for accessibility
+                              id={key}
                               checked={value}
                               onCheckedChange={() =>
                                 handleInclusionSettingChange(
@@ -1146,7 +1285,7 @@ export default function EmployerDashboard() {
                         <label className="block text-sm font-medium text-[#3a4043] mb-1">
                           Accommodation Policy
                         </label>
-                        <Textarea // Changed to Textarea for better control
+                        <Textarea
                           rows={3}
                           className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px] text-[#3a4043]"
                           placeholder="Describe your workplace accommodation policies..."
@@ -1167,6 +1306,7 @@ export default function EmployerDashboard() {
                 </div>
               </div>
             )}
+
             {activeTab === "tax-calculator" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
@@ -1193,8 +1333,6 @@ export default function EmployerDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <div className="text-sm text-[#3a4043] ml-6 mt-4">
-                    {" "}
-                    {/* Added mt-4 */}
                     <p>
                       <strong className="text-green-600 text-xl">
                         Annual Savings (Per OKU Hire):
@@ -1227,7 +1365,7 @@ export default function EmployerDashboard() {
                             neuro: baseSalary.toFixed(2),
                             oku: baseSalary.toFixed(2),
                             notes: "Same gross salary (Monthly)",
-                          }, // Corrected for baseSalary
+                          },
                           {
                             category: "EPF",
                             neuro: result.epfCost.toFixed(2),
@@ -1335,7 +1473,6 @@ export default function EmployerDashboard() {
               </div>
             )}
 
-            {/* NEW: Post Job Tab */}
             {activeTab === "post-job" && (
               <PostJob
                 onJobPosted={() => setActiveTab("jobs")}
@@ -1343,7 +1480,6 @@ export default function EmployerDashboard() {
               />
             )}
 
-            {/* // View Job Modal */}
             <ViewJobModal
               isOpen={isViewModalOpen}
               job={selectedJob}
@@ -1355,7 +1491,6 @@ export default function EmployerDashboard() {
               }}
             />
 
-            {/* // Edit Job Modal */}
             <EditJobModal
               isOpen={isEditModalOpen}
               editJobData={editJobData}

@@ -1,360 +1,410 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import JobCard from "@/app/components/jobCard";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/app/components/button";
-import { Search, Filter, Grid3X3, List, SlidersHorizontal } from "lucide-react";
-import gsap from "gsap"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/card";
+import { Badge } from "@/app/components/badge";
+import { Input } from "@/app/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/select";
+import {
+  Search,
+  MapPin,
+  Clock,
+  DollarSign,
+  Building,
+  Star,
+  Heart,
+  Filter,
+  SortAsc,
+  Eye,
+  Bookmark,
+  Share,
+  CheckCircle,
+  Shield,
+  Users,
+  Calendar,
+  TrendingUp,
+  ArrowRight,
+  Briefcase,
+  Globe,
+  Award,
+} from "lucide-react";
+import { motion } from "motion/react";
+import { jobs } from "./jobData";
 
-const jobs = [
-   {
-    id: "1",
-    title: "UX Designer",
-    company: "Google",
-    location: "Hybrid",
-    type: "Full-time",
-    salary: "RM65k - 85k / annum",
-    logo: "/Google_Logo.png",
-    isRemote: false,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description: "Join Google's design team to create accessible user experiences.",
-    posted: "1 day ago",
-  },
-  {
-    id: "2",
-    title: "Consultant",
-    company: "PwC",
-    location: "Remote",
-    type: "Full-time",
-    salary: "RM80k - 110k / annum",
-    logo: "/PwC_Logo.png",
-    isRemote: true,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description: "Consult on neurodivergent inclusion and workplace adaptation strategies.",
-    posted: "3 days ago",
-  },
-  {
-    id: "3",
-    title: "Developer",
-    company: "Gamuda",
-    location: "Remote",
-    type: "Full-time",
-    salary: "RM70k - 90k / annum",
-    logo: "/Gamuda_Logo.png",
-    isRemote: true,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description: "Develop innovative software for sustainable infrastructure projects.",
-    posted: "2 days ago",
-  },
-  {
-    id: "4",
-    title: "Data Analyst",
-    company: "SLB",
-    location: "Part-time",
-    type: "Part-time",
-    salary: "RM40k - 55k / annum",
-    logo: "/SLB_Logo.png",
-    isRemote: false,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description: "Analyze datasets to improve energy efficiency and inclusivity.",
-    posted: "5 days ago",
-  },
-  {
-    id: "5",
-    title: "Frontend Developer",
-    company: "NeuroTech",
-    location: "Remote",
-    type: "Full-time",
-    salary: "RM70k - 90k / annum",
-    isRemote: true,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description:
-      "We are looking for a frontend developer with strong React and Tailwind skills to join our inclusive team.",
-    posted: "2 days ago",
-  },
-  {
-    id: "6",
-    title: "Data Analyst",
-    company: "InclusionWorks",
-    location: "Singapore",
-    type: "Part-time",
-    salary: "RM40k - RM55k / annum",
-    isRemote: false,
-    isFlexible: true,
-    hasAccommodations: false,
-    isInclusive: true,
-    description:
-      "Analyze workforce data and help companies make inclusive, data-driven decisions.",
-    posted: "5 days ago",
-  },
-  {
-    id: "7",
-    title: "UX Designer",
-    company: "DesignForward",
-    location: "Hybrid",
-    type: "Full-time",
-    salary: "RM65k - RM85k / annum",
-    isRemote: false,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description:
-      "Create inclusive and accessible user experiences for neurodivergent users.",
-    posted: "1 week ago",
-  },
-  {
-    id: "8",
-    title: "Software Engineer",
-    company: "TechInclusive",
-    location: "Remote",
-    type: "Full-time",
-    salary: "RM80k - RM110k / annum",
-    isRemote: true,
-    isFlexible: true,
-    hasAccommodations: true,
-    isInclusive: true,
-    description:
-      "Build scalable software solutions in a neurodivergent-friendly environment.",
-    posted: "3 days ago",
-  },
-];
+export default function CandidateJobListing() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterLocation, setFilterLocation] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState("recent");
+  const [selectedJob, setSelectedJob] = useState(jobs[0]); // Default to first job
 
-export default function OpportunitiesPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams?.get("query") || "";
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-  const jobsGridRef = useRef<HTMLDivElement>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  const handleJobClick = (jobId: string) => {
-    router.push(`/jobs/${jobId}`);
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 90) return "font-bold text-green-600";
+    if (score >= 80) return "font-bold text-blue-600";
+    if (score >= 70) return "font-bold text-yellow-600";
+    return "font-bold text-red-600";
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    const url = q ? `/jobListing?query=${encodeURIComponent(q)}` : "/jobListing";
-    router.push(url);
-  };
-
-  const toggleFilter = (filter: string) => {
-    setSelectedFilters(prev =>
-      prev.includes(filter)
-        ? prev.filter(f => f !== filter)
-        : [...prev, filter]
-    );
-  };
-
-  const filters = [
-    { id: "remote", label: "Remote" },
-    { id: "flexible", label: "Flexible Hours" },
-    { id: "accommodations", label: "Accommodations Available" },
-    { id: "inclusive", label: "Neurodivergent Friendly" },
-    { id: "fulltime", label: "Full-time" },
-    { id: "parttime", label: "Part-time" },
-  ];
-
-  const filteredJobs = jobs.filter(job => {
-    if (searchQuery && !job.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !job.company.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    if (selectedFilters.includes("remote") && !job.isRemote) return false;
-    if (selectedFilters.includes("flexible") && !job.isFlexible) return false;
-    if (selectedFilters.includes("accommodations") && !job.hasAccommodations) return false;
-    if (selectedFilters.includes("inclusive") && !job.isInclusive) return false;
-    if (selectedFilters.includes("fulltime") && job.type !== "Full-time") return false;
-    if (selectedFilters.includes("parttime") && job.type !== "Part-time") return false;
-
-    return true;
+  const filteredJobs = jobs.filter((job) => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesLocation = filterLocation === "all" || job.location.includes(filterLocation);
+    const matchesType = filterType === "all" || job.type === filterType;
+    
+    return matchesSearch && matchesLocation && matchesType;
   });
 
+  // Set default selected job when filtered jobs change
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    if (prefersReducedMotion || !jobsGridRef.current) return;
-
-    const jobCards = jobsGridRef.current.querySelectorAll('.job-card-item');
-    
-    gsap.fromTo(jobCards, 
-      {
-        opacity: 0,
-        y: 20,
-        scale: 0.95
-      },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.4,
-        stagger: 0.05,
-        ease: 'power2.out'
-      }
-    );
-  }, [filteredJobs, viewMode]);
+    if (filteredJobs.length > 0 && !filteredJobs.find(job => job.id === selectedJob.id)) {
+      setSelectedJob(filteredJobs[0]);
+    }
+  }, [filteredJobs, selectedJob.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-gray-700">Find Your Perfect Job</h1>
-          <p className="text-xl text-[#6f7a80] max-w-3xl mx-auto">
-            Discover opportunities with neurodivergent-friendly employers
+        {/* Header */}
+        {/* <div className="mb-8">
+          <h1 className="text-3xl font-bold text-[#3a4043] mb-2">Job Opportunities</h1>
+          <p className="text-[#6f7a80]">
+            Discover jobs that match your skills and neurodivergent strengths
           </p>
-        </div>
+        </div> */}
 
-        {/* Search and Filters */}
-        <div className="mb-8 space-y-4">
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search jobs, companies, or skills..."
-                className="w-full px-6 py-4 pr-12 text-lg border border-gray-300 rounded-xl  focus:ring-[#635bff] focus:border-[#635bff] outline-none transition-all text-[#3a4043] bg-white shadow-md"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#635bff] hover:bg-[#635bff] text-white p-2 rounded-lg transition-colors"
-              >
-                <Search className="w-5 h-5" />
-              </button>
+        {/* Search and Filters - Sticky at Top */}
+        <Card className="mb-3 sticky top-20 z-10">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4 w-full">
+              {/* Search */}
+              <div className="flex-1">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
+                  <Input
+                    placeholder="Search jobs by title, company, or keywords..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-4">
+                <Select value={filterLocation} onValueChange={setFilterLocation}>
+                  <SelectTrigger className="w-40">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    <SelectItem value="San Francisco">San Francisco</SelectItem>
+                    <SelectItem value="Seattle">Seattle</SelectItem>
+                    <SelectItem value="Austin">Austin</SelectItem>
+                    <SelectItem value="Remote">Remote</SelectItem>
+                    <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    <SelectItem value="Singapore">Singapore</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-40">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Remote">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-40">
+                    <SortAsc className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Most Recent</SelectItem>
+                    <SelectItem value="match">Best Match</SelectItem>
+                    <SelectItem value="salary">Salary</SelectItem>
+                    <SelectItem value="company">Company</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </form>
+          </CardContent>
+        </Card>
 
-          {/* Filters */}
-          <div className="flex flex-wrap justify-center gap-3">
-            {filters.map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => toggleFilter(filter.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedFilters.includes(filter.id)
-                    ? "bg-[#635bff] text-white"
-                    : "bg-white/60 border border-[#e8e6f0] rounded-full text-sm text-[#635bff] hover:bg-[#635bff] hover:text-white transition-colors"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Results Header */}
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-[#3a4043]">
-            <span className="font-semibold">{filteredJobs.length}</span> neurodivergent-friendly jobs found
+        {/* Results Summary */}
+        <div className="mb-3">
+          <p className="text-[#6f7a80]">
+            Showing {filteredJobs.length} of {jobs.length} jobs
           </p>
-
-          {/* View Toggle */}
-          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-1 rounded-lg w-fit shadow-sm">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1 px-3 py-2 rounded-md transition-all ${
-                viewMode === "list"
-                ? "bg-[#635bff] text-white shadow-md px-4 py-2 rounded-lg transition-all duration-200"
-                : "text-gray-600 px-4 py-2 rounded-lg hover:bg-[#635bff]/15 hover:text-[#635bff] transition-all duration-200"
-
-              }`}
-            >
-              <List className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">List</span>
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1 px-3 py-2 rounded-md transition-all ${
-                viewMode === "grid"
-                ? "bg-[#635bff] text-white shadow-md px-4 py-2 rounded-lg transition-all duration-200"
-                : "text-gray-600 px-4 py-2 rounded-lg hover:bg-[#635bff]/15 hover:text-[#635bff] transition-all duration-200"
-
-              }`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">Grid</span>
-            </button>
-          </div>
-
         </div>
 
-        {/* Job Cards */}
-        <div
-          ref={jobsGridRef}
-          className={
-            viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              : "space-y-4"
-          }
-        >
-          {filteredJobs.map((job) => (
-            <div key={job.id} className="job-card-item">
-              <JobCard job={job} onJobClick={handleJobClick} viewMode={viewMode} />
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-6 lg:h-[calc(100vh-300px)]">
+          {/* Left Side - Job List */}
+          <div className="overflow-y-auto py-2 px-2 lg:h-full scrollbar-thin scrollbar-thumb-[#c5c4d4] scrollbar-track-transparent">
+            <div className="space-y-4">
+                    {filteredJobs.map((job, index) => (
+                    <motion.div
+                        key={job.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                        <Card 
+                            className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                                selectedJob.id === job.id 
+                                ? "ring-2 ring-[#635bff] bg-[#635bff]/5" 
+                                : "hover:shadow-md"
+                            }`}
+                            onClick={() => setSelectedJob(job)}
+                            >
+                            <CardContent className="p-4 flex flex-col h-full">
+                                <div className="flex flex-col sm:flex-row justify-between gap-4 h-full">
+                                {/* LEFT CONTENT */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                    <h3 className="text-lg font-semibold text-[#3a4043] truncate">{job.title}</h3>
+                                    <Badge className={`${getMatchScoreColor(job.matchScore)} bg-opacity-10`}>
+                                        {job.matchScore}% match
+                                    </Badge>
+                                    {job.accommodationsFriendly && (
+                                        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                        <Shield className="h-3 w-3 mr-1" />
+                                        Accommodation Friendly
+                                        </Badge>
+                                    )}
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-4 text-sm text-[#6f7a80] mb-3">
+                                    <span className="flex items-center gap-1">
+                                        <Building className="h-4 w-4" />
+                                        {job.company}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <MapPin className="h-4 w-4" />
+                                        {job.location}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-4 w-4" />
+                                        {job.type}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <DollarSign className="h-4 w-4" />
+                                        {job.salary}
+                                    </span>
+                                    </div>
+
+                                    <p className="text-[#6f7a80] text-sm mb-3 line-clamp-2">
+                                    {job.description}
+                                    </p>
+
+                                    <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
+                                    <span>Posted: {job.postedDate}</span>
+                                    <span>Deadline: {job.applicationDeadline}</span>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT BUTTONS */}
+                                <div className="flex flex-col gap-2 sm:self-start shrink-0">
+                                    <Button
+                                    size="sm"
+                                    className="bg-[#635bff] hover:bg-[#524aff] text-white w-full sm:w-auto"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Handle apply
+                                    }}
+                                    >
+                                    Apply
+                                    </Button>
+                                    <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 w-full sm:w-auto"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Handle save
+                                    }}
+                                    >
+                                    <Bookmark className="w-3 h-3 mr-1" />
+                                    Save
+                                    </Button>
+                                </div>
+                                </div>
+                            </CardContent>
+                            </Card>
+
+                    </motion.div>
+                    ))}
+
+              {/* No Results */}
+              {filteredJobs.length === 0 && (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Search className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-[#3a4043] mb-2">No jobs found</h3>
+                    <p className="text-[#6f7a80] mb-4">
+                      Try adjusting your search criteria or filters to find more opportunities.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setSearchTerm("");
+                        setFilterLocation("all");
+                        setFilterType("all");
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredJobs.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              No jobs found matching your criteria
-            </p>
-            <Button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedFilters([]);
-              }}
-              variant="outline"
-            >
-              Clear all filters
-            </Button>
           </div>
-        )}
 
-        {/* Call to Action */}
-        <div className="text-center mt-12 bg-white rounded-xl p-8 shadow-lg border border-[#e8e6f0]">
-          <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
-            Don't see the perfect job yet?
-          </h2>
-          <p className="text-[#3a4043] mb-6">
-            Create your profile and let neurodivergent-friendly employers find you. 
-            Set up job alerts to be notified of new opportunities.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/login">
-              <Button
-                className="rounded-full bg-[#635bff] hover:bg-[#5148e5] text-white font-semibold px-6 py-2 shadow-md transition-all duration-200"
-              >
-                Create Profile
-              </Button>
-            </Link>
+          {/* Right Side - Job Details */}
+          <div className="lg:sticky lg:top-8 lg:self-start">
 
-            <Button
-              variant="outline"
-              className="rounded-full text-[#635bff] hover:bg-[#635bff]/80 hover:text-white font-semibold px-6 py-2 transition-all duration-200"
-            >
-              Set Up Job Alerts
-            </Button>
+            <Card className="h-fit">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl font-bold text-[#3a4043] mb-2">
+                      {selectedJob.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-4 text-[#6f7a80] mb-4">
+                      <span className="flex items-center gap-1">
+                        <Building className="h-4 w-4" />
+                        {selectedJob.company}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {selectedJob.location}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-[#6f7a80]">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {selectedJob.type}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4" />
+                        {selectedJob.salary}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Badge className={`${getMatchScoreColor(selectedJob.matchScore)} bg-opacity-10`}>
+                      {selectedJob.matchScore}% match
+                    </Badge>
+                    {selectedJob.accommodationsFriendly && (
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Accommodation Friendly
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {/* Job Description */}
+                <div>
+                  <h4 className="font-semibold text-[#3a4043] mb-3">Job Description</h4>
+                  <p className="text-[#6f7a80] leading-relaxed">{selectedJob.description}</p>
+                </div>
+
+                {/* Requirements */}
+                <div>
+                  <h4 className="font-semibold text-[#3a4043] mb-3">Requirements</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJob.requirements.map((req, reqIndex) => (
+                      <Badge key={reqIndex} variant="secondary" className="text-xs">
+                        {req}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                <div>
+                  <h4 className="font-semibold text-[#3a4043] mb-3">Benefits</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJob.benefits.map((benefit, benefitIndex) => (
+                      <Badge key={benefitIndex} variant="outline" className="text-xs border-[#635bff]/20 text-[#635bff]">
+                        {benefit}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Company Info */}
+                <div>
+                  <h4 className="font-semibold text-[#3a4043] mb-3">Company Information</h4>
+                  <div className="space-y-2 text-sm text-[#6f7a80]">
+                    <div className="flex justify-between">
+                      <span>Industry:</span>
+                      <span>{selectedJob.industry}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Company Size:</span>
+                      <span>{selectedJob.companySize}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Posted:</span>
+                      <span>{selectedJob.postedDate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Application Deadline:</span>
+                      <span>{selectedJob.applicationDeadline}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3 pt-4 border-t border-[#e8e6f0]">
+                  <Button className="bg-[#635bff] hover:bg-[#524aff] text-white w-full">
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Apply Now
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10">
+                      <Bookmark className="w-4 h-4 mr-2" />
+                      Save Job
+                    </Button>
+                    <Button variant="outline" className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50">
+                      <Share className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

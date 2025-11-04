@@ -88,7 +88,7 @@ export function SkillsSubmission({ exp_skill, languageProficiencies, onSave }: S
         onClick={handleSubmitSkills}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Saving...' : 'Save Skills & Languages'}
+        {isSubmitting ? 'Saving...' : 'Save Skills'}
       </Button>
     </div>
   );

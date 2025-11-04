@@ -9,18 +9,15 @@ from io import BytesIO
 
 app = FastAPI()
 
-# --- Load environment variables ---
 load_dotenv()
 google_api_key = os.getenv("GOOGLE_API_KEY")
 
-# --- Initialize Gemini ---
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=0.2,
     google_api_key=google_api_key
 )
 
-# --- Helper: Read PDF ---
 def read_pdf_file(file_contents: BytesIO):
     try:
         pdf_reader = PdfReader(file_contents)
@@ -32,7 +29,6 @@ def read_pdf_file(file_contents: BytesIO):
         raise HTTPException(status_code=400, detail=f"Error reading PDF file: {str(e)}")
 
 
-# --- API Endpoint: Upload Resume & Get Feedback ---
 @app.post("/resume-feedback")
 async def resume_feedback(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
@@ -50,36 +46,47 @@ async def resume_feedback(file: UploadFile = File(...)):
 
         # Step 3: Create the AI prompt
         prompt = ChatPromptTemplate.from_template("""
-You are an empathetic professional career coach and resume analyst who specializes in supporting **neurodivergent candidates** (e.g., individuals with ADHD, autism, dyslexia, or other neurodiverse traits).
+        You are an empathetic professional career coach and resume analyst who specializes in supporting **neurodivergent candidates** (e.g., individuals with ADHD, autism, dyslexia, or other neurodiverse traits).
 
-Your task is to review and provide constructive feedback on the following resume content.
+        Resume Content:
+        {resume_text}
 
-Resume Content:
-{resume_text}
+        Your task is to analyze the candidate’s resume and provide a JSON response in this structure:
 
-Provide your response in a structured and supportive format that includes:
+        {{
+            "resume_feedback": {{
+                "overall_resume_score": <0-100>,
+                "summary": "Brief overview of how well the resume presents the candidate’s strengths and fit for their desired roles.",
+                "strengths": [],
+                "areas_for_improvement": [],
+                "recommendations": {{
+                    "what_to_add": ["specific sections, keywords, or examples to include"],
+                    "what_to_remove": ["unnecessary, outdated, or confusing content to simplify"],
+                    "formatting_tips": ["clear and simple suggestions to make layout neurodivergent-friendly and readable"],
+                    "tone_and_language": ["advice to make tone confident, inclusive, and authentic"]
+                }}
+            }},
+            "career_guidance": {{
+                "suitable_job_roles": [
+                    {{
+                        "role": "string",
+                        "reason": "why this role fits based on skills, interests, and neurodivergent strengths"
+                    }}
+                ],
+                "transferable_skills": [],
+                "next_steps": ["practical suggestions for improving employability or tailoring resume to roles"]
+            }}
+        }}
 
-1. **Summary of the Candidate's Profile**  
-   - Briefly describe the overall impression and key career focus of the candidate.
+        Consider:
+        1. Use an encouraging, non-judgmental tone.
+        2. Focus on practical, specific, and small steps the candidate can take to improve.
+        3. Highlight neurodivergent strengths (e.g., detail-oriented, analytical thinking, creativity, empathy, persistence).
+        4. Avoid overly technical or critical phrasing.
+        5. If possible, suggest career roles that align with their demonstrated skills or work style.
 
-2. **Key Strengths**  
-   - Highlight specific strengths, skills, and achievements.
-   - Mention qualities that are often strong in neurodivergent individuals (e.g., creativity, attention to detail, persistence, pattern recognition) if visible in the resume.
-
-3. **Areas for Improvement**  
-   - Gently point out missing elements or unclear sections.
-   - Avoid harsh criticism; focus on clarity, structure, and inclusivity.
-
-4. **Personalized Suggestions to Enhance the Resume**  
-   - Offer concrete, actionable advice to make the resume more professional, neurodiversity-friendly, and recruiter-ready.  
-   - Suggest ways to highlight transferable skills, measurable results, or relevant projects.
-
-5. **Overall Impression & Career Fit**  
-   - Describe the types of roles, environments, or industries where this candidate may thrive.
-   - Encourage self-advocacy and confidence in how they present their unique value.
-
-Make your feedback **empathetic, encouraging, and detailed**, ensuring the tone is **kind, human, and uplifting**.
-""")
+        Return only the JSON object, no other text.
+        """)
 
 
         chain = prompt | llm

@@ -1978,6 +1978,11 @@ export default function CandidateDashboard() {
                     </>
                   )}
 
+            {activeTab === "Appointment" && (
+              <div>
+                
+              </div>
+            )}
               
           </div>
         </div>

@@ -28,7 +28,8 @@ import {
   BarChart3,
   Calculator,
   X,
-  SquarePen, // Added SquarePen icon, BotMessageSquare
+  SquarePen, // Added SquarePen icon, 
+  BotMessageSquare
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react"; // Assuming this is still used for auth
@@ -1352,7 +1353,7 @@ export default function EmployerDashboard() {
               {activeTab === "consult-ai" && (
               <>
                 <Card>
-                  <ChatBot.Chat></ChatBot.Chat>
+                  <ChatBot.Chat/>
                 </Card>
               </>
             )}

@@ -158,7 +158,7 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
   }, [session?.feedback]);
 
   useEffect(() => {
-    // Load session data from sessionStorage
+    // Load session data from sessionStorage - only run once on mount
     const sessionData = sessionStorage.getItem('mockInterviewSession');
     if (sessionData) {
       const parsedData = JSON.parse(sessionData);
@@ -179,7 +179,8 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       // No session data, redirect to setup
       router.push('/mock-interview/setup');
     }
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const generateFeedback = async (sessionData: InterviewSession) => {
     if (!sessionData.selectedPosition || !sessionData.answers.length) {
@@ -187,8 +188,16 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       return;
     }
 
+    // Don't regenerate if feedback already exists
+    if (sessionData.feedback) {
+      console.log("📋 Feedback already exists, skipping generation");
+      setLoading(false);
+      return;
+    }
+
     setIsGeneratingFeedback(true);
     try {
+      console.log("🤖 Generating new feedback...");
       const feedback = await generateAIFeedback(
         sessionData.selectedPosition,
         sessionData.interviewType,
@@ -200,6 +209,7 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
         feedback
       };
       
+      console.log("✅ Feedback generated successfully");
       setSession(updatedSession);
       sessionStorage.setItem('mockInterviewSession', JSON.stringify(updatedSession));
     } catch (error) {
@@ -218,23 +228,25 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
 
   if (loading || !session) {
     return (
-      <Card className="max-w-[6xl] mx-auto border-0 bg-white/90 backdrop-blur-lg">
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">
-            {isGeneratingFeedback ? "Generating AI feedback..." : "Loading feedback..."}
-          </p>
-        </div>
-      </div></Card>
+      <div className="h-screen flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bFF] mx-auto mb-4"></div>
+            <p className="text-gray-600">
+              {isGeneratingFeedback ? "Generating AI feedback..." : "Loading feedback..."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen ">
-      <div className="max-w-[1400px] mx-auto">
-        <Card className="max-w-[6xl] mx-auto border-0 bg-white/90 backdrop-blur-lg">
-           <CardContent className="p-8 text-start">
+    <div className="">
+      <div className="">
+        <div className="max-w-[1400px] ">
+          <Card className="max-w-[6xl] mx-auto bg-white p-4">
+            <CardContent className="p-6 text-start">
             {/* <RealisticAvatar size="medium" /> */}
             <p className="text-gray-700 mb-6 text-xl">
               Great work completing your{" "}
@@ -484,6 +496,7 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

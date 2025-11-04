@@ -143,31 +143,25 @@ ${contextInfo}
 Candidate's Responses:
 ${qaSection}
 
-CRITICAL: Return ONLY a valid JSON object. Do NOT include markdown code fences, explanations, or any text outside the JSON.
+CRITICAL: Return ONLY a valid JSON object. Do NOT include markdown code fences, explanations, or any text outside the JSON. Each sentence must be under 10 words.
 
 Return this exact JSON structure:
 
 {
-  "overall_score": "<number between 0-100>",
-  "overall": "1-2 short sentences summarizing the candidate's performance, tone, and readiness for ${jobPosition.title}. Be encouraging and highlight their potential.",
-  "strengths": {
-    "instruction": "Each strength must be 1 short, clear sentence under 15 words.",
-    "example": [
-      "Communicates ideas clearly and confidently.",
-      "Demonstrates strong problem-solving skills.",
-      "Shows enthusiasm and adaptability in responses."
-    ]
-  },
+  "overall_score": <number between 0-100>,
+  "overall": "1-2 sentences summarizing the candidate's performance, tone, and readiness for ${jobPosition.title}. Be encouraging and highlight their potential.",
+  "strengths": [
+    "Specific strength 1 based on their answers",
+    "Specific strength 2 based on their answers",
+    "Specific strength 3 based on their answers"
+  ],
   "areas_for_improvement": {
-    "instruction": "Each improvement must be 1 short, actionable sentence under 15 words.",
-    "example": [
-      "Provide more specific examples to support answers.",
-      "Practice speaking at a steadier pace.",
-      "Improve time management when structuring responses."
-    ]
-  }
+  [
+    "Specific improvement area 1 with actionable tips",
+    "Specific improvement area 2 with actionable tips",
+    "Specific improvement area 3 with actionable tips"
+  ]
 }
-
 
 Guidelines:
 - Be concise, supportive, and specific to their actual answers

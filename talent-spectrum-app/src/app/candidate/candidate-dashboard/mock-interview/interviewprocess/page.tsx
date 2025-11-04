@@ -453,9 +453,11 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     if (!isUsingBrowserTts && audioRef.current && !audioRef.current.paused) {
       audioRef.current.pause();
       setTtsState("paused");
+      setIsAvatarSpeaking(false);
     } else if (isUsingBrowserTts && "speechSynthesis" in window) {
       window.speechSynthesis.pause();
       setTtsState("paused");
+      setIsAvatarSpeaking(false);
     }
   };
 
@@ -463,9 +465,11 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     if (!isUsingBrowserTts && audioRef.current && audioRef.current.paused) {
       audioRef.current.play();
       setTtsState("speaking");
+      setIsAvatarSpeaking(true);
     } else if (isUsingBrowserTts && "speechSynthesis" in window) {
       window.speechSynthesis.resume();
       setTtsState("speaking");
+      setIsAvatarSpeaking(true);
     }
   };
 
@@ -568,11 +572,13 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
   const progress = ((session.currentQuestion + 1) / session.totalQuestions) * 100;
 
   return (
-    <div className="max-w-[1400px] mx-auto">
-      <audio ref={audioRef} hidden preload="auto" />
+    <div className="h-screen overflow-hidden">
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto p-6">
+          <audio ref={audioRef} hidden preload="auto" />
 
-      <Card className="bg-white shadow-sm rounded-2xl overflow-y-auto max-h-[80vh]">
-        <CardContent className="p-6 space-y-8">
+          <Card className="bg-white shadow-sm rounded-2xl">
+            <CardContent className="p-6 space-y-8">
           {/* Header */}
           <div className="flex flex-row justify-between items-center gap-2">
             <div className="text-lg font-medium text-gray-700">
@@ -604,20 +610,22 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
 
           {/* Avatar + Camera */}
           <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <RealisticAvatar
-                  isSpeaking={isAvatarSpeaking}
-                  isListening={isListening || isRecording}
-                />
+            <Card className="h-fit">
+              <CardContent className="p-9 text-center">
+                <div className="max-h-[300px] flex items-center justify-center">
+                  <RealisticAvatar
+                    isSpeaking={isAvatarSpeaking}
+                    isListening={isListening || isRecording}
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white rounded-2xl overflow-hidden">
-                <CardContent className="p-6">
+            <Card className="bg-white rounded-2xl overflow-hidden h-fit">
+                <CardContent className="p-5">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Camera</h3>
-                    <div className="relative w-full aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-lg">
+                    {/* <h3 className="text-base font-semibold text-gray-800 mb-3">Your Camera</h3> */}
+                    <div className="relative w-full aspect-video max-h-[200px] bg-gray-900 rounded-xl overflow-hidden shadow-lg">
                       {cameraOn ? (
                         <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                       ) : (
@@ -636,15 +644,23 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                     <Button 
                       variant={cameraOn ? "destructive" : "outline"} 
                       onClick={cameraOn ? stopCamera : startCamera}
-                      className="mt-3 w-full hover:cursor-pointer bg-gray-100 border border-gray-300 hover:bg-gray-200 text-gray-700 hover:cursor-pointer w-fit hover:text-gray-700"
+                      className="mt-3 hover:cursor-pointer bg-gray-100 border border-gray-300 hover:bg-gray-200 text-gray-700 w-fit hover:text-gray-700"
                     >
-                      {cameraOn ? "Stop Camera" : "Open Camera"}
+                      {cameraOn ? "Stop Camera" : "Open your Camera"}
                       
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+          {!interviewStarted && (
+            <div className="bg-gradient-to-r from-blue-50 to-gray-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-gray-700 text-center">
+                <span className="font-semibold">Take a moment to prepare:</span> Check your camera, microphone, and ensure you're in a quiet space before you start.
+              </p>
+            </div>
+          )}
 
           {/* Question */}
           {interviewStarted && (
@@ -660,7 +676,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                      "General"} Question
                   </h3>
                   {currentQuestion.difficulty && (
-                    <span className={`px-2 rounded-full bortext-xs font-medium ${
+                    <span className={`px-2 rounded-full text-xs font-medium ${
                       currentQuestion.difficulty === "easy" ? "bg-green-100 text-green-700 border border-green-200" :
                       currentQuestion.difficulty === "medium" ? "bg-yellow-100 text-yellow-700 border border-yellow-200" :
                       "bg-red-100 text-red-700 border border-red-200"
@@ -674,8 +690,8 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                 </div>
               </div>
 
-              <div className="bg-[#635BFF]/5 p-6 rounded-xl border-l-3 border-l-[#635BFF]/80 border-t border-r border-b border-[#635BFF]/15 ">
-                <p className="text-lg text-gray-700 mb-3">{currentQuestion.question}</p>
+              <div className="bg-[#635BFF]/5 p-5 rounded-xl border-l-3 border-l-[#635BFF]/80 border-t border-r border-b border-[#635BFF]/15 ">
+                <p className="text-base text-gray-700 mb-3">{currentQuestion.question}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   {currentQuestion.expectedDuration && (
                     <span className="flex items-center">
@@ -780,7 +796,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   setIsAnswering(true);
                 }}
                 placeholder="Type your answer or use voice..."
-                className="w-full p-4 border rounded-xl h-40 resize-none focus:ring-1 focus:ring-[#635BFF]/30"
+                className="w-full p-4 border rounded-xl h-30 resize-h focus:ring-1 focus:ring-[#635BFF]/30"
                 disabled={!interviewStarted}
               />
 
@@ -789,8 +805,8 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   variant={isRecording ? "destructive" : "outline"}
                   onClick={isRecording ? stopRecording : startRecording}
                   className="w-fit px-4 py-2 rounded-md 
-             border border-[#635BFF] text-[#635BFF] font-semibold 
-             hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                border border-[#635BFF] text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
 >
                   {isRecording ? (
                     <> <MicOff className="w-4 h-4 mr-2" /> Stop </>
@@ -854,6 +870,8 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
           </div>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 };

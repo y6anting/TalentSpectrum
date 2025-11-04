@@ -132,13 +132,12 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto">
-        <div className="w-full min-h-screen">
-
+    <div className="h-screen mb-10">
+      <div className="h-full">
+        <div className="max-w-[1400px] ">
           {/* Main Setup Card */}
-          <Card className="w-full overflow-y-auto border-0 bg-white/80 backdrop-blur-lg">
-            <CardContent className="p-8">
+          <Card className="w-full bg-white ">
+            <CardContent className="p-6">
               <div className="gap-8">
                 
                 {/* Interview Configuration */}
@@ -177,7 +176,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 space-y-6 py-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 space-y-6 py-5">
                     {/* Number of Questions */}
                     <div className="space-y-3 w-full">
                       <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
@@ -363,19 +362,19 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                       )}
                     </div>
 
-                    {/* <div className="relative py-6">
+                    <div className="relative py-6">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-gray-300" />
                       </div>
                       <div className="relative flex justify-center text-sm">
                         <span className="p-4 bg-white text-gray-500 font-semibold">OR</span>
                       </div>
-                    </div> */}
+                    </div>
 
                     {/* Custom Job Description */}
-                    {/* <div>
+                    <div>
                       <label className="block text-base font-semibold text-gray-700 mb-3 ml-1">
-                        Custom Job Description
+                        Custom Job Title
                       </label>
                       <textarea
                         value={customJobDescription}
@@ -395,7 +394,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         
                         `}
                       />
-                    </div> */}
+                    </div>
                   </div>
 
                   {/* Selected Position Preview

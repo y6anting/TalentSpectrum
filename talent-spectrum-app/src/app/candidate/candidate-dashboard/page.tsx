@@ -24,6 +24,7 @@ import { useSession } from "next-auth/react";
 import MockInterviewSetupPage from "./mock-interview/setup/page";
 import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
+import ReportPage from "./Report/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -825,8 +826,9 @@ export default function CandidateDashboard() {
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-6">
+            <div className="lg:sticky lg:top-8">
+              <Card>
+                <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
                     {candidateProfile.name.split(' ').map(n => n[0]).join('')}
@@ -934,6 +936,7 @@ export default function CandidateDashboard() {
                 </nav>
               </CardContent>
             </Card>
+            </div>
           </div>
 
           {/* Main Content */}
@@ -1976,6 +1979,10 @@ export default function CandidateDashboard() {
                         }} />
                       )}
                     </>
+                  )}
+
+                  {activeTab === "Report" && (
+                    <ReportPage />
                   )}
 
               

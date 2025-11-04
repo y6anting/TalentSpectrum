@@ -22,6 +22,8 @@ import { NeuroStrengthSubmission } from "../components/NeuroStrengthSubmission";
 import ResumeUploadButton from "@/app/components/resume-upload/ResumeUploadButton";
 import { useSession } from "next-auth/react";
 import MockInterviewSetupPage from "./mock-interview/setup/page";
+import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
+import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -30,6 +32,7 @@ export default function CandidateDashboard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
 
   type Environment = {
     patternRecognition: string;
@@ -1948,8 +1951,32 @@ export default function CandidateDashboard() {
               )}
 
             {activeTab === "mock interview" && (
-              <MockInterviewSetupPage />
-            )}
+                    <>
+                      {mockInterviewStep === "setup" && (
+                        <MockInterviewSetupPage onNavigate={(target) => {
+                          if (target === "interview") {
+                            setMockInterviewStep("process");
+                          }
+                        }} />
+                      )}
+
+                      {mockInterviewStep === "process" && (
+                        <MockInterviewProcessPage onNavigate={(target) => {
+                          if (target === "feedback") {
+                            setMockInterviewStep("feedback");
+                          }
+                        }} />
+                      )}
+
+                      {mockInterviewStep === "feedback" && (
+                        <MockInterviewFeedbackPage onNavigate={(target) => {
+                          if (target === "setup") {
+                            setMockInterviewStep("setup");
+                          }
+                        }} />
+                      )}
+                    </>
+                  )}
 
               
           </div>

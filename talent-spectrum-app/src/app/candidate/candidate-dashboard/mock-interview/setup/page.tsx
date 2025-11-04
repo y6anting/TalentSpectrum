@@ -45,7 +45,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [customJobDescription, setCustomJobDescription] = useState("");
-  const itemsPerPage = 4;
+  const itemsPerPage = 3;
   const filteredJobs = useMemo(() => {
     return jobPositions.filter(position =>
       position.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,7 +132,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="h-screen mb-10">
+    <div className="min-h-screen mb-10">
       <div className="h-full">
         <div className="max-w-[1400px] ">
           {/* Main Setup Card */}
@@ -262,7 +262,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
 
                     {/* Position Cards Grid */}
                     <div className="grid md:grid-cols-3 gap-4 mb-6">
-                      {currentJobs.slice(0,3).map((position) => (
+                      {currentJobs.map((position) => (
                         <button
                           key={position.title}
                           onClick={() => {
@@ -307,13 +307,32 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                       ))}
                     </div>
 
+                     {/* Search Results Info */}
+                    <div className="flex flex-col-2 justify-between">
+                      <div className="ml-4 text-sm text-gray-600 text-center">
+                      {searchTerm ? (
+                        <>
+                          Found {filteredJobs.length} position{filteredJobs.length !== 1 ? 's' : ''} matching "{searchTerm}"
+                          {filteredJobs.length === 0 && (
+                            <div className="mt-2 text-gray-500">
+                              Try searching for different keywords or browse all positions
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-gray-500">
+                          {jobPositions.length} available positions
+                        </div>
+                      )}
+                    </div>
+
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {filteredJobs.length > itemsPerPage && (
                       <div className="flex justify-center items-center gap-2 mb-6">
                         <button
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage((p) => p - 1)}
-                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
                         >
                           Previous
                         </button>
@@ -323,9 +342,9 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             <button
                               key={i}
                               onClick={() => setCurrentPage(i + 1)}
-                              className={`px-3 py-2 border rounded-md transition-colors ${
+                              className={`px-2 py-1 border rounded-md transition-colors hover:cursor-pointer ${
                                 currentPage === i + 1
-                                  ? "bg-purple-500 text-white border-purple-500"
+                                  ? "bg-[#635BFF] text-white border-[#635BFF]"
                                   : "hover:bg-gray-100"
                               }`}
                             >
@@ -337,32 +356,17 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         <button
                           disabled={currentPage === totalPages}
                           onClick={() => setCurrentPage((p) => p + 1)}
-                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
                         >
                           Next
                         </button>
                       </div>
                     )}
-
-                    {/* Search Results Info */}
-                    <div className="mb-4 text-sm text-gray-600 text-center">
-                      {searchTerm ? (
-                        <>
-                          Found {filteredJobs.length} position{filteredJobs.length !== 1 ? 's' : ''} matching "{searchTerm}"
-                          {filteredJobs.length === 0 && (
-                            <div className="mt-2 text-gray-500">
-                              Try searching for different keywords or browse all positions
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-gray-500 pt-5">
-                          Showing 3 of {jobPositions.length} available positions
-                        </div>
-                      )}
                     </div>
 
-                    <div className="relative py-6">
+                   
+
+                    <div className="relative py-3">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-gray-300" />
                       </div>
@@ -374,7 +378,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                     {/* Custom Job Description */}
                     <div>
                       <label className="block text-base font-semibold text-gray-700 mb-3 ml-1">
-                        Custom Job Title
+                        Custom Job Title or Description
                       </label>
                       <textarea
                         value={customJobDescription}
@@ -384,7 +388,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             setSelectedPositionId("");
                           }
                         }}
-                        placeholder="Paste a job description or describe the role you're preparing for..."
+                        placeholder="Paste a job title or job description or describe the role you're preparing for..."
                         className={`w-full p-4 border rounded-xl h-28 resize-none transition-all ${
                           selectedPositionId 
                             ? 'border-gray-300 text-gray-500 ' 

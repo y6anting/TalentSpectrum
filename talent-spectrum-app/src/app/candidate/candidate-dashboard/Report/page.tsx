@@ -99,33 +99,37 @@ const ReportPage: React.FC = () => {
           return;
         }
 
-        // If no stored report, try to fetch from backend using the PDF
-        const response = await fetch("/api/ResumeFeedback", {
-          method: "POST",
-          body: await createFormDataWithResume(),
-        });
+        // If no stored report, use mock data immediately
+        // This prevents long loading times from API calls
+        const mockData = getMockReportData();
+        setReportData(mockData);
+        setLoading(false);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch resume feedback");
-        }
+        // Optionally: Try to fetch from backend in the background
+        // Uncomment below if you want to fetch real data after showing mock data
+        /*
+        try {
+          const response = await fetch("/api/ResumeFeedback", {
+            method: "POST",
+            body: await createFormDataWithResume(),
+          });
 
-        const data = await response.json();
-        
-        if (data.success && data.feedback) {
-          // Store in sessionStorage for future use
-          sessionStorage.setItem("resumeReport", JSON.stringify(data.feedback));
-          setReportData(data.feedback);
-        } else {
-          // Use mock data as fallback
-          const mockData = getMockReportData();
-          setReportData(mockData);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.feedback) {
+              sessionStorage.setItem("resumeReport", JSON.stringify(data.feedback));
+              setReportData(data.feedback);
+            }
+          }
+        } catch (err) {
+          console.error("Background fetch failed:", err);
         }
+        */
       } catch (error) {
         console.error("Error loading report:", error);
         setError("Failed to load report. Using sample data.");
         // Use mock data as fallback
         setReportData(getMockReportData());
-      } finally {
         setLoading(false);
       }
     };
@@ -153,6 +157,7 @@ const ReportPage: React.FC = () => {
       if (resumeResponse.ok) {
         const blob = await resumeResponse.blob();
         formData.append("file", blob, "resume-txt.pdf");
+        console.log("Resume PDF loaded and appended to FormData.");
       }
     } catch (err) {
       console.error("Could not load resume PDF:", err);
@@ -213,7 +218,7 @@ const ReportPage: React.FC = () => {
 
   if (loading || !reportData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bFF] mx-auto mb-4"></div>
@@ -530,7 +535,7 @@ const ReportPage: React.FC = () => {
                 <Star className="w-5 h-5 text-[#635BFF]" />
                 <h3 className="text-xl font-bold text-gray-800">Mock Interview Performance</h3>
               </div>
-              {mockInterviewFeedback?.overall_score && (
+              {mockInterviewFeedback?.overall_score > 0 && (
                 <div className="text-center">
                   <div className="text-3xl font-bold text-[#635BFF]">{mockInterviewFeedback.overall_score}/100</div>
                   <div className="text-xs text-gray-600">Interview Score</div>
@@ -630,7 +635,7 @@ const ReportPage: React.FC = () => {
         </Card>
 
         {/* Next Steps */}
-        <Card className="mt-6 border-0 shadow-lg bg-gradient-to-r from-[#635BFF]/10 to-purple-100/50 backdrop-blur-sm">
+        {/* <Card className="mt-6 border-0 shadow-lg bg-gradient-to-r from-[#635BFF]/10 to-purple-100/50 backdrop-blur-sm">
           <CardContent className="p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Next Steps</h3>
             <div className="space-y-3">
@@ -644,7 +649,7 @@ const ReportPage: React.FC = () => {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
      </Card>

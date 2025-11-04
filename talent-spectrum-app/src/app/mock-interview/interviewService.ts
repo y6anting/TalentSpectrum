@@ -153,6 +153,7 @@ export async function generateAIFeedback(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         jobPosition,
@@ -161,7 +162,12 @@ export async function generateAIFeedback(
           question: a.question,
           answer: a.answer,
           timestamp: a.timestamp
-        })) // Remove audioBlob for API call
+        })), // Remove audioBlob for API call
+        // Hint server to use Gemini and return structured content if supported
+        provider: 'gemini',
+        format: 'structured_v1',
+        sections: ['overall', 'skills', 'strengths', 'improvements', 'tips'],
+        responseMimeType: 'application/json'
       })
     });
     

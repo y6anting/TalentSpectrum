@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import Annotated
 
 from database.connection import get_db
-from database.models.candidate import CandidateProfile, CandidateProfileRequest, Education, Experience
+from database.models.candidate import CandidateProfile, CandidateProfileRequest, Education, Experience, JobApplication, SavedJob
 
 router = APIRouter()
 
@@ -279,6 +279,55 @@ async def update_neurodivergent_strengths(email: str, strengths_data: dict, db: 
     
     db.commit()
     return {"message": "Neurodivergent strengths updated successfully"}
+
+# Applications endpoints
+@router.get("/{email}/applications")
+async def get_applications(email: str, db: Session = Depends(get_db)):
+    """Get all job applications for a candidate by email"""
+    profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    applications = db.query(JobApplication).filter(JobApplication.candidate_id == profile.id).all()
+    
+    return [
+        {
+            "id": str(app.id),
+            "jobTitle": app.job_title,
+            "company": app.company,
+            "appliedDate": app.applied_date.strftime("%Y-%m-%d") if app.applied_date else None,
+            "status": app.status,
+            "location": app.location,
+            "salary": app.salary,
+            "accommodationsRequested": app.accommodations_requested,
+            "score": app.score,
+            "interviewDate": app.interview_date.strftime("%Y-%m-%d") if app.interview_date else None,
+        }
+        for app in applications
+    ]
+
+@router.get("/{email}/saved-jobs")
+async def get_saved_jobs(email: str, db: Session = Depends(get_db)):
+    """Get all saved jobs for a candidate by email"""
+    profile = db.query(CandidateProfile).filter(CandidateProfile.email == email).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_id == profile.id).all()
+    
+    return [
+        {
+            "id": str(job.id),
+            "title": job.job_title,
+            "company": job.company,
+            "location": job.location,
+            "type": job.job_type,
+            "salary": job.salary,
+            "isInclusive": job.is_inclusive,
+            "hasAccommodations": job.has_accommodations,
+        }
+        for job in saved_jobs
+    ]
 
 # @router.delete("/{profile_id}")
 # async def delete_profile(db: DbDep, profile_id: int):

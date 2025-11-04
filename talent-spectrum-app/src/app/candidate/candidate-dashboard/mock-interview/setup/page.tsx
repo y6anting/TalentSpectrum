@@ -1,25 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import { Card, CardContent } from "@/app/components/card";
 import { 
-  CheckCircle, 
-  Clock, 
-  Target, 
-  Volume2, 
-  Briefcase, 
-  Star,
-  Award,
-  Search, 
-  TrendingUp,
-  Users,
-  Brain,
-  Code,
-  MessageSquare,
-  ArrowUpWideNarrow 
+  Target, Clock, ArrowUpWideNarrow, Briefcase, Search, Users, Code, MessageSquare 
 } from "lucide-react";
 import { 
   generateInterviewQuestions, 
@@ -29,11 +16,12 @@ import {
 } from "@/app/mock-interview/interviewService";
 
 type InterviewType = "general" | "technical" | "behavioral";
+type PositionLevel = "intern" | "entry level" | "junior" | "senior" | "lead";
 
 interface InterviewSession {
   currentQuestion: number;
   totalQuestions: number;
-  positionLevel: string;
+  positionLevel: PositionLevel;
   selectedPosition?: JobPosition;
   interviewType: InterviewType;
   questions: InterviewQuestion[];
@@ -45,28 +33,44 @@ interface EmbeddedNavProps { onNavigate?: (target: EmbeddedNavTarget) => void }
 const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   const router = useRouter();
   
-  const [session, setSession] = useState<InterviewSession>({
-    currentQuestion: 0,
-    totalQuestions: 2,
-    interviewType: "general",
-    questions: [],
-    positionLevel: "junior"
-  });
+  // Interview Configuration State
+  const [interviewType, setInterviewType] = useState<InterviewType>("general");
+  const [totalQuestions, setTotalQuestions] = useState(2);
+  const [positionLevel, setPositionLevel] = useState<PositionLevel>("junior");
 
   const [loading, setLoading] = useState(false);
+
+  // Job Selection State
   const [selectedPositionId, setSelectedPositionId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-  const filteredJobs = jobPositions.filter(position =>
-    position.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    position.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [customJobDescription, setCustomJobDescription] = useState("");
+  const itemsPerPage = 4;
+  const filteredJobs = useMemo(() => {
+    return jobPositions.filter(position =>
+      position.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      position.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentJobs = filteredJobs.slice(startIndex, startIndex + itemsPerPage);
+  // Reset pagination when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
-  const [customJobDescription, setCustomJobDescription] = useState("");
+  // Map UI-selected PositionLevel to JobPosition.level ('entry' | 'mid' | 'senior')
+  const mapPositionLevel = (level: PositionLevel): JobPosition['level'] => {
+    const map: Record<PositionLevel, JobPosition['level']> = {
+      intern: 'entry',
+      'entry level': 'entry',
+      junior: 'entry',
+      senior: 'senior',
+      lead: 'senior'
+    };
+    return map[level];
+  };
 
   // Generate questions and start interview
   const handleStartInterview = async () => {
@@ -81,49 +85,32 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
 
     setLoading(true);
     try {
-      // Map position level to valid values
-      const mapPositionLevel = (level: string): "entry" | "mid" | "senior" => {
-        switch (level) {
-          case "intern":
-          case "entry level":
-            return "entry";
-          case "junior":
-          case "mid":
-            return "mid";
-          case "senior":
-          case "lead":
-            return "senior";
-          default:
-            return "mid";
-        }
-      };
-
-      const jobToUse = selectedPosition || {
+      const jobToUse: JobPosition = selectedPosition || {
         title: "Custom Position",
         description: customJobDescription,
         requirements: ["Communication", "Problem Solving", "Teamwork"],
-        level: mapPositionLevel(session.positionLevel), // Use user-selected level
+        level: mapPositionLevel(positionLevel), // Normalize user-selected level
         industry: "General"
       };
 
       // Override the level with user selection even for predefined positions
       if (selectedPosition) {
-        jobToUse.level = mapPositionLevel(session.positionLevel);
+        jobToUse.level = mapPositionLevel(positionLevel);
       }
 
       const generatedQuestions = await generateInterviewQuestions(
         jobToUse,
-        session.interviewType,
-        session.totalQuestions
+        interviewType,
+        totalQuestions
       );
 
       // Store session data in sessionStorage for the next page
       const sessionData = {
         selectedPosition: jobToUse,
         questions: generatedQuestions,
-        interviewType: session.interviewType,
-        totalQuestions: session.totalQuestions,
-        positionLevel: session.positionLevel,
+        interviewType: interviewType,
+        totalQuestions: totalQuestions,
+        positionLevel,
         startTime: new Date().toISOString()
       };
       
@@ -145,12 +132,12 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background px-4">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto">
         <div className="w-full min-h-screen">
 
           {/* Main Setup Card */}
-          <Card className="w-full border-0 bg-white/80 backdrop-blur-lg">
+          <Card className="w-full h-[80vh] overflow-y-auto border-0 bg-white/80 backdrop-blur-lg">
             <CardContent className="p-8">
               <div className="gap-8">
                 
@@ -169,10 +156,10 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                       ].map((type) => (
                         <button
                           key={type.value}
-                          onClick={() => setSession(prev => ({ ...prev, interviewType: type.value as InterviewType }))}
+                          onClick={() => setInterviewType(type.value as InterviewType)}
                           className={`
                             w-full p-1 rounded-xl border-2 lg:text-left transition-all duration-200 
-                            ${session.interviewType === type.value
+                            ${interviewType === type.value
                               ? `border-${type.color}-200 bg-${type.color}-50 shadow-lg scale-100`
                               : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                             }
@@ -192,59 +179,46 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 space-y-6 py-3">
                     {/* Number of Questions */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full">
                       <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
                         <Clock className="w-5 h-5 text-[#635BFF] mr-2" />
                         Number of Questions
                       </h3>
 
                       <Select
-                        onValueChange={(value) =>
-                          setSession((prev) => ({
-                            ...prev,
-                            totalQuestions: Number(value),
-                          }))
-                        }
-                        value={String(session.totalQuestions)}
-                      >
+                          value={String(totalQuestions)}
+                          onValueChange={(v) => setTotalQuestions(Number(v))}
+                          >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select number of questions" />
+                          <SelectValue placeholder="Select number" />
                         </SelectTrigger>
-
                         <SelectContent>
-                          <SelectItem value="2">2 Questions (4 min)</SelectItem>
-                          <SelectItem value="4">4 Questions (8 min)</SelectItem>
-                          <SelectItem value="6">6 Questions (12 min)</SelectItem>
-                          <SelectItem value="8">8 Questions (16 min)</SelectItem>
+                          <SelectItem value="2">2 Questions (≈4 min)</SelectItem>
+                          <SelectItem value="4">4 Questions (≈8 min)</SelectItem>
+                          <SelectItem value="6">6 Questions (≈12 min)</SelectItem>
+                          <SelectItem value="8">8 Questions (≈16 min)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {/* Position Level */}
-                    <div>
+                    <div className="space-y-3 w-full">
                       <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
                         <ArrowUpWideNarrow className="w-5 h-5 text-[#635BFF] mr-2" />
                         Position Level
                       </h3>
 
                       <Select
-                        onValueChange={(value) =>
-                          setSession((prev) => ({
-                            ...prev,
-                            positionLevel: value,
-                          }))
-                        }
-                        value={session.positionLevel}
+                        value={positionLevel}
+                        onValueChange={(v) => setPositionLevel(v as PositionLevel)}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select position level" />
+                          <SelectValue placeholder="Select level" />
                         </SelectTrigger>
-
                         <SelectContent>
                           <SelectItem value="intern">Intern</SelectItem>
                           <SelectItem value="entry level">Entry Level</SelectItem>
                           <SelectItem value="junior">Junior</SelectItem>
-                          <SelectItem value="mid">Mid Level</SelectItem>
                           <SelectItem value="senior">Senior</SelectItem>
                           <SelectItem value="lead">Lead</SelectItem>
                         </SelectContent>
@@ -266,7 +240,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             setSearchTerm(e.target.value);
                             setCurrentPage(1);
                           }}
-                          className="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#635BFF]/30 focus:outline-none transition-all"
+                          className="w-full p-1 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#635BFF]/30 focus:outline-none transition-all"
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       </div>
@@ -283,7 +257,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             setCustomJobDescription("");
                           }}
                           className={`
-                            p-4 rounded-xl border-2 text-left transition-all duration-200
+                            p-4 rounded-xl border-2 text-left transition-all duration-200 hover:cursor-pointer
                             ${selectedPositionId === position.title
                               ? 'border-[#635BFF]/30 bg-[#635BFF]/5 shadow-sm scale-100'
                               : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
@@ -300,13 +274,13 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             {position.requirements.slice(0, 3).map((req, index) => (
                               <span
                                 key={index}
-                                className="px-2 py-1 bg-gray-50 text-gray-600 border border-[#635BFF]/50 text-[0.8rem] rounded-full"
+                                className="px-2 py-1 bg-gray-50 text-gray-600 border border-[#635BFF]/30 text-[0.8rem] rounded-full"
                               >
                                 {req}
                               </span>
                             ))}
                             {position.requirements.length > 3 && (
-                              <span className="px-2 py-1 bg-gray-50 border border-[#635BFF]/50 text-gray-600 text-[0.8rem] rounded-full">
+                              <span className="px-2 py-1 bg-gray-50 border border-[#635BFF]/30 text-gray-600 text-[0.8rem] rounded-full">
                                 +{position.requirements.length - 3} more
                               </span>
                             )}

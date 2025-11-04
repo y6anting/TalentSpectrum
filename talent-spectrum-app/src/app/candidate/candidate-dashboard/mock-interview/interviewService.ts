@@ -17,7 +17,7 @@ export interface JobPosition {
 export async function generateInterviewQuestions(
   jobPosition: JobPosition,
   interviewType: 'general' | 'technical' | 'behavioral',
-  numberOfQuestions: number = 5
+  numberOfQuestions: number = 2
 ): Promise<InterviewQuestion[]> {
   try {
     
@@ -50,40 +50,107 @@ export async function generateInterviewQuestions(
     return [];
   }
 }
-// Text-to-Speech service
-export async function generateSpeechFromText(text: string): Promise<string> {
+// Text-to-Speech service using Edge TTS with browser fallback
+export async function generateSpeechFromText(
+  text: string,
+  voice: string = "en-US-AriaNeural",
+  rate: number = 0,
+  volume: number = 1.0,
+  pitch?: string,
+  style?: string,
+  useSsml: boolean = false
+): Promise<string> {
   try {
-    // For now, we'll use browser's built-in speech synthesis
-    // In production, you'd integrate with a more advanced TTS service
-    if ('speechSynthesis' in window) {
+    console.log('🔊 Attempting Edge TTS...');
+    
+    const response = await fetch('/api/edge-tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        voice,
+        rate,
+        volume,
+        pitch,
+        style,
+        use_ssml: useSsml
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Edge TTS API error: ${response.status}`);
+    }
+
+    // Check if response is audio blob
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.startsWith('audio/')) {
+      // Play the audio blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
       return new Promise((resolve, reject) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        utterance.volume = 0.8;
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve('speech-completed');
+        };
+        audio.onerror = (error) => {
+          URL.revokeObjectURL(audioUrl);
+          // If playback fails, don't reject - just resolve (audio was generated successfully)
+          console.warn('⚠️ Audio playback failed, but Edge TTS succeeded');
+          resolve('speech-completed');
+        };
         
-        // Find a suitable voice
-        const voices = speechSynthesis.getVoices();
-        const preferredVoice = voices.find(voice => 
-          voice.lang.startsWith('en') && voice.name.includes('Female')
-        ) || voices.find(voice => voice.lang.startsWith('en'));
-        
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-        
-        utterance.onend = () => resolve('speech-completed');
-        utterance.onerror = (error) => reject(error);
-        
-        speechSynthesis.speak(utterance);
+        // Play audio and handle autoplay restrictions
+        audio.play().catch((playError) => {
+          // Autoplay policy or other playback restrictions
+          // Don't trigger fallback since Edge TTS succeeded
+          console.warn('⚠️ Audio play() failed (may be autoplay restriction), but Edge TTS succeeded:', playError);
+          URL.revokeObjectURL(audioUrl);
+          resolve('speech-completed');
+        });
       });
+    } else {
+      // JSON response with filename
+      const data = await response.json();
+      return data.audio_filename || 'speech-completed';
+    }
+  } catch (error) {
+    // Only fallback if Edge TTS API call itself failed (network error, server error, etc.)
+    console.warn('⚠️ Edge TTS API failed, falling back to browser TTS:', error);
+    return fallbackToBrowserTTS(text);
+  }
+}
+
+// Helper function for browser TTS fallback
+function fallbackToBrowserTTS(text: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!('speechSynthesis' in window)) {
+      reject(new Error('Speech synthesis not supported'));
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+    
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.lang.startsWith('en') && voice.name.includes('Female')
+    ) || voices.find(voice => voice.lang.startsWith('en'));
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
     }
     
-    throw new Error('Speech synthesis not supported');
-  } catch (error) {
-    console.error('Error generating speech:', error);
-    throw error;
-  }
+    utterance.onend = () => resolve('speech-completed');
+    utterance.onerror = (error) => reject(error);
+    
+    speechSynthesis.speak(utterance);
+  });
 }
 
 // Voice-to-Text Transcription using OpenAI Whisper
@@ -231,8 +298,57 @@ export async function generateLipSyncVideo(
   }
 }
 
-// Text-to-Speech with audio blob generation
-export async function generateSpeechAudio(text: string): Promise<Blob> {
+// Text-to-Speech with audio blob generation using Edge TTS with browser fallback
+export async function generateSpeechAudio(
+  text: string,
+  voice: string = "en-US-AriaNeural",
+  rate: number = 0,
+  volume: number = 1.0,
+  pitch?: string,
+  style?: string,
+  useSsml: boolean = false
+): Promise<Blob> {
+  try {
+    console.log('🔊 Attempting Edge TTS audio generation...');
+    
+    const response = await fetch('/api/edge-tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        voice,
+        rate,
+        volume,
+        pitch,
+        style,
+        use_ssml: useSsml
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Edge TTS API error: ${response.status}`);
+    }
+
+    // Return the audio blob directly
+    const audioBlob = await response.blob();
+    
+    if (!audioBlob || audioBlob.size === 0) {
+      throw new Error('Failed to generate audio file');
+    }
+
+    console.log('✅ Edge TTS audio generated successfully');
+    return audioBlob;
+  } catch (error) {
+    console.warn('⚠️ Edge TTS failed, falling back to browser TTS:', error);
+    // Fallback to browser TTS (returns empty blob as placeholder since browser TTS can't generate blobs)
+    return fallbackToBrowserTTSAudio(text);
+  }
+}
+
+// Helper function for browser TTS fallback (returns placeholder blob)
+function fallbackToBrowserTTSAudio(text: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     if (!('speechSynthesis' in window)) {
       reject(new Error('Speech synthesis not supported'));
@@ -244,7 +360,6 @@ export async function generateSpeechAudio(text: string): Promise<Blob> {
     utterance.pitch = 1.0;
     utterance.volume = 0.8;
 
-    // Find the best available voice
     const voices = speechSynthesis.getVoices();
     const preferredVoice = voices.find(voice => 
       voice.lang.startsWith('en') && 
@@ -255,10 +370,9 @@ export async function generateSpeechAudio(text: string): Promise<Blob> {
       utterance.voice = preferredVoice;
     }
 
-    // Note: Browser speech synthesis doesn't provide audio blobs directly
-    // In a real implementation, you'd use a TTS service that returns audio files
     utterance.onend = () => {
-      // Create a placeholder blob
+      // Browser TTS doesn't provide audio blobs, so return placeholder
+      // The caller can use this to know speech completed via browser TTS
       const audioBlob = new Blob([''], { type: 'audio/wav' });
       resolve(audioBlob);
     };

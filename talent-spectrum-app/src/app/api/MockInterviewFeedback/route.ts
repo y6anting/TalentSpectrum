@@ -7,150 +7,198 @@ interface JobPosition {
   title: string;
   description: string;
   requirements: string[];
-  level: 'entry' | 'mid' | 'senior';
+  level: "entry" | "mid" | "senior";
   industry: string;
 }
 
 export async function POST(req: Request) {
   let requestData: any;
-  
+
   try {
     requestData = await req.json();
     const { jobPosition, interviewType, answers } = requestData;
-    
-    console.log('Server: Generating comprehensive AI feedback...');
-    console.log('Answers to analyze:', answers.length);
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    const feedbackPrompt = createFeedbackPrompt(jobPosition, interviewType, answers);
-    console.log('Server: Feedback prompt created:', feedbackPrompt);
-    
-    const result = await model.generateContent(feedbackPrompt);
-    const feedback = result.response.text();
-    
-    console.log('Server: AI feedback generated successfully');
-    
-    return NextResponse.json({ 
-      feedback,
-      success: true,
-      source: 'gemini'
+
+    console.log("Server: Generating simplified interview feedback...");
+    console.log("Answers received:", answers.length);
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
     });
-    
+    const feedbackPrompt = createFeedbackPrompt(jobPosition, interviewType, answers);
+
+    const result = await model.generateContent(feedbackPrompt);
+    const feedbackText = result.response.text();
+
+    console.log("=".repeat(80));
+    console.log("Server: FULL Gemini Response:");
+    console.log(feedbackText);
+    console.log("=".repeat(80));
+
+    // Clean and parse the response
+    let feedbackJson;
+    try {
+      // Strip markdown code fences and extra whitespace
+      let cleanedText = feedbackText.trim();
+      
+      // Remove ```json ... ``` or ``` ... ``` wrappers
+      const codeBlockMatch = cleanedText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+      if (codeBlockMatch) {
+        console.log("Server: Detected and removed code block wrapper");
+        cleanedText = codeBlockMatch[1].trim();
+      }
+      
+      // Remove leading/trailing quotes if present
+      if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) || 
+          (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
+        console.log("Server: Detected and removed quote wrapper");
+        cleanedText = cleanedText.slice(1, -1);
+      }
+
+      console.log("Server: Cleaned text (first 300 chars):", cleanedText.substring(0, 300));
+      
+      feedbackJson = JSON.parse(cleanedText);
+      
+      console.log("✅ Server: Successfully parsed JSON feedback");
+      console.log("Server: Parsed structure:", {
+        overall_score: feedbackJson.overall_score,
+        overall_length: feedbackJson.overall?.length || 0,
+        strengths_count: feedbackJson.strengths?.length || 0,
+        improvements_count: feedbackJson.areas_for_improvement?.length || 0
+      });
+      
+      // Ensure overall_score is a number
+      if (feedbackJson.overall_score) {
+        feedbackJson.overall_score = Number(feedbackJson.overall_score);
+        console.log("Server: Parsed overall_score as number:", feedbackJson.overall_score);
+      }
+      
+    } catch (parseError) {
+      console.error("❌ Server: JSON parse error:", parseError);
+      console.error("Server: Failed to parse text:", feedbackText);
+      
+      // Fallback: wrap in overall field
+      feedbackJson = { 
+        overall_score: 75,
+        overall: feedbackText,
+        strengths: [],
+        areas_for_improvement: []
+      };
+      console.log("Server: Using fallback feedback structure");
+    }
+
+    return NextResponse.json({
+      feedback: feedbackJson,
+      success: true,
+      source: "gemini",
+    });
   } catch (error) {
-    console.error('Server: Feedback generation error:', error);
-    
+    console.error("Server: Feedback generation error:", error);
+
     const fallbackFeedback = getFallbackFeedback(
-      requestData?.interviewType || 'general',
+      requestData?.interviewType || "general",
       requestData?.answers?.length || 0
     );
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       feedback: fallbackFeedback,
       success: false,
-      source: 'fallback',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      source: "fallback",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }
 
+/**
+ * 🧠 Prompt template for concise AI feedback
+ */
 function createFeedbackPrompt(
   jobPosition: JobPosition,
-  interviewType: 'general' | 'technical' | 'behavioral',
-  answers: Array<{
-    question: string;
-    answer: string;
-    timestamp: Date;
-  }>
+  interviewType: "general" | "technical" | "behavioral",
+  answers: Array<{ question: string; answer: string; timestamp: Date }>
 ): string {
   const contextInfo = `
 Position: ${jobPosition.title}
 Industry: ${jobPosition.industry}
 Experience Level: ${jobPosition.level}
 Interview Type: ${interviewType}
-Key Requirements: ${jobPosition.requirements.join(', ')}
+Key Requirements: ${jobPosition.requirements.join(", ")}
 `;
 
-  const qaSection = answers.map((qa, index) => `
-Question ${index + 1}: ${qa.question}
-Answer: ${qa.answer || '[No answer provided]'}
-`).join('\n');
+  const qaSection = answers
+    .map(
+      (qa, i) => `
+Question ${i + 1}: ${qa.question}
+Answer: ${qa.answer || "[No answer provided]"}`
+    )
+    .join("\n");
 
   return `
-You are an expert interview coach and hiring manager. Please provide detailed, constructive feedback for this ${interviewType} interview.
+You are an empathetic and professional interview coach giving structured feedback for a ${interviewType} mock interview.
 
 ${contextInfo}
 
-Interview Q&A:
+Candidate's Responses:
 ${qaSection}
 
-Please provide feedback covering:
+CRITICAL: Return ONLY a valid JSON object. Do NOT include markdown code fences, explanations, or any text outside the JSON.
 
-1. **Overall Performance** (2-3 sentences)
-   - General impression and interview readiness
-   - Communication clarity and confidence level
+Return this exact JSON structure:
 
-2. **Strengths** (3-4 bullet points)
-   - What the candidate did well
-   - Strong answers or examples provided
-   - Positive qualities demonstrated
+{
+  "overall_score": "<number between 0-100>",
+  "overall": "1-2 short sentences summarizing the candidate's performance, tone, and readiness for ${jobPosition.title}. Be encouraging and highlight their potential.",
+  "strengths": {
+    "instruction": "Each strength must be 1 short, clear sentence under 15 words.",
+    "example": [
+      "Communicates ideas clearly and confidently.",
+      "Demonstrates strong problem-solving skills.",
+      "Shows enthusiasm and adaptability in responses."
+    ]
+  },
+  "areas_for_improvement": {
+    "instruction": "Each improvement must be 1 short, actionable sentence under 15 words.",
+    "example": [
+      "Provide more specific examples to support answers.",
+      "Practice speaking at a steadier pace.",
+      "Improve time management when structuring responses."
+    ]
+  }
+}
 
-3. **Areas for Improvement** (3-4 bullet points)
-   - Specific areas to focus on
-   - Missing elements in answers
-   - Skills or knowledge gaps to address
 
-4. **Specific Recommendations** (3-4 actionable items)
-   - How to improve weak areas
-   - Resources or practice suggestions
-   - Interview strategy tips
-
-5. **Position-Specific Feedback**
-   - How well answers align with ${jobPosition.title} requirements
-   - Industry-specific insights
-   - Level-appropriate expectations
-
-Keep feedback:
-- Constructive and encouraging
-- Specific with examples from their answers
-- Actionable with clear next steps
-- Professional but supportive in tone
-- Tailored to ${jobPosition.level} level expectations
-
-Format as clear sections with headers and bullet points for easy reading. Keep the answer short and concise.
+Guidelines:
+- Be concise, supportive, and specific to their actual answers
+- Use a friendly, encouraging tone
+- Tailor advice to ${jobPosition.level}-level expectations for ${jobPosition.title}
+- Consider neurodivergent-friendly feedback: clear, structured, non-judgmental
+- The overall_score should reflect readiness for the role (0-100 scale)
+- Include at least 3 items in each array (strengths, areas_for_improvement, recommendations)
+- NO markdown formatting, NO code fences, NO extra text - ONLY the JSON object
 `;
 }
 
+/**
+ * 🧩 Fallback JSON if Gemini fails
+ */
 function getFallbackFeedback(
-  interviewType: 'general' | 'technical' | 'behavioral',
+  interviewType: "general" | "technical" | "behavioral",
   answersCount: number
-): string {
-  return `
-## Overall Performance
-
-Great job completing your ${interviewType} interview! You answered ${answersCount} questions and showed engagement throughout the process.
-
-## Strengths
-• **Participation**: You actively engaged with all questions presented
-• **Completion**: You followed through with the entire interview process
-• **Practice Mindset**: You're taking initiative to improve your interview skills
-• **Technology Comfort**: You successfully used the AI interview platform
-
-## Areas for Improvement
-• **Answer Depth**: Consider providing more detailed examples in your responses
-• **Structure**: Use frameworks like STAR (Situation, Task, Action, Result) for behavioral questions
-• **Preparation**: Research common ${interviewType} questions for more practice
-• **Confidence**: Continue practicing to build confidence in your delivery
-
-## Specific Recommendations
-• **Practice More**: Use this platform regularly to build confidence
-• **Record Yourself**: Practice answering questions while recording to review your performance
-• **Research**: Study the specific requirements for your target positions
-• **Mock Interviews**: Consider practicing with friends or career counselors
-
-## Next Steps
-Keep practicing with different types of questions and positions. Each interview session will help you improve your communication skills and confidence level.
-
-Remember: Every interview is a learning opportunity. You're on the right track by practicing regularly!
-`;
+) {
+  return {
+    overall_score: 75,
+    overall: `You completed a ${interviewType} interview with ${answersCount} questions. Good effort — your answers show strong motivation and willingness to improve.`,
+    strengths: [
+      "Actively participated throughout the interview.",
+      "Clear and confident communication.",
+      "Demonstrated self-awareness and enthusiasm.",
+    ],
+    areas_for_improvement: [
+      "Provide more detailed examples when answering - try using the STAR method (Situation, Task, Action, Result) to structure your responses more effectively.",
+      "Be more specific with metrics and quantifiable results to strengthen your answers and demonstrate impact.",
+      `Add more specific keywords and terminology related to ${interviewType} skills to show deeper domain knowledge.`,
+    ],
+  };
 }

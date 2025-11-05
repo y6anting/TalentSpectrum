@@ -367,49 +367,73 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Function to handle logo upload
-  const handleLogoUpload = async (file: File) => {
-    if (!currentEmployerEmail) {
-      alert("Please log in as an employer to upload a logo.");
-      return;
-    }
+// Function to handle logo upload
+const handleLogoUpload = async (file: File) => {
+  if (!currentEmployerEmail) {
+    alert("Please log in as an employer to upload a logo.");
+    return;
+  }
+  // Add this check if companyProfile.name is needed by backend for filename
+  // and companyProfile might not be loaded yet.
+  if (!companyProfile || !companyProfile.name) {
+    alert("Company profile not loaded. Cannot upload logo.");
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("employer_email", currentEmployerEmail); // Send email for identification
+  // Optional: Set a loading state here (e.g., setIsUploading(true))
+  // to provide user feedback.
 
-    try {
-      // IMPORTANT: Replace this URL with your actual backend upload endpoint
-      const response = await fetch("http://127.0.0.1:8000/upload-company-logo", {
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}/upload-company-logo`,
+      {
         method: "POST",
         body: formData,
         // Do NOT set Content-Type header for FormData, browser does it automatically
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const newLogoUrl = data.logo_url; // Get the new logo URL from the backend response
+
+      setCompanyLogo(newLogoUrl); // Update the logo displayed in the UI
+
+      // Update the companyProfile state with the new logo_url for consistency
+      setCompanyProfile(prevProfile => {
+        if (prevProfile) {
+          return { ...prevProfile, logo_url: newLogoUrl };
+        }
+        return null;
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setCompanyLogo(data.logo_url); // Assuming backend returns { logo_url: "..." }
-        alert("Company logo uploaded successfully!");
+      alert("Company logo uploaded successfully!");
 
-        // Also update the company profile in the DB with the new logo_url
-        await handleSaveCompanySettings(data.logo_url); // Pass the new logo URL
-      } else {
-        const errorText = await response.text();
-        console.error("Error uploading logo:", errorText);
-        alert("Failed to upload logo. Please try again.");
-      }
-    } catch (error) {
-      console.error("Network error during logo upload:", error);
-      alert("An error occurred during logo upload.");
-    }
-  };
+      // REMOVED: await handleSaveCompanySettings(data.logo_url);
+      // The backend's /upload-company-logo endpoint already updates the DB.
+      // This call is no longer needed for the logo_url itself.
 
-  // Handler for when a file is selected
-  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      handleLogoUpload(event.target.files[0]);
+    } else {
+      const errorText = await response.text();
+      console.error("Error uploading logo:", errorText);
+      alert(`Failed to upload logo: ${errorText}`); // Display the backend's error message
     }
-  };
+  } catch (error) {
+    console.error("Network error during logo upload:", error);
+    alert("An error occurred during logo upload.");
+  } finally {
+    // Optional: Reset loading state here (e.g., setIsUploading(false))
+  }
+};
+
+// Handler for when a file is selected
+const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  if (event.target.files && event.target.files[0]) {
+    handleLogoUpload(event.target.files[0]);
+  }
+};
 
   // Handle company settings save (now accepts an optional logoUrl to update)
   const handleSaveCompanySettings = async (newLogoUrl: string | null = null) => {
@@ -461,13 +485,6 @@ export default function EmployerDashboard() {
           setCompanyIndustry(updatedData.industry);
           setCompanyLocation(updatedData.location);
           setCompanySize(updatedData.size);
-          setInclusionSettings({
-            neurodivergentFriendly: updatedData.neurodivergent_friendly,
-            workplaceAccommodations: updatedData.workplace_accommodations,
-            equalOpportunity: updatedData.equal_opportunity,
-            accessibleRecruitment: updatedData.accessible_recruitment,
-          });
-          setAccommodationPolicy(updatedData.description);
           setCompanyLogo(updatedData.logo_url || null); // Update logo from fetched data
         }
       } else {
@@ -522,6 +539,7 @@ export default function EmployerDashboard() {
           size: "1-10 employees",
           inclusion_score: 0,
           certifications: "[]",
+          description: "",
           founded_year: 2020,
           company_type: "Private",
           neurodivergent_friendly: false,
@@ -555,14 +573,6 @@ export default function EmployerDashboard() {
         setCompanyIndustry(companyData.industry);
         setCompanyLocation(companyData.location);
         setCompanySize(companyData.size);
-
-        setInclusionSettings({
-          neurodivergentFriendly: companyData.neurodivergent_friendly,
-          workplaceAccommodations: companyData.workplace_accommodations,
-          equalOpportunity: companyData.equal_opportunity,
-          accessibleRecruitment: companyData.accessible_recruitment,
-        });
-        setAccommodationPolicy(companyData.description);
         setCompanyLogo(companyData.logo_url || null); // Initialize logo from fetched data
 
         const jobsResponse = await fetch(
@@ -637,8 +647,27 @@ export default function EmployerDashboard() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                    <Building className="h-6 w-6" />
+                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
+                    {companyLogo && companyLogo.trim() !== "" ? (
+                      <img
+                        src={
+                          companyLogo.startsWith("http")
+                            ? companyLogo
+                            : `/logo/${companyLogo.replace(/^\/?logo\//, "")}`
+                        }
+                        alt="Company Logo"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // hide broken image and show fallback icon
+                          (e.target as HTMLImageElement).style.display = "none";
+                          const fallback = document.createElement("div");
+                          fallback.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-white mx-auto' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 21h18M9 8h6m-3-5v5m4 0h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2' /></svg>`;
+                          e.currentTarget.parentElement?.appendChild(fallback);
+                        }}
+                      />
+                    ) : (
+                      <Building className="h-6 w-6" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold text-[#3a4043]">
@@ -1283,7 +1312,7 @@ export default function EmployerDashboard() {
                         <div className="flex items-center space-x-4">
                           {companyLogo ? (
                             <img
-                              src={companyLogo}
+                              src={`${companyLogo}`}
                               alt="Company Logo"
                               className="w-20 h-20 rounded-full object-cover border border-gray-200"
                             />

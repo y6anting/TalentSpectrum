@@ -84,6 +84,7 @@ class Company(Base):
     description = Column(Text)
     founded_year = Column(Integer)
     company_type = Column(String)  # e.g., "Public", "Private", "Non-profit"
+    logo_url = Column(String, nullable=True)
 
 # Pydantic schema for Company
 class CompanyRequest(BaseModel):
@@ -99,6 +100,7 @@ class CompanyRequest(BaseModel):
     description: Optional[str] = None
     founded_year: Optional[int] = None
     company_type: Optional[str] = None
+    logo_url: Optional[str] = None
 
     class Config:
         from_attributes = True

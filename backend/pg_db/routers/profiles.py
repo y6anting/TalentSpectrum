@@ -1,26 +1,27 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+# backend/pg_db/routers/profiles.py
+
+from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Annotated, Dict, Any, List
+from typing import Annotated, Dict, Any, List, Optional
 from datetime import datetime
 import time
-import threading # <--- Import threading for thread-safe ID generation
+import threading
 
-# Assuming these imports are correct for your project structure
+# Import database connection
 from database.connection import get_db
+# Import models
 from database.models.candidate import CandidateProfile
+from database.models.users import LoginUser, UserRole
 
 # --- Global state for unique ID generation ---
 _last_generated_id = 0
-_id_lock = threading.Lock() # To ensure thread-safe access to _last_generated_id
+_id_lock = threading.Lock()
 
 # Helper function to generate a unique 13-digit ID
 def generate_13_digit_id() -> int:
     global _last_generated_id
-    with _id_lock: # Protect access to _last_generated_id
+    with _id_lock:
         current_time_ms = int(time.time() * 1000)
-        # Ensure the new ID is strictly greater than the last one generated.
-        # This handles cases where time.time() might return the same value
-        # or even go backwards (rare, but possible with system clock adjustments).
         new_id = max(current_time_ms, _last_generated_id + 1)
         _last_generated_id = new_id
         return new_id
@@ -370,20 +371,19 @@ async def update_candidate_resume(email: str, request: Request, db: DbDep):
                 for item in education_data:
                     if isinstance(item, dict):
                         new_item = {}
-                        # If 'id' exists, use it, otherwise generate a new one
                         item_id = item.get("id")
                         if item_id is None:
-                            item_id = generate_13_digit_id() # <--- Guaranteed unique ID per call
-                        new_item["id"] = item_id # Place 'id' first
+                            item_id = generate_13_digit_id()
+                        new_item["id"] = item_id
                         for key, value in item.items():
-                            if key != "id": # Copy other keys, excluding original 'id' if it was there
+                            if key != "id":
                                 new_item[key] = value
                         processed_education.append(new_item)
                     else:
-                        processed_education.append(item) # Append non-dict items as is
+                        processed_education.append(item)
                 profile.education = processed_education
             else:
-                profile.education = education_data # Assign non-list data as is
+                profile.education = education_data
 
         # Experience
         experience_data = parsed_data.get("experience")
@@ -398,18 +398,14 @@ async def update_candidate_resume(email: str, request: Request, db: DbDep):
                             item_id = generate_13_digit_id()
                         new_item["id"] = item_id
 
-                        # --- THIS IS THE CONVERSION LOGIC FOR 'isCurrent' ---
                         is_current_value = item.get("isCurrent")
                         if isinstance(is_current_value, str):
-                            # Convert string "true" to True, "false" to False, others to False
                             new_item["isCurrent"] = is_current_value.lower() == "true"
                         elif is_current_value is not None:
-                            # Keep as is if already boolean or other type
                             new_item["isCurrent"] = is_current_value
-                        # --- END CONVERSION LOGIC ---
 
                         for key, value in item.items():
-                            if key not in ["id", "isCurrent"]: # Exclude original 'id' and 'isCurrent'
+                            if key not in ["id", "isCurrent"]:
                                 new_item[key] = value
                         processed_experience.append(new_item)
                     else:
@@ -452,3 +448,31 @@ async def update_candidate_resume(email: str, request: Request, db: DbDep):
     except Exception as e:
         print(f"Error in update_candidate_resume: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update resume data: {str(e)}")
+
+
+# =========================================================
+# 5️⃣ GET - Candidate List with Optional Role Filter
+# =========================================================
+@router.get("/all/candidate-profiles")
+async def get_all_candidate_profiles(db: DbDep):
+    """
+    Get all candidate profiles where role = CANDIDATE
+    """
+    try:
+        profiles = (
+            db.query(CandidateProfile)
+            .join(LoginUser, CandidateProfile.candidate_email == LoginUser.email)
+            .filter(LoginUser.role == UserRole.CANDIDATE)
+            .all()
+        )
+        
+        result = []
+        for profile in profiles:
+            profile_dict = {k: v for k, v in profile.__dict__.items() if not k.startswith('_sa_instance_state')}
+            # ... rest of the parsing logic ...
+            result.append(profile_dict)
+        
+        return result
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

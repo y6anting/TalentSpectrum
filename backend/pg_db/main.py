@@ -2,14 +2,14 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database.connection import create_tables, engine, Base # Keep Base here for clarity, though not strictly used directly
+from fastapi.staticfiles import StaticFiles
+import os
 
-# Import ALL model modules here.
-# This ensures that all models inheriting from Base are registered with Base.metadata
-# before create_tables() is called.
-from database.models import users # <--- CHANGE THIS LINE: Import the module, not the class directly
-# from database.models import candidate # If you had other models, import their modules here
-# from database.models import employer # If you had other models, import their modules here
+from database.connection import create_tables, engine, Base
+
+# Import models so they register with SQLAlchemy
+from database.models import users
+from database.models import candidate # <--- UNCOMMENTED THIS LINE
 
 # Import routers
 from routers.users import router as users_router
@@ -19,27 +19,40 @@ from routers.jobs import router as jobs_router
 from routers.applications import router as applications_router
 # from routers.resume_extract import router as resume_extract_router
 
-# Create DB tables
-# This call will now correctly find all models that inherited from Base
-# because their modules (like users.py) have already been imported above.
+# --- Database Initialization ---
 create_tables()
 
-app = FastAPI()
+# --- App Initialization ---
+app = FastAPI(title="TalentSpectrum DB API")
+
+# --- CORS Configuration ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change to specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --- Static File Setup for Logos ---
+# Define the logo directory (absolute path)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_DIR = os.path.join(BASE_DIR, "logo")
+
+# Make sure directory exists
+os.makedirs(LOGO_DIR, exist_ok=True)
+
+# Serve static files (e.g. http://127.0.0.1:8000/logo/gamuda_1762353400.jpg)
+app.mount("/logo", StaticFiles(directory=LOGO_DIR), name="logo")
+
+# --- Root Route ---
 @app.get("/")
 def read_root():
-    return {"message": "TalentSpectrum DB API"}
+    return {"message": "TalentSpectrum DB API is running."}
 
-# Register routers
+# --- Router Registration ---
 app.include_router(users_router, prefix="/users", tags=["users"])
-app.include_router(profiles_router, prefix="/profiles")
+app.include_router(profiles_router, prefix="/profiles", tags=["profiles"])
 # app.include_router(profile_others_router, prefix="/profile_others", tags=["profile_others"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])

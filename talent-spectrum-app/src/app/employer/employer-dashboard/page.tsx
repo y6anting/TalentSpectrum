@@ -28,7 +28,6 @@ import {
   BarChart3,
   Calculator,
   X,
-  SquarePen,
   Briefcase,
   Book,
   Info,
@@ -52,10 +51,6 @@ import {
 } from "@/app/components/select";
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
-import PostJob from "@/app/employer/post-job/page";
-import { Input } from "@/app/components/input";
-import { Checkbox } from "@/app/components/checkbox";
-import { Textarea } from "@/app/components/textarea";
 import CandidateList from "@/app/employer/component/CandidateSearch";
 import MatchedCandidates from "@/app/employer/component/MatchedCandidates";
 

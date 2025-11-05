@@ -2247,7 +2247,7 @@ export default function CandidateDashboard() {
                         <div className="flex justify-between items-center mb-3">
                           <button
                             onClick={handlePrevMonth}
-                            className="text-[#635bff] font-bold hover:text-[#4b44e0]"
+                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
                           >
                             ← Prev
                           </button>
@@ -2256,7 +2256,7 @@ export default function CandidateDashboard() {
                           </h2>
                           <button
                             onClick={handleNextMonth}
-                            className="text-[#635bff] font-bold hover:text-[#4b44e0]"
+                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
                           >
                             Next →
                           </button>
@@ -2317,7 +2317,7 @@ export default function CandidateDashboard() {
                                   d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z"
                                 />
                               </svg>
-                              <h3 className="font-semibold text-gray-800">Available Time Slots</h3>
+                              <h3 className="font-semibold text-gray-800">Available Time Slots for {selectedCoach}:</h3>
                             </div>
 
                             <p className="text-sm text-gray-500 mb-4">
@@ -2358,7 +2358,7 @@ export default function CandidateDashboard() {
                                     </span>
                                   </div>
 
-                                  <button className="bg-[#635bff] text-white text-sm px-4 py-1.5 rounded-md font-medium hover:bg-black transition">
+                                  <button className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition">
                                     Book
                                   </button>
                                 </li>

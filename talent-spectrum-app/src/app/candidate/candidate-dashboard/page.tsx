@@ -307,43 +307,59 @@ export default function CandidateDashboard() {
 
 
 
-  // Initialize email from localStorage on component mount
-  useEffect(() => {
-    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-    if (storedEmail && !candidateProfile.email) {
-      setCandidateProfile(prev => ({
-        ...prev,
-        email: storedEmail,
-        personalIdentifiers: {
-          ...prev.personalIdentifiers,
-          emailAddress: storedEmail
-        }
-      }));
-    }
-  }, []);
+  // // Initialize email from sessionStorage on component mount
+  // useEffect(() => {
+  //   if (status === "loading") return; // Wait until session is ready
+  //   if (!session?.user?.email) return; // No email yet (not logged in)
+
+  //   const sessionEmail = session.user.email;
+
+  //   // Only set if candidateProfile.email is empty
+  //   if (!candidateProfile.email) {
+  //     setCandidateProfile((prev) => ({
+  //       ...prev,
+  //       email: sessionEmail,
+  //       personalIdentifiers: {
+  //         ...prev.personalIdentifiers,
+  //         emailAddress: sessionEmail,
+  //       },
+  //     }));
+  //   }
+  // }, [status, session?.user?.email, candidateProfile.email]);
 
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-        
-        // If no email in localStorage but we have session email, store it
-        if (!localEmail && session?.user?.email) {
-          localEmail = session.user.email;
-          localStorage.setItem('userEmail', localEmail);
-        }
-        
-        const emailToUse = encodeURIComponent(localEmail || '');
-        console.log('Using email for profile fetch:', emailToUse);
-        
-        if (!emailToUse) {
-          console.error('No email found in localStorage or session');
-          setIsLoading(false);
-          return;
-        }
+      setIsLoading(true);
+      if (status === "loading") {
+        console.log("Session status: loading, returning.");
+        return;
+      }
+      if (status === "unauthenticated") {
+        console.log("Session status: unauthenticated, redirecting.");
+        router.push("/auth/signin");
+        setIsLoading(false);
+        return;
+      }
 
-        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}`, {
+      console.log('Full session object:', session); // Add this
+      console.log('Session user email:', session?.user?.email); // Add this
+
+      const sessionEmail = session?.user?.email || "";
+      // const candidate_email = sessionEmail
+
+      if (!sessionEmail) {
+        console.error('No email found in session.user.email. Cannot fetch profile.');
+        setIsLoading(false);
+        return;
+      }
+        
+        const emailToUse = encodeURIComponent(sessionEmail); // Removed || '' as sessionEmail is already guaranteed not empty here
+        const candidate_email = encodeURIComponent(sessionEmail);
+        console.log('Using email for profile fetch:', emailToUse);
+
+        const response = await fetch(`http://127.0.0.1:8000/profiles/${candidate_email}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -360,7 +376,7 @@ export default function CandidateDashboard() {
             const updatedProfile = {
               ...candidateProfile,
               name: data.name || candidateProfile.name,
-              email: data.email || localEmail || candidateProfile.email,
+              email: data.email || sessionEmail || candidateProfile.email,
               location: data.location || candidateProfile.location,
               profileCompletion: data.profile_completion || candidateProfile.profileCompletion,
               accommodations: data.accommodations || candidateProfile.accommodations,
@@ -368,7 +384,7 @@ export default function CandidateDashboard() {
               personalIdentifiers: {
                 ...candidateProfile.personalIdentifiers,
                 ...data.personal_identifiers,
-                emailAddress: data.personal_identifiers?.emailAddress || data.email || localEmail || candidateProfile.personalIdentifiers.emailAddress
+                emailAddress: data.personal_identifiers?.emailAddress || data.email || sessionEmail || candidateProfile.personalIdentifiers.emailAddress
               },
               education: {
                 ...candidateProfile.education,
@@ -459,13 +475,13 @@ export default function CandidateDashboard() {
             console.error('No data in response:', data);
             
             // If no data but we have email, at least populate the email field
-            if (localEmail) {
+            if (sessionEmail) {
               setCandidateProfile(prev => ({
                 ...prev,
-                email: localEmail,
+                email: sessionEmail,
                 personalIdentifiers: {
                   ...prev.personalIdentifiers,
-                  emailAddress: localEmail
+                  emailAddress: sessionEmail
                 }
               }));
             }
@@ -475,13 +491,13 @@ export default function CandidateDashboard() {
           console.log('Profile not found, creating new profile with email');
           
           // If profile not found but we have email, create a basic profile
-          if (localEmail) {
+          if (sessionEmail) {
             setCandidateProfile(prev => ({
               ...prev,
-              email: localEmail,
+              email: sessionEmail,
               personalIdentifiers: {
                 ...prev.personalIdentifiers,
-                emailAddress: localEmail
+                emailAddress: sessionEmail
               }
             }));
           }
@@ -494,13 +510,13 @@ export default function CandidateDashboard() {
           console.error('Error response:', errorText);
           
           // If API fails but we have email, at least populate the email field
-          if (localEmail) {
+          if (sessionEmail) {
             setCandidateProfile(prev => ({
               ...prev,
-              email: localEmail,
+              email: sessionEmail,
               personalIdentifiers: {
                 ...prev.personalIdentifiers,
-                emailAddress: localEmail
+                emailAddress: sessionEmail
               }
             }));
           }
@@ -511,7 +527,7 @@ export default function CandidateDashboard() {
         console.error('Error fetching profile data:', error);
         
         // If there's an error but we have email, at least populate the email field
-        const fallbackEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+        const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
         if (fallbackEmail) {
           setCandidateProfile(prev => ({
             ...prev,
@@ -530,95 +546,192 @@ export default function CandidateDashboard() {
     fetchProfileData();
   }, [status, session]);
 
-  // Fetch applications data
-  useEffect(() => {
-    const fetchApplicationsData = async () => {
+    useEffect(() => {
+    const fetchEducationData = async () => {
+      if (status === "loading") return;
+      if (!session?.user?.email) return;
+
+      setIsLoading(true);
+
+
       try {
-        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-        
-        // If no email in localStorage but we have session email, use it
-        if (!localEmail && session?.user?.email) {
-          localEmail = session.user.email;
-        }
-        
-        if (!localEmail) {
-          console.error('No email found for fetching applications');
-          return;
+        const response = await fetch(
+          `http://127.0.0.1:8000/profiles/${session.user.email}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch candidate profile");
         }
 
-        const emailToUse = encodeURIComponent(localEmail);
-        console.log('Fetching applications for email:', emailToUse);
-        
-        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/applications`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Applications API Response:', data);
-          setApplications(data);
+        const data = await response.json();
+
+        // ✅ Check if education data exists and is valid
+        if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+          setEducations(data.education);
         } else {
-          console.error('Failed to fetch applications:', response.status);
-          setApplications([]); // Set empty array if no applications found
+          // no existing data, keep default empty education
+          setEducations([
+            {
+              id: Date.now(),
+              level: "",
+              fieldOfStudy: "",
+              institution: "",
+              graduationYear: null,
+              cgpa_grade: "",
+              award: "",
+            },
+          ]);
         }
-      } catch (error) {
-        console.error('Error fetching applications data:', error);
-        setApplications([]); // Set empty array on error
+      } catch (err: any) {
+        console.error("Error fetching education data:", err);
+
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (session?.user?.email || (typeof window !== 'undefined' && localStorage.getItem('userEmail'))) {
-      fetchApplicationsData();
-    }
-  }, [session]);
-
-  // Fetch saved jobs data
+    fetchEducationData();
+  }, [session, status]); 
+  
   useEffect(() => {
-    const fetchSavedJobsData = async () => {
-      try {
-        let localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-        
-        // If no email in localStorage but we have session email, use it
-        if (!localEmail && session?.user?.email) {
-          localEmail = session.user.email;
-        }
-        
-        if (!localEmail) {
-          console.error('No email found for fetching saved jobs');
-          return;
-        }
+  const fetchExperienceData = async () => {
+    if (status === "loading") return;
+    if (!session?.user?.email) return;
 
-        const emailToUse = encodeURIComponent(localEmail);
-        console.log('Fetching saved jobs for email:', emailToUse);
-        
-        const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/saved-jobs`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Saved Jobs API Response:', data);
-          setSavedJobs(data);
-        } else {
-          console.error('Failed to fetch saved jobs:', response.status);
-          setSavedJobs([]); // Set empty array if no saved jobs found
-        }
-      } catch (error) {
-        console.error('Error fetching saved jobs data:', error);
-        setSavedJobs([]); // Set empty array on error
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/profiles/${session.user.email}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch candidate profile");
       }
-    };
 
-    if (session?.user?.email || (typeof window !== 'undefined' && localStorage.getItem('userEmail'))) {
-      fetchSavedJobsData();
+      const data = await response.json();
+
+      // ✅ Check if experience data exists and is valid
+      if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
+        setExperiences(data.experience);
+      } else {
+        // No existing data, set default blank experience
+        setExperiences([
+          {
+            id: Date.now(),
+            employer: "",
+            title: "",
+            industry: "",
+            start: "",
+            end: "",
+            isCurrent: true,
+            seniorityLevel: "",
+            skillsToolsUsed: "",
+            projectHighlights: "",
+            achievements: "",
+          },
+        ]);
+      }
+    } catch (err: any) {
+      console.error("Error fetching experience data:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [session]);
+  };
+
+  fetchExperienceData();
+}, [session, status]);
+
+  // rerun when user logs in
+  // // Fetch applications data
+  // useEffect(() => {
+  //   const fetchApplicationsData = async () => {
+  //     try {
+  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
+        
+  //       // If no email in sessionStorage but we have session email, use it
+  //       if (!sessionEmail && session?.user?.email) {
+  //         sessionEmail = session.user.email;
+  //       }
+        
+  //       if (!sessionEmail) {
+  //         console.error('No email found for fetching applications');
+  //         return;
+  //       }
+
+  //       const emailToUse = encodeURIComponent(sessionEmail);
+  //       console.log('Fetching applications for email:', emailToUse);
+        
+  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/applications`, {
+  //         method: 'GET',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+        
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         console.log('Applications API Response:', data);
+  //         setApplications(data);
+  //       } else {
+  //         console.error('Failed to fetch applications:', response.status);
+  //         setApplications([]); // Set empty array if no applications found
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching applications data:', error);
+  //       setApplications([]); // Set empty array on error
+  //     }
+  //   };
+
+  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
+  //     fetchApplicationsData();
+  //   }
+  // }, [session]);
+
+  // // Fetch saved jobs data
+  // useEffect(() => {
+  //   const fetchSavedJobsData = async () => {
+  //     try {
+  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
+        
+  //       // If no email in sessionStorage but we have session email, use it
+  //       if (!sessionEmail && session?.user?.email) {
+  //         sessionEmail = session.user.email;
+  //       }
+        
+  //       if (!sessionEmail) {
+  //         console.error('No email found for fetching saved jobs');
+  //         return;
+  //       }
+
+  //       const emailToUse = encodeURIComponent(sessionEmail);
+  //       console.log('Fetching saved jobs for email:', emailToUse);
+        
+  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/saved-jobs`, {
+  //         method: 'GET',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+        
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         console.log('Saved Jobs API Response:', data);
+  //         setSavedJobs(data);
+  //       } else {
+  //         console.error('Failed to fetch saved jobs:', response.status);
+  //         setSavedJobs([]); // Set empty array if no saved jobs found
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching saved jobs data:', error);
+  //       setSavedJobs([]); // Set empty array on error
+  //     }
+  //   };
+
+  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
+  //     fetchSavedJobsData();
+  //   }
+  // }, [session]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -828,7 +941,7 @@ export default function CandidateDashboard() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
-                    <p className="text-sm text-gray-600">{candidateProfile.location}</p>
+                    <p className="text-sm text-gray-600">{candidateProfile.email}</p>
                   </div>
                 </div>
                 <div className="mb-6">
@@ -926,9 +1039,40 @@ export default function CandidateDashboard() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>Recent Applications</CardTitle>
-                      <div className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer">
-                        View More
-                      </div>
+  return (
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Welcome to Your Dashboard!</h1>
+
+        {session?.user ? (
+          <div className="space-y-4">
+            <p className="text-lg text-gray-700">
+              Hello, <span className="font-semibold">{session.user.name || session.user.email}</span>!
+            </p>
+            <p className="text-gray-600">
+              Your Email: <span className="font-medium">{session.user.email}</span>
+            </p>
+            <p className="text-gray-600">
+              Your Role: <span className="font-medium">{session.user.role}</span>
+            </p>
+            <p className="text-gray-600">
+              Your User ID: <span className="font-medium">{session.user.id}</span>
+            </p>
+            {/* You can display other session data here */}
+          </div>
+        ) : (
+          <p className="text-lg text-gray-700">Session data not found.</p>
+        )}
+
+        <button
+          onClick={() => router.push("/")} // Example: Go to home page
+          className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300"
+        >
+          Go to Home
+        </button>
+      </div>
+    </div>
+  );
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1129,7 +1273,6 @@ export default function CandidateDashboard() {
                       <div className="grid md:grid-cols-2 gap-6">
                         {[
                           { label: "Full Name", key: "fullName", type: "text", required: true },
-                          // { label: "NRIC", key: "nric", type: "text" },
                           { label: "Email", key: "emailAddress", type: "email", required: true },
                           { label: "Phone Number", key: "phoneNumber", type: "tel", required: true },
                           { label: "Date of Birth", key: "dateOfBirth", type: "date", required: true },
@@ -1163,7 +1306,6 @@ export default function CandidateDashboard() {
                                     name: field.key === "fullName" ? val : candidateProfile.name,
                                     email: field.key === "emailAddress" ? val : candidateProfile.email,
                                   });
-                                  // Clear error when user fills the field
                                   if (field.required && val) {
                                     setErrors({ ...errors, [field.key]: "" });
                                   }
@@ -1190,7 +1332,6 @@ export default function CandidateDashboard() {
                                   onChange={(e) => {
                                     const { value } = e.target;
                                     let error = "";
-                                    // Check if required field is empty
                                     if (field.required && !value.trim()) {
                                       error = `${field.label} is required`;
                                     }
@@ -1257,7 +1398,6 @@ export default function CandidateDashboard() {
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1>
 
-                {/* Render all education cards */}
                 <div className="grid gap-6">
                   {educations.map((edu, index) => (
                     <Card key={edu.id}>
@@ -1344,8 +1484,7 @@ export default function CandidateDashboard() {
                   ))}
                 </div>
 
-                {/* Manage Multiple Education Cards */}
-                  <div className="flex justify-end mb-4">
+                <div className="flex justify-end mb-4">
                     <Button
                       onClick={() =>
                         setEducations([
@@ -1383,7 +1522,6 @@ export default function CandidateDashboard() {
                 <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
 
                 <div className="grid gap-6">
-                  {/* Experience Info */}
                   {experiences.map((exp, index) => (
                     <Card key={exp.id}>
                       <CardHeader className="flex justify-between items-center">
@@ -1441,7 +1579,6 @@ export default function CandidateDashboard() {
                             </div>
                           ))}
 
-                          {/* End Date with "Currently working here" checkbox */}
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
                               End Date
@@ -1454,7 +1591,7 @@ export default function CandidateDashboard() {
                                 onChange={(e) =>
                                   updateExperience(exp.id, {
                                     isCurrent: e.target.checked,
-                                    end: e.target.checked ? "" : exp.end, // Clear end date if checked
+                                    end: e.target.checked ? "" : exp.end,
                                   })
                                 }
                                 className="h-4 w-4 rounded border-gray-300 text-[#635bff] focus:ring-[#635bff]"
@@ -1478,7 +1615,6 @@ export default function CandidateDashboard() {
                             )}
                             </div>
 
-                          {/* Project Highlights */}
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
                               Project Highlights
@@ -1493,7 +1629,6 @@ export default function CandidateDashboard() {
                             />
                           </div>
 
-                          {/* Achievements */}
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
                               Achievements
@@ -1512,7 +1647,6 @@ export default function CandidateDashboard() {
                     </Card>
                   ))}
 
-                  {/* Add Experience Button */}
                   <div className="flex justify-end">
                     <Button
                       onClick={() =>
@@ -1539,11 +1673,10 @@ export default function CandidateDashboard() {
                     </Button>
                   </div>
 
-                  {/* Save Experience Button */}
                   <div className="flex justify-end">
                     <ExperienceSkillsSubmission
                       experiences={experiences}
-                      exp_skill={candidateProfile.exp_skill}
+                      // exp_skill={candidateProfile.exp_skill}
                       onSave={() => {
                         calculateProfileCompletion();
                       }}
@@ -1553,161 +1686,318 @@ export default function CandidateDashboard() {
               </div>
             )}
 
-            {activeTab === "skills" && (
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+{activeTab === "skills" && (
+  <div className="space-y-6">
+    <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
 
-                <div className="grid gap-6">
-                  {/* Skills Info */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Skill Types</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {[
-                        { label: "Soft Skills", key: "SoftSkills" },
-                        { label: "Hard Skills", key: "HardSkills" },
-                      ].map((field) => {
-                        const key = field.key as keyof typeof candidateProfile.exp_skill;
-                        const value = candidateProfile.exp_skill[key] ?? "";
+    <div className="grid gap-6">
+      {/* ---- Skill Types Card ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Skill Types</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[
+            { label: "Soft Skills", key: "SoftSkills" },
+            { label: "Hard Skills", key: "HardSkills" },
+          ].map((field) => {
+            const key = field.key as keyof typeof candidateProfile.exp_skill;
+            const value = candidateProfile.exp_skill[key] ?? "";
 
-                        return (
-                          <div key={key}>
-                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                              {field.label}
-                            </label>
-                            <input
-                              type="text"
-                              value={value}
-                              onChange={(e) =>
-                                setCandidateProfile({
-                                  ...candidateProfile,
-                                  exp_skill: { ...candidateProfile.exp_skill, [key]: e.target.value },
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                            />
-                          </div>
-                        );
-                      })}
-                      <SkillsSubmission 
-                        exp_skill={candidateProfile.exp_skill}
-                        languageProficiencies={languageProficiencies}
-                        onSave={() => {
-                          calculateProfileCompletion();
+            return (
+              <div key={key} className="w-full">
+                <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                  {field.label}
+                </label>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) =>
+                    setCandidateProfile({
+                      ...candidateProfile,
+                      exp_skill: {
+                        ...candidateProfile.exp_skill,
+                        [key]: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                />
+              </div>
+            );
+          })}
+
+          {/* Save Skills button — unchanged style/location */}
+          <div className="mt-4">
+            <SkillsSubmission
+              exp_skill={candidateProfile.exp_skill}
+              languageProficiencies={languageProficiencies}
+              userEmail={session?.user?.email || ""}
+              onSave={() => {
+                calculateProfileCompletion();
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Language Proficiency Card ---- */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <CardTitle>Language Proficiency</CardTitle>
+            <Button
+              onClick={() => {
+                setLanguageProficiencies([
+                  ...languageProficiencies,
+                  {
+                    id: Date.now(),
+                    language: "",
+                    reading: "",
+                    writing: "",
+                    listening: "",
+                    speaking: "",
+                  },
+                ]);
+              }}
+              className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
+            >
+              + Add Language
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {/* Desktop table view */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm md:text-base">
+              <thead>
+                <tr className="border-b">
+                  {[
+                    "Language",
+                    "Reading",
+                    "Writing",
+                    "Listening",
+                    "Speaking",
+                    "Action",
+                  ].map((heading) => (
+                    <th
+                      key={heading}
+                      className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
+                    >
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {languageProficiencies.map((prof, index) => (
+                    <tr key={prof.id || index} className="border-b">
+                    <td className="p-2 min-w-[160px]">
+                      <Select
+                        value={prof.language}
+                        onValueChange={(value) => {
+                          const updated = [...languageProficiencies];
+                          updated[index] = { ...prof, language: value };
+                          setLanguageProficiencies(updated);
                         }}
-                      />
-                    </CardContent>
-                  </Card>
+                      >
+                        <SelectTrigger className="w-full md:w-[180px]">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            "Arabic",
+                            "Bengali",
+                            "Chinese",
+                            "English",
+                            "French",
+                            "German",
+                            "Hindi",
+                            "Indonesian",
+                            "Italian",
+                            "Japanese",
+                            "Korean",
+                            "Malay",
+                            "Portuguese",
+                            "Russian",
+                            "Spanish",
+                            "Tamil",
+                            "Thai",
+                            "Turkish",
+                            "Vietnamese",
+                            "Other",
+                          ].map((lang) => (
+                            <SelectItem key={lang} value={lang}>
+                              {lang}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
 
-                  <Card>
-                    <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <CardTitle>Language Proficiency</CardTitle>
-                        <Button
-                          onClick={() => {
-                            setLanguageProficiencies([
-                              ...languageProficiencies,
-                              {
-                                id: Date.now(),
-                                language: "",
-                                reading: "",
-                                writing: "",
-                                listening: "",
-                                speaking: "",
-                              }
-                            ]);
-                          }}
-                          className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                        >
-                          + Add Language
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Language</th>
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Reading</th>
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Writing</th>
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Listening</th>
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Speaking</th>
-                              <th className="text-left p-2 font-medium text-[#3a4043]">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {languageProficiencies.map((prof, index) => (
-                              <tr key={prof.id} className="border-b">
-                                <td className="p-2">
-                            <Select
-                                    value={prof.language}
-                                    onValueChange={(value) => {
-                                      const updated = [...languageProficiencies];
-                                      updated[index] = { ...prof, language: value };
-                                      setLanguageProficiencies(updated);
-                                    }}
-                                  >
-                                    <SelectTrigger className="w-[200px]">
-                                      <SelectValue placeholder="Select language" />
-                              </SelectTrigger>
-                                    <SelectContent>
-                                      {["Arabic", "Bengali", "Chinese", "English", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Portuguese", "Russian", "Spanish", "Tamil", "Thai", "Turkish", "Vietnamese", "Other"].map((lang) => (
-                                        <SelectItem key={lang} value={lang}>
-                                          {lang}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-                                {["reading", "writing", "listening", "speaking"].map((skill) => (
-                                  <td key={skill} className="p-2">
-                                    <Select
-                                      value={String(prof[skill as keyof LanguageProficiency])}
-                                      onValueChange={(value) => {
-                                        const updated = [...languageProficiencies];
-                                        updated[index] = { ...prof, [skill]: value };
-                                        setLanguageProficiencies(updated);
-                                      }}
-                                    >
-                                      <SelectTrigger className="w-[140px]">
-                                        <SelectValue placeholder="Select level" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {["Expert", "Intermediate", "Beginner"].map((level) => (
-                                          <SelectItem key={level} value={level}>
-                                            {level}
+                    {["reading", "writing", "listening", "speaking"].map(
+                      (skill) => (
+                        <td key={skill + prof.id} className="p-2 min-w-[140px]">
+                          <Select
+                            value={String(
+                              prof[skill as keyof LanguageProficiency]
+                            )}
+                            onValueChange={(value) => {
+                              const updated = [...languageProficiencies];
+                              updated[index] = { ...prof, [skill]: value };
+                              setLanguageProficiencies(updated);
+                            }}
+                          >
+                            <SelectTrigger className="w-full md:w-[140px]">
+                              <SelectValue placeholder="Select level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["Expert", "Intermediate", "Beginner"].map(
+                                (level) => (
+                                  <SelectItem key={level} value={level}>
+                                    {level}
                                   </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                                  </td>
-                                ))}
-                                <td className="p-2">
-                                  {languageProficiencies.length > 0 && (
-                                    <Button
-                                      onClick={() => {
-                                        const updated = languageProficiencies.filter((_, i) => i !== index);
-                                        setLanguageProficiencies(updated);
-                                      }}
-                                      variant="ghost"
-                                      className="text-red-600 hover:text-red-800 hover:bg-red-100"
-                                    >
-                                      Delete
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                          </div>
-                    </CardContent>
-                  </Card>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                      )
+                    )}
+
+                    <td className="p-2 text-center">
+                      <Button
+                        onClick={() => {
+                          const updated = languageProficiencies.filter(
+                            (_, i) => i !== index
+                          );
+                          setLanguageProficiencies(updated);
+                        }}
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile stacked view */}
+          <div className="flex flex-col gap-4 md:hidden">
+            {languageProficiencies.map((prof, index) => (
+              <div
+                key={prof.id ?? `lang-${index}`} // fallback to index if id missing
+                className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
+              >
+                          <div>
+                  <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                    Language
+                  </label>
+                  <Select
+                    value={prof.language}
+                    onValueChange={(value) => {
+                      const updated = [...languageProficiencies];
+                      updated[index] = { ...prof, language: value };
+                      setLanguageProficiencies(updated);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "Arabic",
+                        "Bengali",
+                        "Chinese",
+                        "English",
+                        "French",
+                        "German",
+                        "Hindi",
+                        "Indonesian",
+                        "Italian",
+                        "Japanese",
+                        "Korean",
+                        "Malay",
+                        "Portuguese",
+                        "Russian",
+                        "Spanish",
+                        "Tamil",
+                        "Thai",
+                        "Turkish",
+                        "Vietnamese",
+                        "Other",
+                      ].map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
+                  <div key={skill}>
+                    <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                      {skill}
+                    </label>
+                    <Select
+                      value={
+                        prof[skill.toLowerCase() as keyof LanguageProficiency]
+                          ? String(
+                              prof[skill.toLowerCase() as keyof LanguageProficiency]
+                            )
+                          : ""
+                      }
+                      onValueChange={(value) => {
+                        const updated = [...languageProficiencies];
+                        updated[index] = {
+                          ...prof,
+                          [skill.toLowerCase()]: value,
+                        };
+                        setLanguageProficiencies(updated);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Expert", "Intermediate", "Beginner"].map((level) => (
+                          <SelectItem key={level} value={level}>
+                            {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+
+                <div className="pt-2">
+                  <Button
+                    onClick={() => {
+                      const updated = languageProficiencies.filter(
+                        (_, i) => i !== index
+                      );
+                      setLanguageProficiencies(updated);
+                    }}
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
+                  >
+                    Delete Language
+                  </Button>
                 </div>
               </div>
-            )}
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+)}
+
 
             {activeTab === "neuro_strength" && (
               <div className="space-y-6">
@@ -1767,7 +2057,6 @@ export default function CandidateDashboard() {
                 <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1>
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  {/* Communication & Social Preferences */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Communication & Social Preferences</CardTitle>
@@ -1823,7 +2112,6 @@ export default function CandidateDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Sensory Needs */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Sensory Needs</CardTitle>
@@ -1878,7 +2166,6 @@ export default function CandidateDashboard() {
                   </Card>
                   </div>
 
-                  {/* Save Environment Button */}
                   <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}

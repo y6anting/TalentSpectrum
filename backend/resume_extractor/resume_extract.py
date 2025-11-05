@@ -49,69 +49,138 @@ vector_store = None
 # ==========================
 # Template
 # ==========================
-TEMPLATE = """
-You are a resume parser. Extract the following structured information in JSON format:
+TEMPLATE = """ 
+You are a resume parser. Extract all relevant data from the resume text below and output **strictly in JSON** following this schema. 
 
-Personal Identifiers:
-- Full name
-- Date of birth
-- Gender
-- Nationality
-- Identification number (IC/Passport)
-- Email address
-- Phone number
-- Residential address
-- LinkedIn profile
-- Personal website/portfolio link
-- Social media handles (if provided)
+The output must be compatible with the following model:
 
-Metadata:
-- Candidate ID (system-generated)
-- Resume version hash
-- File metadata (creation date, last modified)
+{{
+  "name": str,
+  "candidate_email": str,
+  "dateOfBirth": Optional[str],
+  "location": Optional[str],
+  "profile_completion": int,
+  "accommodations": [str],
+  "preferences": {{
+    "workType": Optional[str],
+    "communication": Optional[str],
+    "schedule": Optional[str]
+  }},
+  "personal_identifiers": {{
+    "fullName": str,
+    "nric": Optional[str],
+    "emailAddress": str,
+    "phoneNumber": str,
+    "residentialAddress": str,
+    "dateOfBirth": str,
+    "gender": str,
+    "nationality": str,
+    "oku_card": Optional[str],
+    "preferred_role": Optional[str],
+    "preferred_industry": Optional[str],
+    "preferred_location": Optional[str]
+  }},
+  "education": [
+    {{
+      "level": Optional[str],
+      "fieldOfStudy": Optional[str],
+      "institution": Optional[str],
+      "graduationYear": Optional[int],
+      "cgpa_grade": Optional[str],
+      "award": Optional[str]
+    }}
+  ],
+  "experience": [
+    {{
+      "employer": Optional[str],
+      "industry": Optional[str],
+      "start": Optional[str],
+      "end": Optional[str],
+      "isCurrent": Optional[str],
+      "Title": Optional[str],
+      "YearsInRole": Optional[str],
+      "SeniorityLevel": Optional[str],
+      "SkillsToolsUsed": Optional[str],
+      "ProjectHighlights": Optional[str],
+      "HardSkills": Optional[str],
+      "SoftSkills": Optional[str],
+      "LanguageProficiency": Optional[str],
+      "TechnicalKeywords": Optional[str],
+      "Achievements": Optional[str]
+    }}
+  ],
+  "skills": {{
+    "HardSkills": [str],
+    "SoftSkills": [str]
+  }},
+  "language_proficiencies": [
+    {{
+      "language": str,
+      "reading": str,
+      "writing": str,
+      "listening": str,
+      "speaking": str
+    }}
+  ],
+  "environment": {{
+    "patternRecognition": Optional[str],
+    "attention": Optional[str],
+    "systematicThinking": Optional[str],
+    "bigVsDetail": Optional[str],
+    "taskSwitching": Optional[str],
+    "hyperfocus": Optional[str],
+    "communicationMedium": Optional[str],
+    "clarity": Optional[str],
+    "teamStyle": Optional[str],
+    "presentationComfort": Optional[str],
+    "checkIns": Optional[str],
+    "jobCoach": Optional[str],
+    "auditory": Optional[str],
+    "visual": Optional[str],
+    "workspace": Optional[str],
+    "workdayStructure": Optional[str]
+  }},
+  "neurodivergent_strengths": {{
+    "strengths": [str]
+  }},
+  "applications": [],
+  "saved_jobs": []
+}}
 
-Education:
-- Highest education level
-- Field(s) of study
-- Institutions
-- Graduation year(s)
-- Certifications
-
-Work Experience:
-- Industry
-- Role/title
-- Years of experience in role
-- Skills/tools used
-- Seniority level
-- Project highlights
-
-Skills:
-- Hard skills
-- Soft skills
-- Proficiency levels
-- Technical keywords
-
-Achievements / Portfolio:
-- Published works
-- Awards/recognitions
-- Patents/projects
-- Portfolio/GitHub/Behance links
-
-Language Proficiency:
-- Languages spoken
-- Proficiency level
-
-Job Preferences:
-- Preferred industries
-- Preferred roles
-- Location preference
-- Availability
-
-Behavioral / Derived Features:
-- Consistency score
-- Keyword embeddings
-- Resume length / richness index
-- Time progression (career timeline)
+Parsing instructions:
+1. Extract all relevant data explicitly stated in the resume.
+2. Infer missing but logically deducible data (e.g., nationality from address, gender from pronouns).
+3. If **date of birth is not provided but NRIC is available**, derive it from the **first 6 digits of the NRIC (YYMMDD)**:
+   - Convert it to **YYYY-MM-DD** format.
+   - If YY ≥ current year’s last two digits, assume **19YY**; otherwise, assume **20YY**.
+   - For example:
+     - `890525-02-5532` → `1989-05-25`
+     - `050412-10-5432` → `2005-04-12`
+4. Place the derived `dateOfBirth` field **right after `candidate_email`** in the top-level JSON.
+5. In the **education** section:
+   - Restrict `"level"` strictly to one of the following:
+     ["PT3", "SPM / O-level", "STPM / A-level / Diploma", "Degree", "Master", "PhD", "Vocational", "Professional Certificate"]  
+     If unclassifiable, leave it empty.
+   - Ensure `"graduationYear"` is between 1990 and 2025 (inclusive). If outside, leave it empty.
+6. In the **experience** section:
+   - If the candidate is **still working**, set `"end": ""` and `"isCurrent": "true"`.
+   - Otherwise, `"isCurrent": "false"`.
+   - Force `"SeniorityLevel"` to one of:
+     ["Non-executive", "Executive", "Managerial", "Head of Department", "C-suite"].  
+     If unclassifiable, leave it empty.
+7. In the **language_proficiencies** section:
+   - Normalize the `"language"` field as follows:
+     - If the provided language is `"Mandarin"`, convert it to `"Chinese"`.
+     - Otherwise, restrict `"language"` to one of:
+       ["Arabic", "Bengali", "Chinese", "English", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Portuguese", "Russian", "Spanish", "Tamil", "Thai", "Turkish", "Vietnamese"].
+     - If the language is not in this list, set it as `"Other"`.
+   - Force `"reading"`, `"writing"`, `"listening"`, and `"speaking"` to one of:
+     ["Expert", "Intermediate", "Beginner"].  
+     If unclassifiable, leave it empty.
+8. Normalize all date values to ISO format (`YYYY-MM` or `YYYY-MM-DD`).
+9. Lists must contain distinct elements (no duplicates).
+10. Ensure phone numbers and emails are cleanly formatted.
+11. Output must be a single valid JSON object only — no markdown, commentary, or explanations.
 
 Resume text:
 {context}

@@ -40,7 +40,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         console.log("Fetching name for:", { role: roleUpper, userEmail, sessionEmail, localEmail, sessionName: session.user.name });
 
         if (roleUpper === "CANDIDATE") {
-          const res = await fetch(`http://localhost:8000/profiles/${userEmail}`);
+          const res = await fetch(`http://localhost:8000/users/${userEmail}`);
           if (res.ok) {
             const profile = await res.json();
             setDisplayName(profile?.name ?? session.user.name ?? null);

@@ -1,66 +1,46 @@
-from fastapi import FastAPI, Depends, Path, HTTPException
-from models import Books   # ✅ your model
-from class_database import engine, SessionLocal, Base
-from typing import Annotated
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, StrictInt, Field
+# backend/pg_db/main.py
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from database.connection import create_tables, engine, Base # Keep Base here for clarity, though not strictly used directly
+
+# Import ALL model modules here.
+# This ensures that all models inheriting from Base are registered with Base.metadata
+# before create_tables() is called.
+from database.models import users # <--- CHANGE THIS LINE: Import the module, not the class directly
+# from database.models import candidate # If you had other models, import their modules here
+# from database.models import employer # If you had other models, import their modules here
+
+# Import routers
+from routers.users import router as users_router
+from routers.profiles import router as profiles_router
+# from routers.profile_others import router as profile_others_router
+from routers.jobs import router as jobs_router
+from routers.applications import router as applications_router
+# from routers.resume_extract import router as resume_extract_router
+
+# Create DB tables
+# This call will now correctly find all models that inherited from Base
+# because their modules (like users.py) have already been imported above.
+create_tables()
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# ✅ Use Base from class_database (not models)
-Base.metadata.create_all(bind=engine)
+@app.get("/")
+def read_root():
+    return {"message": "TalentSpectrum DB API"}
 
-# DB Session Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-db_dependency = Annotated[Session, Depends(get_db)]
-
-class BookRequest(BaseModel):
-    title: str = Field(min_length=3, max_length=1000)
-    author: str = Field(min_length=3, max_length=1000)
-    published_year: StrictInt = Field(gt=1800, lt=2026)
-
-@app.get("/books")
-async def read_all(db: db_dependency):
-    return db.query(Books).all()
-
-@app.get("/books/{book_id}")
-async def get_book_by_id(db: db_dependency, book_id: int = Path(gt=0)):
-    book_result = db.query(Books).filter(Books.id == book_id).first()
-    if book_result is not None:
-        return book_result
-    raise HTTPException(status_code=404, detail="Book not found")
-
-@app.post("/books")
-async def create_book(db: db_dependency, book_request: BookRequest):
-    new_book = Books(**book_request.dict())
-    db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
-    return {"message": "Book successfully added", "book": new_book}
-
-@app.put("/books/{book_id}")
-async def update_book(db: db_dependency, book_id: int, book_request: BookRequest):
-    book_result = db.query(Books).filter(Books.id == book_id).first()
-    if book_result is None:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    for key, value in book_request.dict().items():
-        setattr(book_result, key, value)
-
-    db.commit()
-    return {"message": "Book successfully updated"}
-
-@app.delete("/books/{book_id}")
-async def delete_book(db: db_dependency, book_id: int = Path(gt=0)):
-    book_result = db.query(Books).filter(Books.id == book_id).first()
-    if book_result is None:
-        raise HTTPException(status_code=404, detail="Book not found")
-    db.delete(book_result)
-    db.commit()
-    return {"message": "Book successfully deleted"}
+# Register routers
+app.include_router(users_router, prefix="/users", tags=["users"])
+app.include_router(profiles_router, prefix="/profiles")
+# app.include_router(profile_others_router, prefix="/profile_others", tags=["profile_others"])
+app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
+app.include_router(applications_router, prefix="/applications", tags=["applications"])
+# app.include_router(resume_extract_router, prefix="/resume", tags=["resume"])

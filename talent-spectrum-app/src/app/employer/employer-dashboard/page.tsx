@@ -1,7 +1,9 @@
+// talent-spectrum-app/src/app/employer/employer-dashboard/pages.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent } from "react"; // Added useRef, ChangeEvent
 import { Button } from "@/app/components/button";
+import { Camera } from 'lucide-react'; // Imported Camera icon
 import {
   Card,
   CardContent,
@@ -12,7 +14,7 @@ import { Badge } from "@/app/components/badge";
 import {
   Building,
   Users,
-  Plus, // Keep Plus for the sidebar icon if needed elsewhere, but not for the removed buttons
+  Plus,
   Eye,
   Edit,
   Trash2,
@@ -28,11 +30,11 @@ import {
   BarChart3,
   Calculator,
   X,
-  SquarePen, // Added SquarePen icon
+  SquarePen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react"; // Assuming this is still used for auth
-import { motion } from "motion/react";
+import { useSession } from "next-auth/react";
+import { motion } from "framer-motion"; // Changed from "motion/react" to "framer-motion" for common usage
 import { calculateEmployerCosts } from "@/app/employer/component/taxCalculator";
 import {
   Select,
@@ -45,12 +47,12 @@ import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
 
 // Import the PostJob component
-import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
+import PostJob from "@/app/employer/post-job/page";
 
-// Assuming these are custom components, if not, replace with standard HTML input/textarea or import from your UI library
-import { Input } from "@/app/components/input"; // Assuming you have an Input component
-import { Checkbox } from "@/app/components/checkbox"; // Assuming you have a Checkbox component
-import { Textarea } from "@/app/components/textarea"; // Assuming you have a Textarea component
+// Assuming these are custom components
+import { Input } from "@/app/components/input";
+import { Checkbox } from "@/app/components/checkbox";
+import { Textarea } from "@/app/components/textarea";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -61,6 +63,7 @@ const SALARY_RANGES = [
   "RM 18,001 - RM 25,000",
   "Above RM 25,000",
 ];
+
 export type JobPosting = {
   id: number;
   employer_email: string;
@@ -90,7 +93,6 @@ export type JobPosting = {
   near_public_transport: boolean;
 };
 
-
 export type CompanyProfile = {
   id: number;
   email: string;
@@ -102,21 +104,19 @@ export type CompanyProfile = {
   size: string;
   inclusion_score: number;
   certifications: string; // JSON string
-  description: string; // This will store the accommodation policy
   founded_year: number;
   company_type: string;
-  // Add inclusion settings from your company profile
-  neurodivergent_friendly: boolean;
-  workplace_accommodations: boolean;
-  equal_opportunity: boolean;
-  accessible_recruitment: boolean;
+  logo_url?: string | null;  // Added logo_url field
 };
 
 export default function EmployerDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false); // This seems unused, consider removing
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // Ref for the hidden file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dummy data for applications, as the original fetch was commented out
   const applications = [
@@ -159,19 +159,12 @@ export default function EmployerDashboard() {
     null
   );
   const [companyName, setCompanyName] = useState("");
-  // const [companyData, setCompanyData] = useState({ name: "", industry: "", location: "", size: "" }); // This seems unused, consider removing
   const [companyIndustry, setCompanyIndustry] = useState("");
   const [companyLocation, setCompanyLocation] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [currentEmployerEmail, setCurrentEmployerEmail] = useState<string>("");
-  const [inclusionSettings, setInclusionSettings] = useState({
-    neurodivergentFriendly: true,
-    workplaceAccommodations: true,
-    equalOpportunity: true,
-    accessibleRecruitment: false,
-  });
-  const [accommodationPolicy, setAccommodationPolicy] = useState<string>("");
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null); // State for company logo URL
 
   const getStatusBadge = (status: string) => {
     const badgeStyles: { [key: string]: string } = {
@@ -220,11 +213,9 @@ export default function EmployerDashboard() {
       });
       if (response.ok) {
         alert("Job deleted successfully!");
-        // Refresh the job postings
-        const employerEmail = localStorage.getItem("employerEmail");
-        if (employerEmail) {
+        if (currentEmployerEmail) {
           const jobsResponse = await fetch(
-            `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+            `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
           );
           if (jobsResponse.ok) {
             const jobsData = await jobsResponse.json();
@@ -291,11 +282,10 @@ export default function EmployerDashboard() {
       const updated = await res.json();
 
       // Refresh job postings from server for immediate consistency
-      const employerEmail = localStorage.getItem("employerEmail");
-      if (employerEmail) {
+      if (currentEmployerEmail) {
         try {
           const jobsRes = await fetch(
-            `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+            `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
           );
           if (jobsRes.ok) {
             const jobsData = await jobsRes.json();
@@ -326,36 +316,75 @@ export default function EmployerDashboard() {
     }
   };
 
-  // Handle company settings save
-  const handleSaveCompanySettings = async () => {
-    try {
-      const employerEmail = localStorage.getItem("employerEmail");
-      if (!employerEmail) {
-        alert("Please log in as an employer to save settings.");
-        return;
-      }
+  // Function to handle logo upload
+  const handleLogoUpload = async (file: File) => {
+    if (!currentEmployerEmail) {
+      alert("Please log in as an employer to upload a logo.");
+      return;
+    }
 
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("employer_email", currentEmployerEmail); // Send email for identification
+
+    try {
+      // IMPORTANT: Replace this URL with your actual backend upload endpoint
+      const response = await fetch("http://127.0.0.1:8000/upload-company-logo", {
+        method: "POST",
+        body: formData,
+        // Do NOT set Content-Type header for FormData, browser does it automatically
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCompanyLogo(data.logo_url); // Assuming backend returns { logo_url: "..." }
+        alert("Company logo uploaded successfully!");
+
+        // Also update the company profile in the DB with the new logo_url
+        await handleSaveCompanySettings(data.logo_url); // Pass the new logo URL
+      } else {
+        const errorText = await response.text();
+        console.error("Error uploading logo:", errorText);
+        alert("Failed to upload logo. Please try again.");
+      }
+    } catch (error) {
+      console.error("Network error during logo upload:", error);
+      alert("An error occurred during logo upload.");
+    }
+  };
+
+  // Handler for when a file is selected
+  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      handleLogoUpload(event.target.files[0]);
+    }
+  };
+
+  // Handle company settings save (now accepts an optional logoUrl to update)
+  const handleSaveCompanySettings = async (newLogoUrl: string | null = null) => {
+    if (!currentEmployerEmail) {
+      alert("Please log in as an employer to save settings.");
+      return;
+    }
+
+    try {
       const companyData = {
-        email: employerEmail,
+        email: currentEmployerEmail,
         name: companyName,
         industry: companyIndustry,
         location: companyLocation,
         size: companySize,
         inclusion_score: companyProfile?.inclusion_score || 0,
         certifications: companyProfile?.certifications || "[]",
-        description: companyProfile?.description || "",
         founded_year: companyProfile?.founded_year || null,
         company_type: companyProfile?.company_type || "",
         website: companyProfile?.website || "",
         employees: companyProfile?.employees || "",
-        neurodivergent_friendly: inclusionSettings.neurodivergentFriendly,
-        workplace_accommodations: inclusionSettings.workplaceAccommodations,
-        equal_opportunity: inclusionSettings.equalOpportunity,
-        accessible_recruitment: inclusionSettings.accessibleRecruitment,
+        logo_url: newLogoUrl !== null ? newLogoUrl : companyLogo, // Use newLogoUrl if provided, else current state
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/jobs/company/${employerEmail}`,
+        `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}`,
         {
           method: "PUT",
           headers: {
@@ -366,26 +395,22 @@ export default function EmployerDashboard() {
       );
 
       if (response.ok) {
-        alert("Company settings saved successfully!");
+        // Only show alert if it's not part of a logo upload chain
+        if (newLogoUrl === null) {
+            alert("Company settings saved successfully!");
+        }
         // Refresh the company profile data
         const updatedResponse = await fetch(
-          `http://127.0.0.1:8000/jobs/company/${employerEmail}`
+          `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}`
         );
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
           setCompanyProfile(updatedData);
-          setCompanyName(updatedData.name); // Update state with fresh data
+          setCompanyName(updatedData.name);
           setCompanyIndustry(updatedData.industry);
           setCompanyLocation(updatedData.location);
           setCompanySize(updatedData.size);
-          // Also update inclusion settings from fetched company data
-          setInclusionSettings({
-            neurodivergentFriendly: updatedData.neurodivergent_friendly,
-            workplaceAccommodations: updatedData.workplace_accommodations,
-            equalOpportunity: updatedData.equal_opportunity,
-            accessibleRecruitment: updatedData.accessible_recruitment,
-          });
-          setAccommodationPolicy(updatedData.description);
+          setCompanyLogo(updatedData.logo_url || null); // Update logo from fetched data
         }
       } else {
         let errorText: string;
@@ -407,14 +432,25 @@ export default function EmployerDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      try {
-        const employerEmail = localStorage.getItem("employerEmail") || "";
-        setCurrentEmployerEmail(employerEmail);
-        if (!employerEmail) {
-          setIsLoading(false);
-          return;
-        }
+      // Check if session is loading or not authenticated
+      if (status === "loading") {
+        return; // Do nothing while session is loading
+      }
+      if (status === "unauthenticated") {
+        router.push("/auth/signin");
+        setIsLoading(false);
+        return;
+      }
 
+      const employerEmail = session?.user?.email || "";
+      setCurrentEmployerEmail(employerEmail);
+
+      if (!employerEmail) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
         const companyResponse = await fetch(
           `http://127.0.0.1:8000/jobs/company/${employerEmail}`
         );
@@ -429,13 +465,9 @@ export default function EmployerDashboard() {
           size: "1-10 employees",
           inclusion_score: 0,
           certifications: "[]",
-          description: "",
           founded_year: 2020,
           company_type: "Private",
-          neurodivergent_friendly: false, // Default values
-          workplace_accommodations: false,
-          equal_opportunity: false,
-          accessible_recruitment: false,
+          logo_url: null, // Default logo_url
         };
 
         let companyData: CompanyProfile;
@@ -462,15 +494,7 @@ export default function EmployerDashboard() {
         setCompanyIndustry(companyData.industry);
         setCompanyLocation(companyData.location);
         setCompanySize(companyData.size);
-
-        // Initialize inclusion settings from company profile data
-        setInclusionSettings({
-          neurodivergentFriendly: companyData.neurodivergent_friendly,
-          workplaceAccommodations: companyData.workplace_accommodations,
-          equalOpportunity: companyData.equal_opportunity,
-          accessibleRecruitment: companyData.accessible_recruitment,
-        });
-        setAccommodationPolicy(companyData.description);
+        setCompanyLogo(companyData.logo_url || null); // Initialize logo from fetched data
 
         const jobsResponse = await fetch(
           `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
@@ -483,79 +507,7 @@ export default function EmployerDashboard() {
       }
     };
     fetchData();
-  }, []);
-
-  // Handle inclusion settings changes
-  const handleInclusionSettingChange = (
-    setting: keyof typeof inclusionSettings
-  ) => {
-    setInclusionSettings((prev) => {
-      const next = { ...prev, [setting]: !prev[setting] };
-      // Local storage persistence (optional, if you want settings to persist across sessions)
-      try {
-        localStorage.setItem("inclusionSettings", JSON.stringify(next));
-      } catch (e) {
-        console.error("Failed to save inclusion settings to local storage:", e);
-      }
-      const trueCount = Object.values(next).filter(Boolean).length;
-      const score = Math.round((trueCount / Object.keys(next).length) * 100);
-      setCompanyProfile((cp) => (cp ? { ...cp, inclusion_score: score } : cp));
-      return next;
-    });
-  };
-
-  const handleSaveInclusionSettings = async () => {
-    try {
-      const employerEmail = localStorage.getItem("employerEmail");
-      if (!employerEmail) {
-        alert("Please log in as an employer to save settings.");
-        return;
-      }
-
-      // Local storage persistence (optional)
-      try {
-        localStorage.setItem(
-          "inclusionSettings",
-          JSON.stringify(inclusionSettings)
-        );
-        localStorage.setItem("accommodationPolicy", accommodationPolicy ?? "");
-      } catch (e) {
-        console.error("Failed to save inclusion settings to local storage:", e);
-      }
-
-      const payload = {
-        email: employerEmail,
-        neurodivergent_friendly: inclusionSettings.neurodivergentFriendly,
-        workplace_accommodations: inclusionSettings.workplaceAccommodations,
-        equal_opportunity: inclusionSettings.equalOpportunity,
-        accessible_recruitment: inclusionSettings.accessibleRecruitment,
-        description: accommodationPolicy ?? companyProfile?.description ?? "",
-        inclusion_score: companyProfile?.inclusion_score ?? 0, // Ensure inclusion_score is sent
-      };
-
-      const response = await fetch(
-        `http://127.0.0.1:8000/jobs/company/${employerEmail}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        const updated = await response.json();
-        setCompanyProfile((cp) => (cp ? { ...cp, ...updated } : cp));
-        alert("Inclusion settings saved successfully!");
-      } else {
-        const err = await response.text();
-        console.error("Failed to save inclusion settings", err);
-        alert("Failed to save inclusion settings. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error saving inclusion settings", error);
-      alert("An error occurred while saving inclusion settings.");
-    }
-  };
+  }, [session, status, router]);
 
   const renderInputField = (
     label: string,
@@ -568,7 +520,7 @@ export default function EmployerDashboard() {
       <label className="block text-sm font-medium text-[#3a4043] mb-1">
         {label}
       </label>
-      <Input // Using the imported Input component
+      <Input
         type={type}
         value={
           type === "number"
@@ -579,9 +531,8 @@ export default function EmployerDashboard() {
           const val = e.target.value;
           if (type === "number") {
             if (val === "") return onChange("");
-            // Allow only numbers and a single decimal point
             if (!/^\d*\.?\d*$/.test(val)) return;
-            onChange(Number(val)); // Convert to number
+            onChange(Number(val));
           } else {
             onChange(val);
           }
@@ -610,8 +561,6 @@ export default function EmployerDashboard() {
               Manage your job postings and find the best neurodivergent talent.
             </p>
           </div>
-
-          {/* The "Post New Job" buttons for small and large screens have been removed from here */}
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8 space-y-4">
@@ -636,7 +585,7 @@ export default function EmployerDashboard() {
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: BarChart3 },
-                    { id: "post-job", label: "Post New Job", icon: SquarePen }, // This sidebar item remains
+                    { id: "post-job", label: "Post New Job", icon: SquarePen },
                     { id: "jobs", label: "Job Posted", icon: FileText },
                     { id: "applications", label: "Applicants", icon: Users },
                     { id: "tax-calculator", label: "Calculator", icon: Calculator,},
@@ -667,7 +616,7 @@ export default function EmployerDashboard() {
           <div className="lg:col-span-3">
             {activeTab === "overview" && (
               <div className="space-y-4">
-                <div className="grid md:grid-cols-4 gap-6">
+                <div className="grid md:grid-cols-3 gap-6">
                   {[
                     {
                       icon: FileText,
@@ -687,12 +636,6 @@ export default function EmployerDashboard() {
                       iconColor: "text-green-600",
                       title: "Total Views",
                       value: 0,
-                    },
-                    {
-                      icon: Shield,
-                      iconColor: "text-purple-600",
-                      title: "Inclusion Score",
-                      value: `${companyProfile?.inclusion_score || 0}%`,
                     },
                   ].map((card) => (
                     <Card
@@ -756,7 +699,7 @@ export default function EmployerDashboard() {
                                 variant="secondary"
                                 className="bg-purple-100 text-purple-800 flex items-center gap-1"
                               >
-                                <Shield className="h-3 w-3" /> Accommodations
+                                <Shield className="h-3 w-3 mr-1" /> Accommodations
                               </Badge>
                             )}
                           </div>
@@ -801,13 +744,6 @@ export default function EmployerDashboard() {
                         </p>
                       )}
                     </div>
-                    {/* Placeholder for viewing all certifications, if that functionality exists */}
-                    {/* <Button
-                      variant="outline"
-                      className="mt-4 bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-sm transition-all duration-200 hover:cursor-pointer hover:text-white"
-                    >
-                      View All Certifications
-                    </Button> */}
                   </CardContent>
                 </Card>
               </div>
@@ -836,12 +772,10 @@ export default function EmployerDashboard() {
                         onClick={() => setActiveTab("post-job")}
                       >
                         Post Your First Job
-                      </Button>{" "}
-                      {/* Changed to set active tab */}
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
-                  // This is the correct start of the jobPostings.map block
                   jobPostings.map((job) => (
                     <Card key={job.id}>
                       <CardContent className="p-6">
@@ -878,7 +812,6 @@ export default function EmployerDashboard() {
                               </p>
                             </div>
                           </div>
-                          {/* <div className="text-right"><Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge></div> */}
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -1022,7 +955,8 @@ export default function EmployerDashboard() {
                   Company Settings
                 </h1>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                {/* Changed to full width (md:grid-cols-1) */}
+                <div className="grid md:grid-cols-1 gap-6">
                   <Card>
                     <CardHeader>
                       <CardTitle>Company Information</CardTitle>
@@ -1134,7 +1068,7 @@ export default function EmployerDashboard() {
                         <select
                           value={companySize}
                           onChange={(e) => setCompanySize(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white" // Added text color and bg-white
+                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white"
                         >
                           <option value="1-10 employees">1-10 employees</option>
                           <option value="11-50 employees">
@@ -1149,59 +1083,40 @@ export default function EmployerDashboard() {
                           <option value="500+ employees">500+ employees</option>
                         </select>
                       </div>
-                      <Button
-                        className="bg-[#635bff] hover:bg-[#5346e6] text-white"
-                        onClick={handleSaveCompanySettings}
-                      >
-                        Save Changes
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Inclusion Settings</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {Object.entries(inclusionSettings).map(([key, value]) => (
-                        <div key={key}>
-                          <label className="flex items-center gap-2">
-                            <Checkbox
-                              id={key} // Added ID for accessibility
-                              checked={value}
-                              onCheckedChange={() =>
-                                handleInclusionSettingChange(
-                                  key as keyof typeof inclusionSettings
-                                )
-                              }
-                              className="text-[#635bff]"
-                            />
-                            <span className="text-sm text-[#3a4043]">
-                              {key
-                                .replace(/([A-Z])/g, " $1")
-                                .replace(/^./, (str) => str.toUpperCase())}
-                            </span>
-                          </label>
-                        </div>
-                      ))}
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                          Accommodation Policy
-                        </label>
-                        <Textarea // Changed to Textarea for better control
-                          rows={3}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px] text-[#3a4043]"
-                          placeholder="Describe your workplace accommodation policies..."
-                          value={accommodationPolicy}
-                          onChange={(e) =>
-                            setAccommodationPolicy(e.target.value)
-                          }
-                        />
+                        <label htmlFor="companyLogoInput" className="block text-sm font-medium text-gray-700 mb-1">Company Logo</label>
+                        <div className="flex items-center space-x-4">
+                          {companyLogo ? (
+                            <img
+                              src={companyLogo}
+                              alt="Company Logo"
+                              className="w-20 h-20 rounded-full object-cover border border-gray-200"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                              <Camera className="h-8 w-8" />
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={onFileChange}
+                            className="hidden"
+                            accept="image/*"
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            Upload New Logo
+                          </Button>
+                        </div>
                       </div>
                       <Button
                         className="bg-[#635bff] hover:bg-[#5346e6] text-white"
-                        onClick={handleSaveInclusionSettings}
+                        onClick={() => handleSaveCompanySettings()} // Call without newLogoUrl to save other settings
                       >
-                        Save Inclusion Settings
+                        Save Changes
                       </Button>
                     </CardContent>
                   </Card>

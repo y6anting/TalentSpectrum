@@ -1,5 +1,7 @@
+'use client';
 import { useState } from 'react';
 import { Button } from "@/app/components/button";
+import { useSession } from "next-auth/react";
 
 interface NeuroStrengthSubmissionProps {
   selectedStrengths: string[];
@@ -9,18 +11,20 @@ interface NeuroStrengthSubmissionProps {
 export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStrengthSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   const handleSubmitStrengths = async () => {
     setIsSubmitting(true);
     setError(null);
+
     try {
-      const userEmail = localStorage.getItem('userEmail');
+      const userEmail = session?.user?.email;
       if (!userEmail) {
-        throw new Error('No userEmail found in localStorage');
+        throw new Error('No user email found in session');
       }
 
       const strengthsData = {
-        neurodivergent_strengths: selectedStrengths
+        neurodivergent_strengths: selectedStrengths,
       };
 
       console.log('Saving neurodivergent strengths:', strengthsData);
@@ -55,10 +59,15 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
       <Button
         className="bg-[#635bff] hover:bg-[#827CFF] text-white"
         onClick={handleSubmitStrengths}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !session}
       >
         {isSubmitting ? 'Saving...' : 'Save Strengths'}
       </Button>
+      {!session && (
+        <p className="text-gray-500 text-sm mt-2">
+          Please log in to save your neurodivergent strengths.
+        </p>
+      )}
     </div>
   );
 }

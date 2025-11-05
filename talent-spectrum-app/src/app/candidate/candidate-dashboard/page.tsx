@@ -36,6 +36,9 @@ export default function CandidateDashboard() {
 
   const [jobCoachSearch, setJobCoachSearch] = useState('');
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
+  const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
 
   type Environment = {
     patternRecognition: string;
@@ -929,13 +932,80 @@ export default function CandidateDashboard() {
     },
   ]
 
-  const filteredJobCoachSearch = jobCoachTemporary.filter(coach =>
-    coach.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
+  const filteredJobCoachSearch = jobCoachTemporary.filter((c) =>
+    c.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
   );
 
-  const handleSelect = (coachName: string) => {
-    setSelectedCoach((prev) => (prev === coachName ? null : coachName)); // toggle select
+  const handleSelect = (name: string) => {
+  setSelectedCoach((prev) => (prev === name ? null : name));
+  setSelectedDate(null); 
+};
+
+  const selectedCoachData = jobCoachTemporary.find(
+    (c) => c.name === selectedCoach
+  );
+
+  // --- FIX: Store all available appointment dates (not just strings)
+  const availableDays = selectedCoachData
+    ? selectedCoachData.appointments.map(
+        (a) => new Date(a.time * 1000)
+      )
+    : [];
+
+  // Build days for current month
+  const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
+  const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
+
+  const daysArray = Array.from({ length: firstDay + daysInMonth }, (_, i) =>
+    i < firstDay ? null : i - firstDay + 1
+  );
+
+  // When a date is selected, show that day’s appointments
+  const selectedDayAppointments =
+    selectedCoachData && selectedDate
+      ? selectedCoachData.appointments.filter(
+          (a) =>
+            new Date(a.time * 1000).toDateString() ===
+            selectedDate.toDateString()
+        )
+      : [];
+
+  // Navigation handlers
+  const handlePrevMonth = () => {
+    if (appointmentMonth === 0) {
+      setAppointmentMonth(11);
+      setAppointmentYear((y) => y - 1);
+    } else {
+      setAppointmentMonth((m) => m - 1);
+    }
+    setSelectedDate(null);
   };
+
+  const handleNextMonth = () => {
+    if (appointmentMonth === 11) {
+      setAppointmentMonth(0);
+      setAppointmentYear((y) => y + 1);
+    } else {
+      setAppointmentMonth((m) => m + 1);
+    }
+    setSelectedDate(null);
+  };
+
+ 
+
+  // --- FIX: Match available days by date/month/year instead of string match
+  const isDateAvailable = (d: Date) =>
+    availableDays.some(
+      (a) =>
+        a.getDate() === d.getDate() &&
+        a.getMonth() === d.getMonth() &&
+        a.getFullYear() === d.getFullYear()
+    );
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -2164,7 +2234,142 @@ export default function CandidateDashboard() {
                   </div>
                 </Card>
                 <Card>
-                    
+                  <div className="p-5">
+                    {selectedCoach ? (
+                      <>
+                        <div className="flex justify-between items-center mb-3">
+                          <button
+                            onClick={handlePrevMonth}
+                            className="text-[#635bff] font-bold hover:text-[#4b44e0]"
+                          >
+                            ← Prev
+                          </button>
+                          <h2 className="font-bold text-lg">
+                            {monthNames[appointmentMonth]} {appointmentYear}
+                          </h2>
+                          <button
+                            onClick={handleNextMonth}
+                            className="text-[#635bff] font-bold hover:text-[#4b44e0]"
+                          >
+                            Next →
+                          </button>
+                        </div>
+
+                        {/* Days of week */}
+                        <div className="grid grid-cols-7 gap-2 text-center text-sm mb-3">
+                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                            <div key={d} className="font-semibold">
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Calendar Days */}
+                        <div className="grid grid-cols-7 gap-2 text-center text-sm">
+                          {daysArray.map((day, i) => {
+                            if (!day) return <div key={i}></div>;
+                            const date = new Date(appointmentYear, appointmentMonth, day);
+                            const available = isDateAvailable(date);
+                            const isSelected =
+                              selectedDate?.toDateString() === date.toDateString();
+
+                            return (
+                              <div
+                                key={i}
+                                onClick={() => {
+                                  setSelectedDate(date);
+                                }}
+                                className={`p-2 rounded-lg cursor-pointer transition ${isSelected
+                                    ? "bg-[#635bff] text-white font-bold"
+                                    : available
+                                      ? "bg-[#e0e7ff] hover:bg-[#c7d2fe] text-[#4338ca]"
+                                      : "text-gray-400 hover:bg-gray-100"
+                                  }`}
+                              >
+                                {day}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Appointments */}
+                        {selectedDayAppointments.length > 0 ? (
+                          <div className="mt-5">
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-gray-700"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <h3 className="font-semibold text-gray-800">Available Time Slots</h3>
+                            </div>
+
+                            <p className="text-sm text-gray-500 mb-4">
+                              Slots for {selectedDate?.toLocaleDateString(undefined, {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </p>
+
+                            <ul className="space-y-3">
+                              {selectedDayAppointments.map((a, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
+                                >
+                                  <div className="flex items-center gap-2 text-gray-700">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-4 w-4 text-gray-500"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      />
+                                    </svg>
+                                    <span className="font-medium">
+                                      {new Date(a.time * 1000).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  <button className="bg-[#635bff] text-white text-sm px-4 py-1.5 rounded-md font-medium hover:bg-black transition">
+                                    Book
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : selectedDate ? (
+                          <p className="mt-5 text-gray-400 text-center pt-5">
+                            No available appointments on this day.
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-gray-400 text-center pt-[10%]">
+                        Select a coach to view their calendar.
+                      </p>
+                    )}
+                  </div>
                 </Card>
               </div>
             )}

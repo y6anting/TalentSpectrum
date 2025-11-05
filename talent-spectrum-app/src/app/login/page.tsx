@@ -5,7 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, User, Building2, GraduationCap, AlignCenter } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Building2,
+  GraduationCap,
+  AlignCenter,
+} from "lucide-react";
 
 // Types
 type UserType = "candidate" | "employer" | "job-coach";
@@ -37,28 +44,31 @@ const USER_TYPE_CONFIG = {
     label: "Job Seeker",
     icon: User,
     title: "Find Your Perfect Role",
-    description: "Access resources, showcase your strengths, and connect with coaches to help you thrive in your career, whether as a job seeker or entrepreneur.",
+    description:
+      "Access resources, showcase your strengths, and connect with coaches to help you thrive in your career, whether as a job seeker or entrepreneur.",
     dashboard: "candidate/candidate-dashboard",
     gradient: "from-purple-500 to-indigo-600",
-    bgImage: "/About_Express.jpg"
+    bgImage: "/About_Express.jpg",
   },
   employer: {
     label: "Employer",
     icon: Building2,
     title: "Discover Top Talent",
-    description: "Position your brand as a leader in diversity and inclusion as you commit to ESG values and support CSR that enhance your corporate reputation through our platform.",
+    description:
+      "Position your brand as a leader in diversity and inclusion as you commit to ESG values and support CSR that enhance your corporate reputation through our platform.",
     dashboard: "employer/employer-dashboard",
     gradient: "from-indigo-600 to-purple-700",
-    bgImage: "/About_Connect.jpg"
+    bgImage: "/About_Connect.jpg",
   },
   "job-coach": {
     label: "Job Coach",
     icon: GraduationCap,
     title: "Guide & Support Talent",
-    description: "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
-    dashboard: "job-coach/dashboard",
+    description:
+      "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
+    dashboard: "job-coach",
     gradient: "from-purple-700 to-indigo-800",
-    bgImage: "/About_Discover.jpg"
+    bgImage: "/About_Discover.jpg",
   },
 } as const;
 
@@ -129,7 +139,7 @@ const LoginPage = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     setIsLoading(true);
 
     try {
@@ -146,16 +156,16 @@ const LoginPage = () => {
           setError("User role not found.");
           return;
         }
-        
+
         // Save user email to localStorage based on role
         if (session.user.role === "EMPLOYER") {
-          localStorage.setItem('employerEmail', loginData.email);
+          localStorage.setItem("employerEmail", loginData.email);
           router.push(`/${USER_TYPE_CONFIG.employer.dashboard}`);
         } else if (session.user.role === "CANDIDATE") {
-          localStorage.setItem('userEmail', loginData.email);
+          localStorage.setItem("userEmail", loginData.email);
           router.push(`/${USER_TYPE_CONFIG.candidate.dashboard}`);
         } else if (session.user.role === "JOB_COACH") {
-          localStorage.setItem('jobCoachEmail', loginData.email);
+          localStorage.setItem("jobCoachEmail", loginData.email);
           router.push(`/${USER_TYPE_CONFIG["job-coach"].dashboard}`);
         } else {
           router.push("/");
@@ -193,8 +203,8 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
-        localStorage.setItem('userEmail', signupData.email);
-        
+        localStorage.setItem("userEmail", signupData.email);
+
         const result = await signIn("credentials", {
           email: signupData.email,
           password: signupData.password,
@@ -216,7 +226,9 @@ const LoginPage = () => {
   };
 
   const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}` });
+    signIn("google", {
+      callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}`,
+    });
   };
 
   // Progressive Signup Handlers
@@ -292,7 +304,7 @@ const LoginPage = () => {
         {/* Left Panel - Dynamic Content (Desktop Only) */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           {/* Background with overlay */}
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url('${currentConfig.bgImage}')`,
@@ -320,7 +332,8 @@ const LoginPage = () => {
             {/* Center Content */}
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center max-w-md">
-                {activeTab === "signup" && signupProgress.currentStep !== "name" ? (
+                {activeTab === "signup" &&
+                signupProgress.currentStep !== "name" ? (
                   // Progressive signup messages
                   <div className="space-y-6">
                     {/* Progress dots
@@ -365,7 +378,9 @@ const LoginPage = () => {
                   // Default welcome message
                   <div>
                     <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                      <i>{activeTab === "login" ? "Welcome Back" : "Join Us Now"}</i>
+                      <i>
+                        {activeTab === "login" ? "Welcome Back" : "Join Us Now"}
+                      </i>
                     </h1>
                     <p className="text-xl text-white/80">
                       {currentConfig.description}
@@ -411,7 +426,9 @@ const LoginPage = () => {
           <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-h-full overflow-y-auto mx-auto">
             {/* User Type Selector */}
             <div className="mb-8">
-              <h3 className="text-sm font-semibold text-gray-600 mb-3">I am a</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">
+                I am a
+              </h3>
               <div className="grid grid-cols-3 gap-2">
                 {(Object.keys(USER_TYPE_CONFIG) as UserType[]).map((type) => {
                   const config = USER_TYPE_CONFIG[type];
@@ -430,7 +447,9 @@ const LoginPage = () => {
                       }`}
                     >
                       <Icon className="w-5 h-5 mx-auto mb-1" />
-                      <span className="text-xs font-medium">{config.label}</span>
+                      <span className="text-xs font-medium">
+                        {config.label}
+                      </span>
                     </button>
                   );
                 })}
@@ -523,7 +542,9 @@ const LoginPage = () => {
                       onChange={handleLoginInputChange}
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
-                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                    <span className="ml-2 text-sm text-gray-600">
+                      Remember me
+                    </span>
                   </label>
                   <Link
                     href="/forgot-password"
@@ -672,12 +693,16 @@ const LoginPage = () => {
                       type="button"
                       onClick={handleNextStep}
                       disabled={
-                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
-                        (signupProgress.currentStep === "email" && !signupData.email.trim())
+                        (signupProgress.currentStep === "name" &&
+                          !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" &&
+                          !signupData.email.trim())
                       }
                       className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 ${
-                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
-                        (signupProgress.currentStep === "email" && !signupData.email.trim())
+                        (signupProgress.currentStep === "name" &&
+                          !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" &&
+                          !signupData.email.trim())
                           ? "bg-gray-400 cursor-not-allowed"
                           : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
                       }`}
@@ -688,9 +713,15 @@ const LoginPage = () => {
                   ) : (
                     <button
                       type="submit"
-                      disabled={isLoading || !signupData.password || !signupData.confirmPassword}
+                      disabled={
+                        isLoading ||
+                        !signupData.password ||
+                        !signupData.confirmPassword
+                      }
                       className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                        isLoading || !signupData.password || !signupData.confirmPassword
+                        isLoading ||
+                        !signupData.password ||
+                        !signupData.confirmPassword
                           ? "bg-gray-400 cursor-not-allowed"
                           : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
                       }`}
@@ -742,6 +773,6 @@ const LoginPage = () => {
       </div>
     </>
   );
-}
+};
 
 export default LoginPage;

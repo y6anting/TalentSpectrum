@@ -13,24 +13,9 @@ import {
   JobPosition 
 } from "@/app/mock-interview/interviewService";
 import { 
-  CheckCircle, 
-  Clock, 
-  Target, 
-  Volume2, 
-  Briefcase, 
-  Star,
-  Award,
-  Search, 
-  TrendingUp,
-  Users,
-  Brain,
-  Code,
-  MessageSquare,
-  Mic,
-  MicOff,
-  Play,
-  Pause,
-  RotateCcw,
+  CheckCircle, Clock, Target, Volume2, Briefcase, Star,
+  Award, Search, TrendingUp, Users, Brain, Code,
+  MessageSquare, Mic, MicOff, Play, Pause, RotateCcw,
   ArrowUpWideNarrow 
 } from "lucide-react";
 
@@ -149,7 +134,7 @@ const MockInterviewProcessPage = () => {
   const [estimatedDuration, setEstimatedDuration] = useState(0);
   const [questionReadComplete, setQuestionReadComplete] = useState(false);
   const [isFirstQuestion, setIsFirstQuestion] = useState(true); // NEW: Track if it's the first question
-  const [initialCountdownShown, setInitialCountdownShown] = useState(false); // NEW: Track if initial countdown was shown
+  // const [initialCountdownShown, setInitialCountdownShown] = useState(false); // NEW: Track if initial countdown was shown
 
   // Recording and speech recognition
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -173,14 +158,12 @@ const MockInterviewProcessPage = () => {
         console.log('✅ Loaded session data from storage');
       } catch (error) {
         console.error('❌ Error parsing session data:', error);
-        // Fallback to mock data
         setSession({
           ...mockSessionData,
           startTime: new Date(mockSessionData.startTime)
             });
           }
         } else {
-          // Use mock data for testing
           console.log('📝 Using mock data for testing');
           setSession({
             ...mockSessionData,
@@ -191,27 +174,27 @@ const MockInterviewProcessPage = () => {
     setLoading(false);
     
     // FIXED: Show initial countdown for first question only, then speak question
-    if (!initialCountdownShown) {
-      setInitialCountdownShown(true);
-      setCountdownTime(3);
-      setShowCountdown(true);
-    }
+    // if (!initialCountdownShown) {
+    //   setInitialCountdownShown(true);
+    //   setCountdownTime(3);
+    //   setShowCountdown(true);
+    // }
   }, [router]);
 
   // Load accessibility settings
-  useEffect(() => {
-    const sessionData = sessionStorage.getItem('mockInterviewSession');
-    if (sessionData) {
-      try {
-        const parsedData = JSON.parse(sessionData);
-        if (parsedData.accessibilitySettings) {
-          setAccessibilitySettings(parsedData.accessibilitySettings);
-        }
-      } catch (error) {
-        console.error('Error loading accessibility settings:', error);
-      }
-    }
-  }, []);
+  // useEffect(() => {
+  //   const sessionData = sessionStorage.getItem('mockInterviewSession');
+  //   if (sessionData) {
+  //     try {
+  //       const parsedData = JSON.parse(sessionData);
+  //       if (parsedData.accessibilitySettings) {
+  //         setAccessibilitySettings(parsedData.accessibilitySettings);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error loading accessibility settings:', error);
+  //     }
+  //   }
+  // }, []);
 
   useEffect(() => {
     // Initialize speech recognition

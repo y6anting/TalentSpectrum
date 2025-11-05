@@ -113,10 +113,10 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     ];
   } else if (role === "CANDIDATE") {
     navItems = [
-      { href: "/candidate/candidate-dashboard", label: "Dashboard" },
+      // { href: "/candidate/candidate-dashboard", label: "Dashboard" },
       // { href: "/candidate/homepage", label: "Homepage" },
-      { href: "/candidate/JobListing", label: "Find Jobs" },
-      { href: "/candidate/JobCoach", label: "Job Coach" },
+      // { href: "/candidate/JobListing", label: "Find Jobs" },
+      // { href: "/candidate/JobCoach", label: "Job Coach" },
       { href: "/candidate/community", label: "Community" },
       { href: "/candidate/ecommerce", label: "E-Commerce" },
     ];

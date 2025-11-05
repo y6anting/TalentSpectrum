@@ -1,18 +1,15 @@
+// talent-spectrum-app/src/app/login/pages.tsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { signIn, getSession } from "next-auth/react";
+// --- LOGIC ADDITION: Import signIn, getSession, and useSession ---
+import { signIn, getSession, useSession } from "next-auth/react";
+// --- END LOGIC ADDITION ---
 import { useRouter } from "next/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  User,
-  Building2,
-  GraduationCap,
-  AlignCenter,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, User, Building2, GraduationCap, AlignCenter } from "lucide-react";
 
 // Types
 type UserType = "candidate" | "employer" | "job-coach";
@@ -38,49 +35,49 @@ interface SignupProgress {
   completedSteps: SignupStep[];
 }
 
-// User Type Configuration
+// User Type Configuration (unchanged)
 const USER_TYPE_CONFIG = {
   candidate: {
     label: "Job Seeker",
     icon: User,
     title: "Find Your Perfect Role",
-    description:
-      "Access resources, showcase your strengths, and connect with coaches to help you thrive in your career, whether as a job seeker or entrepreneur.",
+    description: "Access resources, showcase your strengths, and connect with coaches to help you thrive in your career, whether as a job seeker or entrepreneur.",
     dashboard: "candidate/candidate-dashboard",
     gradient: "from-purple-500 to-indigo-600",
-    bgImage: "/About_Express.jpg",
+    bgImage: "/About_Express.jpg"
   },
   employer: {
     label: "Employer",
     icon: Building2,
     title: "Discover Top Talent",
-    description:
-      "Position your brand as a leader in diversity and inclusion as you commit to ESG values and support CSR that enhance your corporate reputation through our platform.",
+    description: "Position your brand as a leader in diversity and inclusion as you commit to ESG values and support CSR that enhance your corporate reputation through our platform.",
     dashboard: "employer/employer-dashboard",
     gradient: "from-indigo-600 to-purple-700",
-    bgImage: "/About_Connect.jpg",
+    bgImage: "/About_Connect.jpg"
   },
   "job-coach": {
     label: "Job Coach",
     icon: GraduationCap,
     title: "Guide & Support Talent",
-    description:
-      "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
+    description: "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
     dashboard: "job-coach",
     gradient: "from-purple-700 to-indigo-800",
-    bgImage: "/About_Discover.jpg",
+    bgImage: "/About_Discover.jpg"
   },
 } as const;
 
 const LoginPage = () => {
   const router = useRouter();
+  // --- LOGIC ADDITION: Get session data and status (still useful for initial load check if needed elsewhere) ---
+  const { data: session, status } = useSession();
+  // --- END LOGIC ADDITION ---
 
-  // State Management
+  // State Management (unchanged, except for message state)
   const [activeTab, setActiveTab] = useState<TabType>("login");
   const [userType, setUserType] = useState<UserType>("candidate");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(""); // Added message state for success messages
 
   const [loginData, setLoginData] = useState<LoginFormData>({
     email: "",
@@ -100,7 +97,7 @@ const LoginPage = () => {
     completedSteps: [],
   });
 
-  // Hide header on mount
+  // Hide header on mount (existing logic)
   useEffect(() => {
     const header = document.querySelector("header") as HTMLElement;
     if (header) {
@@ -113,9 +110,15 @@ const LoginPage = () => {
         header.style.display = "";
       }
     };
-  }, [router]);
+  }, []);
 
-  // Form Input Handlers
+  // --- MODIFIED LOGIC: Removed the useEffect for redirection.
+  //    Redirection will now happen immediately within handleLoginSubmit and handleSignupSubmit.
+  //    The `useSession` hook and `status` can still be used for other purposes if needed,
+  //    e.g., displaying different content if already logged in, but not for redirection here.
+  // --- END MODIFIED LOGIC ---
+
+  // Form Input Handlers (unchanged)
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setLoginData((prev) => ({
@@ -136,53 +139,57 @@ const LoginPage = () => {
   };
 
   // Form Submission Handlers
+  // --- LOGIC ADDITION: Updated handleLoginSubmit for immediate redirection ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
+    setMessage(""); // Clear messages on new attempt
     setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
         email: loginData.email,
         password: loginData.password,
-        userType: userType,
-        redirect: false,
+        userType: userType, // Pass the selected userType
+        redirect: false, // Do not redirect automatically, handle it manually
       });
 
-      if (result?.ok) {
-        const session = await getSession();
-        if (!session?.user?.role) {
-          setError("User role not found.");
+      if (result?.error) {
+        setError(result.error); // Display the error message from the NextAuth callback
+      } else if (result?.ok) {
+        // Authentication successful, NextAuth has set the session cookie.
+        // Now, explicitly get the session and redirect.
+        const currentSession = await getSession(); // Get the updated session
+        if (!currentSession?.user?.role) {
+          setError("User role not found after successful login.");
           return;
         }
 
-        // Save user email to localStorage based on role
-        if (session.user.role === "EMPLOYER") {
-          localStorage.setItem("employerEmail", loginData.email);
-          router.push(`/${USER_TYPE_CONFIG.employer.dashboard}`);
-        } else if (session.user.role === "CANDIDATE") {
-          localStorage.setItem("userEmail", loginData.email);
-          router.push(`/${USER_TYPE_CONFIG.candidate.dashboard}`);
-        } else if (session.user.role === "JOB_COACH") {
-          localStorage.setItem("jobCoachEmail", loginData.email);
-          router.push(`/${USER_TYPE_CONFIG["job-coach"].dashboard}`);
-        } else {
-          router.push("/");
+        const nextAuthRole = currentSession.user.role.toLowerCase();
+        let redirectPath = "/"; // Default fallback
+        if (nextAuthRole === "employer") {
+          redirectPath = `/${USER_TYPE_CONFIG.employer.dashboard}`;
+        } else if (nextAuthRole === "candidate") {
+          redirectPath = `/${USER_TYPE_CONFIG.candidate.dashboard}`;
+        } else if (nextAuthRole === "job_coach") { // Note: backend uses job_coach, frontend uses job-coach
+          redirectPath = `/${USER_TYPE_CONFIG["job-coach"].dashboard}`;
         }
-      } else {
-        setError("Invalid email or password. Please try again.");
+        window.location.href = redirectPath; // Immediate redirection with full page reload
       }
-    } catch {
-      setError("An error occurred. Please try again.");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError(err.message || "An unexpected error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+  // --- END LOGIC ADDITION ---
 
+  // --- LOGIC ADDITION: Updated handleSignupSubmit for NextAuth.js auto-login and immediate redirection ---
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setMessage(""); // Clear messages on new attempt
 
     if (signupData.password !== signupData.confirmPassword) {
       setError("Passwords do not match");
@@ -192,46 +199,76 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/register", {
+      // Call your backend API endpoint for registration
+      const response = await fetch("http://127.0.0.1:8000/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: signupData.name,
           email: signupData.email,
           password: signupData.password,
+          role: userType.toUpperCase().replace('-', '_'), // Convert 'candidate' to 'CANDIDATE', 'job-coach' to 'JOB_COACH'
         }),
       });
 
       if (response.ok) {
-        localStorage.setItem("userEmail", signupData.email);
-
-        const result = await signIn("credentials", {
+        // If registration is successful, attempt to sign in the user
+        const signInResult = await signIn("credentials", {
           email: signupData.email,
           password: signupData.password,
-          redirect: false,
+          userType: userType, // Pass userType to signIn for potential role-based authentication
+          redirect: false, // Do not redirect automatically, handle it manually
         });
 
-        if (result?.ok) {
-          router.push("/candidate/candidate-info");
+        if (signInResult?.ok) {
+          // Registration and auto-login successful.
+          // Now, explicitly get the session and redirect.
+          const currentSession = await getSession(); // Get the updated session
+          if (!currentSession?.user?.role) {
+            setError("User role not found after registration and auto-login.");
+            return;
+          }
+
+          const nextAuthRole = currentSession.user.role.toLowerCase();
+          let redirectPath = "/";
+          if (nextAuthRole === "employer") {
+            redirectPath = `/${USER_TYPE_CONFIG.employer.dashboard}`;
+          } else if (nextAuthRole === "candidate") {
+            redirectPath = `/${USER_TYPE_CONFIG.candidate.dashboard}`;
+          } else if (nextAuthRole === "job_coach") {
+            redirectPath = `/${USER_TYPE_CONFIG["job-coach"].dashboard}`;
+          }
+          window.location.href = redirectPath; // Immediate redirection with full page reload
+        } else {
+          // If sign-in after registration fails, inform the user and redirect to login
+          setError(signInResult?.error || "Registration successful, but automatic sign-in failed. Please sign in manually.");
+          setMessage("Registration successful! Please sign in."); // Provide a success message
+          setActiveTab("login"); // Switch to the login tab
+          setLoginData({ ...loginData, email: signupData.email }); // Pre-fill email for convenience
+          resetSignupProgress(); // Reset signup form state
         }
       } else {
         const data = await response.json();
-        setError(data.message || "Registration failed. Please try again.");
+        setError(data.detail || "Registration failed. Please try again.");
       }
-    } catch {
-      setError("An error occurred. Please try again.");
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      setError(err.message || "An error occurred during registration. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+  // --- END LOGIC ADDITION ---
 
+  // --- LOGIC ADDITION: Comment out handleGoogleSignIn as per instruction ---
   const handleGoogleSignIn = () => {
-    signIn("google", {
-      callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}`,
-    });
+    // signIn("google", { callbackUrl: `/${USER_TYPE_CONFIG[userType].dashboard}` });
+    console.log("Google Sign-In is disabled for this task.");
+    setError("Google Sign-In is not enabled for this task.");
   };
+  // --- END LOGIC ADDITION ---
 
-  // Progressive Signup Handlers
+  // Progressive Signup Handlers (unchanged)
   const handleNextStep = () => {
     const { currentStep, completedSteps } = signupProgress;
 
@@ -283,6 +320,7 @@ const LoginPage = () => {
       confirmPassword: "",
     });
     setError("");
+    setMessage(""); // MODIFIED LOGIC: Clear message on reset
   };
 
   const currentConfig = USER_TYPE_CONFIG[userType];
@@ -295,12 +333,8 @@ const LoginPage = () => {
         }
       `}</style>
 
-      <div
-        className="h-screen bg-fixed bg-center bg-cover flex"
-        style={{
-          backgroundImage: "url('/TalentSpectrumBackground.png')",
-        }}
-      >
+      <div className="h-screen flex bg-indigo-50">
+
         {/* Left Panel - Dynamic Content (Desktop Only) */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           {/* Background with overlay */}
@@ -310,7 +344,7 @@ const LoginPage = () => {
               backgroundImage: `url('${currentConfig.bgImage}')`,
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 to-purple-900/90" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] to-[#635bff] opacity-80" />
           </div>
 
           {/* Content */}
@@ -332,8 +366,7 @@ const LoginPage = () => {
             {/* Center Content */}
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center max-w-md">
-                {activeTab === "signup" &&
-                signupProgress.currentStep !== "name" ? (
+                {activeTab === "signup" && signupProgress.currentStep !== "name" ? (
                   // Progressive signup messages
                   <div className="space-y-6">
                     {/* Progress dots
@@ -378,9 +411,7 @@ const LoginPage = () => {
                   // Default welcome message
                   <div>
                     <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                      <i>
-                        {activeTab === "login" ? "Welcome Back" : "Join Us Now"}
-                      </i>
+                      <i>{activeTab === "login" ? "Welcome Back" : "Join Us Now"}</i>
                     </h1>
                     <p className="text-xl text-white/80">
                       {currentConfig.description}
@@ -409,7 +440,7 @@ const LoginPage = () => {
         </div>
 
         {/* Right Panel - Form */}
-        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 h-screen">
+        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 h-screen bg-violet-50">
           {/* Logo (Mobile Only) */}
           <div className="lg:hidden w-full flex justify-center p-4 pb-0">
             <Link href="/" className="cursor-pointer">
@@ -424,37 +455,34 @@ const LoginPage = () => {
           </div>
 
           <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-h-full overflow-y-auto mx-auto">
-            {/* User Type Selector */}
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold text-gray-600 mb-3">
-                I am a
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {(Object.keys(USER_TYPE_CONFIG) as UserType[]).map((type) => {
-                  const config = USER_TYPE_CONFIG[type];
-                  const Icon = config.icon;
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => {
-                        setUserType(type);
-                        resetSignupProgress();
-                      }}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        userType === type
-                          ? `border-purple-600 bg-gradient-to-r ${config.gradient} text-white`
-                          : "border-gray-200 hover:border-purple-300 bg-white text-gray-700"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 mx-auto mb-1" />
-                      <span className="text-xs font-medium">
-                        {config.label}
-                      </span>
-                    </button>
-                  );
-                })}
+            {/* User Type Selector - Only show for Sign Up */}
+            {activeTab === "signup" && (
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-600 mb-3">I am a</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.keys(USER_TYPE_CONFIG) as UserType[]).map((type) => {
+                    const config = USER_TYPE_CONFIG[type];
+                    const Icon = config.icon;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => {
+                          setUserType(type);
+                          resetSignupProgress();
+                        }}
+                        className={`p-3 rounded-lg border-2 transition-all ${userType === type
+                            ? `border-gray-200 bg-[#635bff] text-white`
+                            : "border-gray-200 hover:border-[#635bff] bg-white text-gray-700 cursor-pointer"
+                          }`}
+                      >
+                        <Icon className="w-5 h-5 mx-auto mb-1" />
+                        <span className="text-xs font-medium">{config.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Tab Switcher */}
             <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
@@ -465,8 +493,8 @@ const LoginPage = () => {
                 }}
                 className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
                   activeTab === "login"
-                    ? "bg-white text-purple-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
+                    ? "bg-white text-[#635bff] shadow-sm"
+                    : "text-gray-600 hover:text-gray-800 cursor-pointer"
                 }`}
               >
                 Sign In
@@ -478,8 +506,8 @@ const LoginPage = () => {
                 }}
                 className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
                   activeTab === "signup"
-                    ? "bg-white text-purple-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
+                    ? "bg-white text-[#635bff] shadow-sm"
+                    : "text-gray-600 hover:text-gray-800 cursor-pointer"
                 }`}
               >
                 Sign Up
@@ -512,7 +540,7 @@ const LoginPage = () => {
                     name="email"
                     value={loginData.email}
                     onChange={handleLoginInputChange}
-                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                    className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                     placeholder="Enter your email"
                     required
                   />
@@ -527,7 +555,7 @@ const LoginPage = () => {
                     name="password"
                     value={loginData.password}
                     onChange={handleLoginInputChange}
-                    className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                    className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                     placeholder="Enter your password"
                     required
                   />
@@ -542,13 +570,11 @@ const LoginPage = () => {
                       onChange={handleLoginInputChange}
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
-                    <span className="ml-2 text-sm text-gray-600">
-                      Remember me
-                    </span>
+                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
                   </label>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                    className="text-sm text-[#635bff] hover:text-[#635bff] font-medium"
                   >
                     Forgot password?
                   </Link>
@@ -557,11 +583,10 @@ const LoginPage = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                    isLoading
+                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${isLoading
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
-                  }`}
+                      : "bg-[#635bff] hover:bg-[#5449e6] transform hover:scale-[1.02] hover: cursor-pointer"
+                    }`}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </button>
@@ -574,8 +599,10 @@ const LoginPage = () => {
 
                 <button
                   type="button"
+                  // --- LOGIC ADDITION: Commented out onClick for Google login ---
                   onClick={handleGoogleSignIn}
-                  className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  // --- END LOGIC ADDITION ---
+                  className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -614,7 +641,7 @@ const LoginPage = () => {
                       name="name"
                       value={signupData.name}
                       onChange={handleSignupInputChange}
-                      className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                      className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your full name"
                       autoFocus
                       required
@@ -632,7 +659,7 @@ const LoginPage = () => {
                       name="email"
                       value={signupData.email}
                       onChange={handleSignupInputChange}
-                      className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                      className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your email"
                       autoFocus
                       required
@@ -693,18 +720,14 @@ const LoginPage = () => {
                       type="button"
                       onClick={handleNextStep}
                       disabled={
-                        (signupProgress.currentStep === "name" &&
-                          !signupData.name.trim()) ||
-                        (signupProgress.currentStep === "email" &&
-                          !signupData.email.trim())
+                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" && !signupData.email.trim())
                       }
                       className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 ${
-                        (signupProgress.currentStep === "name" &&
-                          !signupData.name.trim()) ||
-                        (signupProgress.currentStep === "email" &&
-                          !signupData.email.trim())
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
+                        (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
+                        (signupProgress.currentStep === "email" && !signupData.email.trim())
+                          ? "bg-gray-400 cursor-pointer"
+                          : "bg-[#635bff] hover:[#635bff]"
                       }`}
                     >
                       Next
@@ -713,17 +736,11 @@ const LoginPage = () => {
                   ) : (
                     <button
                       type="submit"
-                      disabled={
-                        isLoading ||
-                        !signupData.password ||
-                        !signupData.confirmPassword
-                      }
+                      disabled={isLoading || !signupData.password || !signupData.confirmPassword}
                       className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                        isLoading ||
-                        !signupData.password ||
-                        !signupData.confirmPassword
+                        isLoading || !signupData.password || !signupData.confirmPassword
                           ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transform hover:scale-[1.02]"
+                          : "bg-[#635bff] hover:[#635bff]"
                       }`}
                     >
                       {isLoading ? "Creating account..." : "Create Account"}
@@ -741,8 +758,10 @@ const LoginPage = () => {
 
                     <button
                       type="button"
+                      // --- LOGIC ADDITION: Commented out onClick for Google login ---
                       onClick={handleGoogleSignIn}
-                      className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      // --- END LOGIC ADDITION ---
+                      className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path
@@ -773,6 +792,6 @@ const LoginPage = () => {
       </div>
     </>
   );
-};
+}
 
 export default LoginPage;

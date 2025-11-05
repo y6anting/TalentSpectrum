@@ -60,7 +60,7 @@ const USER_TYPE_CONFIG = {
     icon: GraduationCap,
     title: "Guide & Support Talent",
     description: "Partner with inclusive employers to create accommodating workplace and connect with a wider network of neurodivergent professionals.",
-    dashboard: "job-coach/dashboard",
+    dashboard: "job-coach",
     gradient: "from-purple-700 to-indigo-800",
     bgImage: "/About_Discover.jpg"
   },

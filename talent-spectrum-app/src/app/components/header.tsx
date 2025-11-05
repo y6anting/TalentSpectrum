@@ -33,11 +33,20 @@ export default function Header({ setCurrentPage }: HeaderProps) {
       try {
         // Use session email as primary source, localStorage as fallback only
         const sessionEmail = session?.user?.email;
-        const localEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-        const userEmail = encodeURIComponent(sessionEmail || localEmail || '');
+        const localEmail =
+          typeof window !== "undefined"
+            ? localStorage.getItem("userEmail")
+            : null;
+        const userEmail = encodeURIComponent(sessionEmail || localEmail || "");
         const roleUpper = String(session.user.role).toUpperCase();
 
-        console.log("Fetching name for:", { role: roleUpper, userEmail, sessionEmail, localEmail, sessionName: session.user.name });
+        console.log("Fetching name for:", {
+          role: roleUpper,
+          userEmail,
+          sessionEmail,
+          localEmail,
+          sessionName: session.user.name,
+        });
 
         if (roleUpper === "CANDIDATE") {
           const res = await fetch(`http://localhost:8000/users/${userEmail}`);
@@ -48,7 +57,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
             setDisplayName(session.user.name ?? null);
           }
         } else if (roleUpper === "EMPLOYER") {
-          const res = await fetch(`http://localhost:8000/jobs/company/${userEmail}`);
+          const res = await fetch(
+            `http://localhost:8000/jobs/company/${userEmail}`
+          );
           if (res.ok) {
             const company = await res.json();
             setDisplayName(company?.name ?? session.user.name ?? null);
@@ -66,7 +77,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
 
     loadName();
   }, [session, status]);
-    
+
   // Show loading skeleton instead of hiding header
   if (status === "loading") {
     return (
@@ -113,21 +124,15 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     ];
   } else if (role === "CANDIDATE") {
     navItems = [
-      { href: "/candidate/candidate-dashboard", label: "Dashboard" },
+      // { href: "/candidate/candidate-dashboard", label: "Dashboard" },
       // { href: "/candidate/homepage", label: "Homepage" },
-      { href: "/candidate/JobListing", label: "Find Jobs" },
-      { href: "/candidate/JobCoach", label: "Job Coach" },
+      // { href: "/candidate/JobListing", label: "Find Jobs" },
+      // { href: "/candidate/JobCoach", label: "Job Coach" },
       { href: "/candidate/community", label: "Community" },
       { href: "/candidate/ecommerce", label: "E-Commerce" },
     ];
   } else if (role === "JOB_COACH") {
-    navItems = [
-      { href: "/job-coach/dashboard", label: "Dashboard" },
-      // { href: "/job-coach/homepage", label: "Homepage" },
-      { href: "/job-coach/Candidate", label: "Candidates" },
-      { href: "/job-coach/Company", label: "Companies" },
-      { href: "/job-coach/ManualBook", label: " Manual Book" },
-    ];
+    navItems = [];
   } else {
     // Default (no session)
     navItems = [
@@ -192,7 +197,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 <span className="text-[#3a4043]">
                   Hi,{" "}
                   <span className="font-semibold">
-                    {displayName ?? session?.user?.name ?? "User"}
+                    {role === "JOB_COACH"
+                      ? "Job Coach"
+                      : displayName ?? session?.user?.name ?? "User"}
                   </span>
                 </span>
                 <button

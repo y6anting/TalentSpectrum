@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon,
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,10 @@ import { SkillsSubmission } from "../components/SkillsSubmission";
 import { NeuroStrengthSubmission } from "../components/NeuroStrengthSubmission";
 import ResumeUploadButton from "@/app/components/resume-upload/ResumeUploadButton";
 import { useSession } from "next-auth/react";
+import MockInterviewSetupPage from "./mock-interview/setup/page";
+import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
+import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
+import ReportPage from "./Report/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -29,6 +33,7 @@ export default function CandidateDashboard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
 
   type Environment = {
     patternRecognition: string;
@@ -848,6 +853,7 @@ export default function CandidateDashboard() {
 
   const currentYear = new Date().getFullYear();
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -933,8 +939,9 @@ export default function CandidateDashboard() {
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-6">
+            <div className="lg:sticky lg:top-8">
+              <Card>
+                <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
                     {candidateProfile.name.split(' ').map(n => n[0]).join('')}
@@ -961,32 +968,88 @@ export default function CandidateDashboard() {
                     { id: "overview", label: "Overview", icon: User },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
-                    { id: "profile", label: "Profile Settings", icon: Settings },
-                    { id: "education", label: "Education", icon: Book },
-                    { id: "experience", label: "Experience", icon: Briefcase },
-                    { id: "skills", label: "Skills", icon: HandFist },
-                    { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
-                    { id: "environment", label: "Preferred Environment", icon: House },
+                    { id: "profile", label: "Profile Settings", icon: Settings, children: [
+                      { id: "education", label: "Education", icon: Book },
+                      { id: "experience", label: "Experience", icon: Briefcase },
+                      { id: "skills", label: "Skills", icon: HandFist },
+                      { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+                      { id: "environment", label: "Preferred Environment", icon: House },
+                    ],},
+                    { id: "job coach", label: "Job Coach", icon: UserStar, children: [
+                      { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
+                      { id: "Appointment", label: "Appointment", icon: CalendarClock },
+                      { id: "Report", label: "Report", icon: FileText },
+                    ],},
+
                   ].map((item) => {
                     const Icon = item.icon;
+                    const hasChildren = Boolean(item.children);
+                    const isOpen = openDropdown === item.id;
+                    
                     return (
-                      <button
-                        key={item.id}
-                        onClick={() => handleTabChange(item.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                          activeTab === item.id
-                            ? 'bg-[#635bff] text-white'
-                            : 'text-[#3a4043] hover:bg-gray-100'
-                        } hover:cursor-pointer`}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {item.label}
-                      </button>
+                      <div key={item.id}>
+                        <button
+                          onClick={() => {
+                            if (hasChildren) {
+                              setOpenDropdown(isOpen ? null : item.id);
+                            } else {
+                              handleTabChange(item.id);
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
+                            activeTab === item.id
+                              ? "bg-[#635bff] text-white"
+                              : "text-[#3a4043] hover:bg-gray-100"
+                          } hover:cursor-pointer`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </div>
+
+                          {hasChildren && (
+                            <svg
+                              className={`h-4 w-4 transform transition-transform ${
+                                isOpen ? "rotate-180" : ""
+                              }`}
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {hasChildren && isOpen && (
+                          <div className="ml-6 mt-1 space-y-1">
+                            {item.children?.map((child) => {
+                              const ChildIcon = child.icon;
+                              return (
+                                <button
+                                  key={child.id}
+                                  onClick={() => handleTabChange(child.id)}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
+                                    activeTab === child.id
+                                      ? "bg-[#635bff] text-white"
+                                      : "text-[#3a4043] hover:bg-gray-100"
+                                  } hover:cursor-pointer`}
+                                >
+                                  <ChildIcon className="h-4 w-4" />
+                                  {child.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </nav>
               </CardContent>
             </Card>
+            </div>
           </div>
 
           {/* Main Content */}
@@ -2176,6 +2239,40 @@ export default function CandidateDashboard() {
                   </div>
                 </div>
               )}
+
+            {activeTab === "mock interview" && (
+                    <>
+                      {mockInterviewStep === "setup" && (
+                        <MockInterviewSetupPage onNavigate={(target) => {
+                          if (target === "interview") {
+                            setMockInterviewStep("process");
+                          }
+                        }} />
+                      )}
+
+                      {mockInterviewStep === "process" && (
+                        <MockInterviewProcessPage onNavigate={(target) => {
+                          if (target === "feedback") {
+                            setMockInterviewStep("feedback");
+                          }
+                        }} />
+                      )}
+
+                      {mockInterviewStep === "feedback" && (
+                        <MockInterviewFeedbackPage onNavigate={(target) => {
+                          if (target === "setup") {
+                            setMockInterviewStep("setup");
+                          }
+                        }} />
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === "Report" && (
+                    <ReportPage />
+                  )}
+
+              
           </div>
         </div>
       </div>

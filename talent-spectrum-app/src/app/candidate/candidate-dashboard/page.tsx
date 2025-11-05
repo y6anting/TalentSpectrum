@@ -33,7 +33,9 @@ export default function CandidateDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
+
   const [jobCoachSearch, setJobCoachSearch] = useState('');
+  const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
 
   type Environment = {
     patternRecognition: string;
@@ -800,7 +802,7 @@ export default function CandidateDashboard() {
 
   const jobCoachTemporary = [
     {
-      name: "Megeara",
+      name: "one",
       appointments: [
         {
           time: 1730617200
@@ -814,7 +816,7 @@ export default function CandidateDashboard() {
       ]
     },
     {
-      name: "Alecto",
+      name: "two",
       appointments: [
         {
           time: 1730624400
@@ -828,7 +830,91 @@ export default function CandidateDashboard() {
       ]
     },
     {
-      name: "Tisiphone",
+      name: "three",
+      appointments: [
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730631600
+        },
+      ]
+    },
+    {
+      name: "four",
+      appointments: [
+        {
+          time: 1730617200
+        },
+        {
+          time: 1730649600
+        },
+        {
+          time: 1730667600
+        }
+      ]
+    },
+    {
+      name: "five",
+      appointments: [
+        {
+          time: 1730624400
+        },
+        {
+          time: 1730628000
+        },
+        {
+          time: 1730671200
+        }
+      ]
+    },
+    {
+      name: "six",
+      appointments: [
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730620800
+        },
+        {
+          time: 1730631600
+        },
+      ]
+    },
+    {
+      name: "seven",
+      appointments: [
+        {
+          time: 1730617200
+        },
+        {
+          time: 1730649600
+        },
+        {
+          time: 1730667600
+        }
+      ]
+    },
+    {
+      name: "eight",
+      appointments: [
+        {
+          time: 1730624400
+        },
+        {
+          time: 1730628000
+        },
+        {
+          time: 1730671200
+        }
+      ]
+    },
+    {
+      name: "nine",
       appointments: [
         {
           time: 1730620800
@@ -842,13 +928,14 @@ export default function CandidateDashboard() {
       ]
     },
   ]
-  
 
   const filteredJobCoachSearch = jobCoachTemporary.filter(coach =>
     coach.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
   );
 
-  
+  const handleSelect = (coachName: string) => {
+    setSelectedCoach((prev) => (prev === coachName ? null : coachName)); // toggle select
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -2034,31 +2121,50 @@ export default function CandidateDashboard() {
             {activeTab === "Appointment" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
-                  <div className="m-5 flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
-                    <input 
-                      className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
-                      placeholder="Find and select a job coach:"
-                      onChange={(e) => setJobCoachSearch(e.target.value)}
-                    />
-                  </div>
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
+                      <input
+                        className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
+                        placeholder="Find and select a job coach:"
+                        onChange={(e) => setJobCoachSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
+                      {filteredJobCoachSearch.length > 0 ? (
+                        filteredJobCoachSearch.map((coach, index) => {
+                          const isSelected = selectedCoach === coach.name;
+                          return (
+                            <li
+                              key={index}
+                              onClick={() => handleSelect(coach.name)}
+                              className={` p-3 border rounded-lg cursor-pointer transition flex items-center gap-3 ${isSelected
+                                ? "bg-[#635bff] text-white border-[#635bff]"
+                                : "hover:bg-[#f5f3ff] text-gray-800"
+                                }`}
+                            >
+                              {/* Profile picture placeholder */}
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isSelected ? "bg-white text-[#635bff]" : "bg-[#635bff] text-white"
+                                  }`}
+                              >
+                                {coach.name.charAt(0).toUpperCase()}
+                              </div>
 
-                  <ul className="mt-4 space-y-2">
-                    {filteredJobCoachSearch.length > 0 ? (
-                      filteredJobCoachSearch.map((coach, index) => (
-                        <li
-                          key={index}
-                          className="p-3 border rounded-lg hover:bg-[#f5f3ff] cursor-pointer transition"
-                        >
-                          <p className="font-semibold text-gray-800">{coach.name}</p>
-                        </li>
-                      ))
-                    ) : (
-                      <p className="text-gray-400 text-sm mt-2">No matching coaches found.</p>
-                    )}
-                  </ul>
+                              {/* Coach name */}
+                              <p className="font-semibold">{coach.name}</p>
+                            </li>
+                          );
+                        })
+                      ) : (
+                        <p className="text-gray-400 text-sm mt-2 text-center">
+                          No matching coaches found.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </Card>
                 <Card>
-
+                    
                 </Card>
               </div>
             )}

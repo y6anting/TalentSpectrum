@@ -1042,13 +1042,6 @@ const handleClosePopup = () => {
                 console.log("Resume processed:", parsedInfo);
               }}
             />
-            <Button
-              asChild
-              variant="outline"
-              className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-            >
-              <Link href="/candidate/jobListing">Browse More Jobs</Link>
-            </Button>
           </div>
         </div>
         <div className="grid lg:grid-cols-4 gap-8">
@@ -1080,7 +1073,6 @@ const handleClosePopup = () => {
                 </div>
                 <nav className="space-y-2">
                   {[
-                    { id: "overview", label: "Overview", icon: User },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings, children: [
@@ -1288,9 +1280,16 @@ const handleClosePopup = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
+                  <Button
+                  asChild
+                  variant="outline"
+                  className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                >
+                  <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                </Button>
                 </div>
                 <div className="space-y-4">
-                  {applications.map((app) => (
+                  {applications.length > 0 ? applications.map((app) => (
                     <Card key={app.id}>
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-4">
@@ -1344,7 +1343,11 @@ const handleClosePopup = () => {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  )) : <div className="flex items-center p-[100px] w-full justify-center">
+                    <span className="text-[#5748e5] font-bold text-lg">
+                      No applied applications. Apply for jobs in "Browse More Jobs" to see them here!
+                    </span>
+                  </div>}
                 </div>
               </div>
             )}
@@ -2214,6 +2217,8 @@ const handleClosePopup = () => {
                   )}
 
             {activeTab === "Appointment" && (
+              <>
+              <h1 className="text-2xl font-bold text-[#3a4043] pb-5 ">Book an Appointment</h1>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <div className="p-5 space-y-3">
@@ -2477,7 +2482,7 @@ const handleClosePopup = () => {
 
 
               </div>
-              
+              </>
             )}
               
           </div>

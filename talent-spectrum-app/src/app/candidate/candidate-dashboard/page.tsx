@@ -1101,40 +1101,6 @@ export default function CandidateDashboard() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>Recent Applications</CardTitle>
-  return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Welcome to Your Dashboard!</h1>
-
-        {session?.user ? (
-          <div className="space-y-4">
-            <p className="text-lg text-gray-700">
-              Hello, <span className="font-semibold">{session.user.name || session.user.email}</span>!
-            </p>
-            <p className="text-gray-600">
-              Your Email: <span className="font-medium">{session.user.email}</span>
-            </p>
-            <p className="text-gray-600">
-              Your Role: <span className="font-medium">{session.user.role}</span>
-            </p>
-            <p className="text-gray-600">
-              Your User ID: <span className="font-medium">{session.user.id}</span>
-            </p>
-            {/* You can display other session data here */}
-          </div>
-        ) : (
-          <p className="text-lg text-gray-700">Session data not found.</p>
-        )}
-
-        <button
-          onClick={() => router.push("/")} // Example: Go to home page
-          className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300"
-        >
-          Go to Home
-        </button>
-      </div>
-    </div>
-  );
                     </div>
                   </CardHeader>
                   <CardContent>

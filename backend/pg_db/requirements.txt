@@ -1,21 +1,13 @@
-fastapi[standard]
-uvicorn[standard]
-sqlalchemy
-python-dotenv
-pydantic
-typing-extensions
-psycopg2
-psycopg2-binary
-cloud-sql-python-connector[pg8000]
-pg8000
+fastapi==0.121.0
+uvicorn==0.38.0
+sqlalchemy==2.0.44
+psycopg[binary]==3.2.12
+python-multipart==0.0.20
+python-dotenv==1.2.1
+pydantic==2.12.4
+email-validator==2.3.0
 
-pypdf
-langchain
-langchain-core
-langchain-text-splitters
-langchain
-langchain-community
-langchain-google-genai
-google-generativeai
-python-dotenv
-python-multipart
+# pydantic[email]
+# psycopg==3.2.12
+# psycopg-binary==3.2.12
+# uvicorn[standard]

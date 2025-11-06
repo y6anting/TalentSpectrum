@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Separator } from '@/app/components/separator';
 
 interface FooterProps {
@@ -8,6 +9,8 @@ interface FooterProps {
 
 export default function Footer({ setCurrentPage }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
 
   // Page routing mapping
   const getPageRoute = (page: string): string => {
@@ -67,29 +70,33 @@ export default function Footer({ setCurrentPage }: FooterProps) {
 
   return (
     <footer className="bg-card border-t-1 border-gray-300 border-border">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {footerLinks.map((section) => (
-            <div key={section.title}>
-              <h3 className="text-foreground mb-4 font-bold text-lg ">{section.title}</h3>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={getPageRoute(link.page)}
-                      className="text-muted-foreground hover:text-primary transition-colors duration-200 text-left block text-sm text-gray-700"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+      <div className={`max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 ${isHomePage ? 'mt-10' : 'mt-0'}`}>
+        {/* Main Footer Content - Only show on homepage */}
+        {isHomePage && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {footerLinks.map((section) => (
+                <div key={section.title}>
+                  <h3 className="text-foreground mb-4 font-bold text-lg ">{section.title}</h3>
+                  <ul className="space-y-3">
+                    {section.links.map((link) => (
+                      <li key={link.label}>
+                        <Link
+                          href={getPageRoute(link.page)}
+                          className="text-muted-foreground hover:text-primary transition-colors duration-200 text-left block text-sm text-gray-700"
+                        >
+                          {link.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <Separator className="my-3" />
+            <Separator className="my-3" />
+          </>
+        )}
 
         {/* Bottom Section */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y- lg:space-y-0">
@@ -128,7 +135,7 @@ export default function Footer({ setCurrentPage }: FooterProps) {
                 Accessibility
               </Link>
             </div> */}
-            <p className="text-muted-foreground text-sm py-5">
+            <p className={`text-muted-foreground text-sm ${isHomePage ? 'py-5' : 'py-3'}`}>
               © {currentYear} Talent Spectrum. All rights reserved.
             </p>
           </div>

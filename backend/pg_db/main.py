@@ -14,6 +14,7 @@ from database.models import candidate # <--- UNCOMMENTED THIS LINE
 # Import routers
 from routers.users import router as users_router
 from routers.profiles import router as profiles_router
+from routers.company import router as company_router
 # from routers.profile_others import router as profile_others_router
 from routers.jobs import router as jobs_router
 from routers.applications import router as applications_router
@@ -57,3 +58,4 @@ app.include_router(profiles_router, prefix="/profiles", tags=["profiles"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])
 # app.include_router(resume_extract_router, prefix="/resume", tags=["resume"])
+app.include_router(company_router, prefix="/company", tags=["company"])

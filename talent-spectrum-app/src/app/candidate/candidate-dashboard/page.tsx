@@ -25,6 +25,7 @@ import MockInterviewSetupPage from "./mock-interview/setup/page";
 import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
 import ReportPage from "./Report/page";
+import AppointmentPage from "./Appointment/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -34,14 +35,6 @@ export default function CandidateDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
-
-  const [jobCoachSearch, setJobCoachSearch] = useState('');
-  const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
-  const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
-  const [showPopup, setShowPopup] = useState(false);
-  const [bookingInfo, setBookingInfo] = useState<{ coach?: string; date?: Date; time?: string } | null>(null);
 
 
   type Environment = {
@@ -862,7 +855,7 @@ export default function CandidateDashboard() {
 
   const currentYear = new Date().getFullYear();
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
   if (isLoading) {
     return (
@@ -920,224 +913,7 @@ export default function CandidateDashboard() {
     );
   }
 
-  const jobCoachTemporary = [
-    {
-      name: "one",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "two",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "three",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-    {
-      name: "four",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "five",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "six",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-    {
-      name: "seven",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "eight",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "nine",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-  ]
-
-  const filteredJobCoachSearch = jobCoachTemporary.filter((c) =>
-    c.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
-  );
-
-  const handleSelect = (name: string) => {
-  setSelectedCoach((prev) => (prev === name ? null : name));
-  setSelectedDate(null); 
-};
-
-  const selectedCoachData = jobCoachTemporary.find(
-    (c) => c.name === selectedCoach
-  );
-
-  // --- FIX: Store all available appointment dates (not just strings)
-  const availableDays = selectedCoachData
-    ? selectedCoachData.appointments.map(
-        (a) => new Date(a.time * 1000)
-      )
-    : [];
-
-  // Build days for current month
-  const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
-  const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
-
-  const daysArray = Array.from({ length: firstDay + daysInMonth }, (_, i) =>
-    i < firstDay ? null : i - firstDay + 1
-  );
-
-  // When a date is selected, show that day’s appointments
-  const selectedDayAppointments =
-    selectedCoachData && selectedDate
-      ? selectedCoachData.appointments.filter(
-          (a) =>
-            new Date(a.time * 1000).toDateString() ===
-            selectedDate.toDateString()
-        )
-      : [];
-
-  // Navigation handlers
-  const handlePrevMonth = () => {
-    if (appointmentMonth === 0) {
-      setAppointmentMonth(11);
-      setAppointmentYear((y) => y - 1);
-    } else {
-      setAppointmentMonth((m) => m - 1);
-    }
-    setSelectedDate(null);
-  };
-
-  const handleNextMonth = () => {
-    if (appointmentMonth === 11) {
-      setAppointmentMonth(0);
-      setAppointmentYear((y) => y + 1);
-    } else {
-      setAppointmentMonth((m) => m + 1);
-    }
-    setSelectedDate(null);
-  };
-
- 
-
-  // --- FIX: Match available days by date/month/year instead of string match
-  const isDateAvailable = (d: Date) =>
-    availableDays.some(
-      (a) =>
-        a.getDate() === d.getDate() &&
-        a.getMonth() === d.getMonth() &&
-        a.getFullYear() === d.getFullYear()
-    );
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
-  const handleBookClick = (coachName: string, appointment: any) => {
-  const date = new Date(appointment.time * 1000);
-  const formattedTime = date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  setBookingInfo({ coach: coachName, date, time: formattedTime });
-  setShowPopup(true);
-};
-
-const handleClosePopup = () => {
-  setShowPopup(false);
-  setBookingInfo(null);
-};
+  // Appointment helpers moved to Appointment/page.tsx
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -1204,14 +980,17 @@ const handleClosePopup = () => {
                   ].map((item) => {
                     const Icon = item.icon;
                     const hasChildren = Boolean(item.children);
-                    const isOpen = openDropdown === item.id;
+                    const isOpen = !!openDropdowns[item.id];
                     
                     return (
                       <div key={item.id}>
                         <button
                           onClick={() => {
                             if (hasChildren) {
-                              setOpenDropdown(isOpen ? null : item.id);
+                              setOpenDropdowns((prev) => ({
+                                ...prev,
+                                [item.id]: !prev[item.id],
+                              }));
                             } else {
                               handleTabChange(item.id);
                             }
@@ -2504,272 +2283,7 @@ const handleClosePopup = () => {
                   )}
 
             {activeTab === "Appointment" && (
-              <>
-              <h1 className="text-2xl font-bold text-[#3a4043] pb-5 ">Book an Appointment</h1>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
-                      <input
-                        className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
-                        placeholder="Find and select a job coach:"
-                        onChange={(e) => setJobCoachSearch(e.target.value)}
-                      />
-                    </div>
-                    <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
-                      {filteredJobCoachSearch.length > 0 ? (
-                        filteredJobCoachSearch.map((coach, index) => {
-                          const isSelected = selectedCoach === coach.name;
-                          return (
-                            <li
-                              key={index}
-                              onClick={() => handleSelect(coach.name)}
-                              className={` p-3 border rounded-lg cursor-pointer transition flex items-center gap-3 ${isSelected
-                                ? "bg-[#635bff] text-white border-[#635bff]"
-                                : "hover:bg-[#f5f3ff] text-gray-800"
-                                }`}
-                            >
-                              {/* Profile picture placeholder */}
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isSelected ? "bg-white text-[#635bff]" : "bg-[#635bff] text-white"
-                                  }`}
-                              >
-                                {coach.name.charAt(0).toUpperCase()}
-                              </div>
-
-                              {/* Coach name */}
-                              <p className="font-semibold">{coach.name}</p>
-                            </li>
-                          );
-                        })
-                      ) : (
-                        <p className="text-gray-400 text-sm mt-2 text-center">
-                          No matching coaches found.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-                <Card>
-                  <div className="p-5">
-                    {selectedCoach ? (
-                      <>
-                        <div className="flex justify-between items-center mb-3">
-                          <button
-                            onClick={handlePrevMonth}
-                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
-                          >
-                            ← Prev
-                          </button>
-                          <h2 className="font-bold text-lg">
-                            {monthNames[appointmentMonth]} {appointmentYear}
-                          </h2>
-                          <button
-                            onClick={handleNextMonth}
-                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
-                          >
-                            Next →
-                          </button>
-                        </div>
-
-                        {/* Days of week */}
-                        <div className="grid grid-cols-7 gap-2 text-center text-sm mb-3">
-                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                            <div key={d} className="font-semibold">
-                              {d}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Calendar Days */}
-                        <div className="grid grid-cols-7 gap-2 text-center text-sm">
-                          {daysArray.map((day, i) => {
-                            if (!day) return <div key={i}></div>;
-                            const date = new Date(appointmentYear, appointmentMonth, day);
-                            const available = isDateAvailable(date);
-                            const isSelected =
-                              selectedDate?.toDateString() === date.toDateString();
-
-                            return (
-                              <div
-                                key={i}
-                                onClick={() => {
-                                  setSelectedDate(date);
-                                }}
-                                className={`p-2 rounded-lg cursor-pointer transition ${isSelected
-                                    ? "bg-[#635bff] text-white font-bold"
-                                    : available
-                                      ? "bg-[#e0e7ff] hover:bg-[#c7d2fe] text-[#4338ca]"
-                                      : "text-gray-400 hover:bg-gray-100"
-                                  }`}
-                              >
-                                {day}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Appointments */}
-                        {selectedDayAppointments.length > 0 ? (
-                          <div className="mt-5">
-                            <div className="flex items-center gap-2 mb-2">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z"
-                                />
-                              </svg>
-                              <h3 className="font-semibold text-gray-800">Available Time Slots for {selectedCoach}:</h3>
-                            </div>
-
-                            <p className="text-sm text-gray-500 mb-4">
-                              Slots for {selectedDate?.toLocaleDateString(undefined, {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
-                            </p>
-
-                            <ul className="space-y-3">
-                              {selectedDayAppointments.map((a, i) => (
-                                <li
-                                  key={i}
-                                  className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
-                                >
-                                  <div className="flex items-center gap-2 text-gray-700">
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 text-gray-500"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
-                                    <span className="font-medium">
-                                      {new Date(a.time * 1000).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                  </div>
-
-                                  <button onClick={() => handleBookClick(selectedCoach!, a)} 
-                                    className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
-                                  >
-                                    Book
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : selectedDate ? (
-                          <p className="mt-5 text-gray-400 text-center pt-5">
-                            No available appointments on this day.
-                          </p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-gray-400 text-center pt-[10%]">
-                        Select a coach to view their calendar.
-                      </p>
-                    )}
-                  </div>
-                </Card>
-                {showPopup && bookingInfo && (
-                  <div
-                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
-                    onClick={handleClosePopup}
-                  >
-                    <div
-                      className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-sm text-center space-y-4 transform animate-scaleIn"
-                    >
-                      <h2 className="text-lg font-semibold text-gray-800">
-                        Confirm Your Booking
-                      </h2>
-
-                      <div className="text-gray-600 space-y-1">
-                        <p>
-                          <span className="font-medium">Coach:</span> {bookingInfo.coach}
-                        </p>
-                        <p>
-                          <span className="font-medium">Date:</span>{" "}
-                          {bookingInfo.date?.toLocaleDateString(undefined, {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                        <p>
-                          <span className="font-medium">Time:</span> {bookingInfo.time}
-                        </p>
-                      </div>
-
-                      <div className="flex justify-center gap-3 pt-3">
-                        <button
-                          onClick={handleClosePopup}
-                          className="cursor-pointer px-4 py-2 rounded-md border text-gray-700 hover:bg-[#c7d2fe] hover:text-[#635bff] transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            alert('Booking confirmed!');
-                            handleClosePopup();
-                          }}
-                          className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
-                        >
-                          Confirm
-                        </button>
-                      </div>
-                    </div>
-
-                    <style>
-                      {`
-                        @keyframes fadeIn {
-                          from { opacity: 0; }
-                          to { opacity: 1; }
-                        }
-                        @keyframes scaleIn {
-                          from {
-                            opacity: 0;
-                            transform: scale(0.95);
-                          }
-                          to {
-                            opacity: 1;
-                            transform: scale(1);
-                          }
-                        }
-
-                        .animate-fadeIn {
-                          animation: fadeIn 0.25s ease-out forwards;
-                        }
-                        .animate-scaleIn {
-                          animation: scaleIn 0.25s ease-out forwards;
-                        }
-                      `}
-                    </style>
-                  </div>
-                )}
-
-
-              </div>
-              </>
+              <AppointmentPage />
             )}
               
           </div>

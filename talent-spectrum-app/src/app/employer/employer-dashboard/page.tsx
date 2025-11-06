@@ -1491,10 +1491,10 @@ export default function EmployerDashboard() {
               />
             )}
 
-              {activeTab === "consult-ai" && (
+            {activeTab === "consult-ai" && (
               <>
                 <Card>
-                  <ChatBot.Chat/>
+                  <ChatBot.Chat />
                 </Card>
               </>
             )}

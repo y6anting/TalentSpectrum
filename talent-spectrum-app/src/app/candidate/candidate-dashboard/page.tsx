@@ -40,6 +40,9 @@ export default function CandidateDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
   const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
+  const [showPopup, setShowPopup] = useState(false);
+  const [bookingInfo, setBookingInfo] = useState<{ coach?: string; date?: Date; time?: string } | null>(null);
+
 
   type Environment = {
     patternRecognition: string;
@@ -1007,6 +1010,21 @@ export default function CandidateDashboard() {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
+
+  const handleBookClick = (coachName: string, appointment: any) => {
+  const date = new Date(appointment.time * 1000);
+  const formattedTime = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  setBookingInfo({ coach: coachName, date, time: formattedTime });
+  setShowPopup(true);
+};
+
+const handleClosePopup = () => {
+  setShowPopup(false);
+  setBookingInfo(null);
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -2358,7 +2376,9 @@ export default function CandidateDashboard() {
                                     </span>
                                   </div>
 
-                                  <button className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition">
+                                  <button onClick={() => handleBookClick(selectedCoach!, a)} 
+                                    className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
+                                  >
                                     Book
                                   </button>
                                 </li>
@@ -2378,7 +2398,86 @@ export default function CandidateDashboard() {
                     )}
                   </div>
                 </Card>
+                {showPopup && bookingInfo && (
+                  <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
+                    onClick={handleClosePopup}
+                  >
+                    <div
+                      className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-sm text-center space-y-4 transform animate-scaleIn"
+                    >
+                      <h2 className="text-lg font-semibold text-gray-800">
+                        Confirm Your Booking
+                      </h2>
+
+                      <div className="text-gray-600 space-y-1">
+                        <p>
+                          <span className="font-medium">Coach:</span> {bookingInfo.coach}
+                        </p>
+                        <p>
+                          <span className="font-medium">Date:</span>{" "}
+                          {bookingInfo.date?.toLocaleDateString(undefined, {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <p>
+                          <span className="font-medium">Time:</span> {bookingInfo.time}
+                        </p>
+                      </div>
+
+                      <div className="flex justify-center gap-3 pt-3">
+                        <button
+                          onClick={handleClosePopup}
+                          className="cursor-pointer px-4 py-2 rounded-md border text-gray-700 hover:bg-[#c7d2fe] hover:text-[#635bff] transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            alert('Booking confirmed!');
+                            handleClosePopup();
+                          }}
+                          className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </div>
+
+                    <style>
+                      {`
+                        @keyframes fadeIn {
+                          from { opacity: 0; }
+                          to { opacity: 1; }
+                        }
+                        @keyframes scaleIn {
+                          from {
+                            opacity: 0;
+                            transform: scale(0.95);
+                          }
+                          to {
+                            opacity: 1;
+                            transform: scale(1);
+                          }
+                        }
+
+                        .animate-fadeIn {
+                          animation: fadeIn 0.25s ease-out forwards;
+                        }
+                        .animate-scaleIn {
+                          animation: scaleIn 0.25s ease-out forwards;
+                        }
+                      `}
+                    </style>
+                  </div>
+                )}
+
+
               </div>
+              
             )}
               
           </div>

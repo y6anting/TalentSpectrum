@@ -54,7 +54,7 @@ interface EmployerProfile {
   work_mode: string;
   experience_level: string;
   location: string;
-  salary_range: number;
+  salary_range: number; // This is the integer code
   job_summary: string;
   job_requirements: string | null;
   soft_skills: string | null;
@@ -240,6 +240,23 @@ export default function DashboardPage() {
     );
   };
 
+  // NEW: Helper function to format salary range
+  const formatSalaryRange = (rangeCode: number | undefined): string => {
+    if (rangeCode === undefined || rangeCode === null) {
+      return "N/A";
+    }
+    switch (rangeCode) {
+      case 1: return "Below RM 3,000";
+      case 2: return "RM 3,000 - RM 5,000";
+      case 3: return "RM 5,001 - RM 8,000";
+      case 4: return "RM 8,001 - RM 12,000";
+      case 5: return "RM 12,001 - RM 18,000";
+      case 6: return "RM 18,001 - RM 25,000";
+      case 7: return "Above RM 25,000";
+      default: return `Unknown (Code: ${rangeCode})`;
+    }
+  };
+
 
   // If status is "authenticated", session.user will contain the data
   return (
@@ -372,7 +389,8 @@ export default function DashboardPage() {
                     {renderDetail("Work Mode", job.work_mode)}
                     {renderDetail("Experience Level", job.experience_level)}
                     {renderDetail("Location", job.location)}
-                    {renderDetail("Salary Range", `$${job.salary_range}`)}
+                    {/* UPDATED: Use formatSalaryRange helper */}
+                    {renderDetail("Salary Range", formatSalaryRange(job.salary_range))}
                     {renderDetail("Job Summary", job.job_summary)}
                     {renderDetail("Job Requirements", job.job_requirements)}
                     {renderDetail("Soft Skills", job.soft_skills)}

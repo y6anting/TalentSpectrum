@@ -1,4 +1,7 @@
-import { useState } from 'react';
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
 
 interface LanguageProficiency {
@@ -15,70 +18,99 @@ interface SkillsSubmissionProps {
     SoftSkills: string;
     HardSkills: string;
   };
-  languageProficiencies: LanguageProficiency[];
-  onSave?: () => void;
+  languageProficiencies?: LanguageProficiency[];
+   userEmail: string;
+   onSave?: () => void;
 }
 
-export function SkillsSubmission({ exp_skill, languageProficiencies, onSave }: SkillsSubmissionProps) {
+export function SkillsSubmission({
+  exp_skill,
+  languageProficiencies = [],
+  onSave,
+}: SkillsSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
 
+  const userEmail = session?.user?.email;
+
+  /** 🔹 Manual save for Skills (button) */
   const handleSubmitSkills = async () => {
+    if (!userEmail) {
+      setError("User not logged in or session email missing.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
+
     try {
-      const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) {
-        throw new Error('No userEmail found in localStorage');
-      }
+      const skillsData = { exp_skill };
 
-      // Save skills data
-      const skillsData = {
-        exp_skill: exp_skill
-      };
+      const response = await fetch(
+        `http://127.0.0.1:8000/profiles/${userEmail}/skills`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(skillsData),
+        }
+      );
 
-      console.log('Saving skills:', skillsData);
+      if (!response.ok) throw new Error("Failed to save skills.");
 
-      const skillsResponse = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/exp_skill`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(skillsData),
-      });
-
-      if (!skillsResponse.ok) {
-        throw new Error('Failed to save skills.');
-      }
-
-      // Save language proficiencies
-      const langData = {
-        language_proficiencies: languageProficiencies
-      };
-
-      console.log('Saving language proficiencies:', langData);
-
-      const langResponse = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/language_proficiencies`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(langData),
-      });
-
-      if (!langResponse.ok) {
-        throw new Error('Failed to save language proficiencies.');
-      }
-
-      alert('Skills and language proficiencies saved successfully!');
+      alert("Skills saved successfully!");
       if (onSave) onSave();
-    } catch (error: any) {
-      console.error('Error saving skills:', error);
-      setError(error.message || 'An error occurred while saving your skills.');
+    } catch (err: any) {
+      console.error("Error saving skills:", err);
+      setError(err.message || "An error occurred while saving your skills.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  /** 🔹 Auto-save language whenever dropdown changes */
+useEffect(() => {
+  console.log("Current languageProficiencies:", languageProficiencies);
+  if (!userEmail) return;
+  if (!languageProficiencies || languageProficiencies.length === 0) return;
+
+  const timeout = setTimeout(async () => {
+    try {
+      setIsAutoSaving(true);
+      setError(null);
+
+      const payload = {
+        languageProficiencies: languageProficiencies.map(({ id, ...rest }) => rest),
+      };
+
+      console.log("Payload being sent:", payload);
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/profiles/${userEmail}/language`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Language auto-save failed:", errText);
+        throw new Error("Failed to auto-save language proficiency.");
+      }
+
+      console.log("✅ Auto-saved language proficiency:", payload);
+    } catch (err: any) {
+      setError(err.message || "Error auto-saving language proficiency.");
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, 1000);
+
+  return () => clearTimeout(timeout);
+}, [languageProficiencies, userEmail]);
 
   return (
     <div>
@@ -88,8 +120,14 @@ export function SkillsSubmission({ exp_skill, languageProficiencies, onSave }: S
         onClick={handleSubmitSkills}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Saving...' : 'Save Skills'}
+        {isSubmitting ? "Saving..." : "Save Skills"}
       </Button>
+
+      {isAutoSaving && (
+        <p className="text-xs text-gray-500 mt-1 italic">
+          Auto-saving language proficiency...
+        </p>
+      )}
     </div>
   );
 }

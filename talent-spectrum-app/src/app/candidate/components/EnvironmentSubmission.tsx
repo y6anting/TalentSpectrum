@@ -1,5 +1,7 @@
+'use client';
 import { useState } from 'react';
 import { Button } from "@/app/components/button";
+import { useSession } from "next-auth/react";
 
 interface EnvironmentSubmissionProps {
   environment: {
@@ -26,14 +28,16 @@ interface EnvironmentSubmissionProps {
 export function EnvironmentSubmission({ environment, onSave }: EnvironmentSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   const handleSubmitEnvironment = async () => {
     setIsSubmitting(true);
     setError(null);
+
     try {
-      const userEmail = localStorage.getItem('userEmail');
+      const userEmail = session?.user?.email;
       if (!userEmail) {
-        throw new Error('No userEmail found in localStorage');
+        throw new Error('No user email found in session');
       }
 
       const requestData = { environment };
@@ -69,10 +73,15 @@ export function EnvironmentSubmission({ environment, onSave }: EnvironmentSubmis
       <Button
         className="bg-[#635bff] hover:bg-[#827CFF] text-white"
         onClick={handleSubmitEnvironment}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !session}
       >
         {isSubmitting ? 'Saving...' : 'Save Environment'}
       </Button>
+      {!session && (
+        <p className="text-gray-500 text-sm mt-2">
+          Please log in to save your environment details.
+        </p>
+      )}
     </div>
   );
 }

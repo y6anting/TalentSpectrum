@@ -49,9 +49,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         });
 
         if (roleUpper === "CANDIDATE") {
-          const res = await fetch(
-            `http://localhost:8000/profiles/${userEmail}`
-          );
+          const res = await fetch(`http://localhost:8000/users/${userEmail}`);
           if (res.ok) {
             const profile = await res.json();
             setDisplayName(profile?.name ?? session.user.name ?? null);

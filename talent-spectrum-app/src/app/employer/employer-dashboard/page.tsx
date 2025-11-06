@@ -30,7 +30,6 @@ import {
   BarChart3,
   Calculator,
   X,
-  SquarePen,
   Briefcase,
   Book,
   Info,
@@ -38,6 +37,8 @@ import {
   Calendar,
   Search,
   User,
+  SquarePen, // Added SquarePen icon, 
+  BotMessageSquare
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -52,12 +53,17 @@ import {
 } from "@/app/components/select";
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
-import PostJob from "@/app/employer/post-job/page";
-import { Input } from "@/app/components/input";
-import { Checkbox } from "@/app/components/checkbox";
-import { Textarea } from "@/app/components/textarea";
 import CandidateList from "@/app/employer/component/CandidateSearch";
 import MatchedCandidates from "@/app/employer/component/MatchedCandidates";
+
+// Import the PostJob component
+import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
+
+// Assuming these are custom components, if not, replace with standard HTML input/textarea or import from your UI library
+import { Input } from "@/app/components/input"; // Assuming you have an Input component
+import { Checkbox } from "@/app/components/checkbox"; // Assuming you have a Checkbox component
+import { Textarea } from "@/app/components/textarea"; // Assuming you have a Textarea component
+import * as ChatBot from "@/app/chat-bot";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -700,6 +706,11 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                       id: "settings",
                       label: "Company Settings",
                       icon: Settings,
+                    },
+                    {
+                      id: "consult-ai",
+                      label: "Consult AI",
+                      icon: BotMessageSquare
                     },
                   ].map((item) => {
                     const Icon = item.icon;
@@ -1521,6 +1532,14 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
               />
             )}
 
+            {activeTab === "consult-ai" && (
+              <>
+                <Card>
+                  <ChatBot.Chat />
+                </Card>
+              </>
+            )}
+          {/* // View Job Modal */}
             <ViewJobModal
               isOpen={isViewModalOpen}
               job={selectedJob}

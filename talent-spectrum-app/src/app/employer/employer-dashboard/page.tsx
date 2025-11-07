@@ -670,10 +670,10 @@ export default function EmployerDashboard() {
                     { id: "jobs", label: "Job Posted", icon: FileText },
                     {
                       id: "search-candidates",
-                      label: "Search Candidates",
+                      label: "Search Applicants",
                       icon: Search,
                     },
-                    { id: "applications", label: "Applicants", icon: Users },
+                    { id: "applications", label: "Shortlisted Applicants", icon: Users },
                     {
                       id: "tax-calculator",
                       label: "Calculator",
@@ -857,7 +857,7 @@ export default function EmployerDashboard() {
               <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left Side - Job Postings List */}
                 <div className="lg:col-span-1 space-y-4">
-                  <h2 className="text-xl font-bold text-[#3a4043]">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
                     Job Postings ({jobPostings.length})
                   </h2>
                   <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
@@ -1039,9 +1039,9 @@ export default function EmployerDashboard() {
             {activeTab === "search-candidates" && (
               <div>
                 {/* Import and use CandidateList component here */}
-                <p className="text-gray-600 mb-4">
+                {/* <p className="text-gray-600 mb-4">
                   Search through all available candidates in the talent pool
-                </p>
+                </p> */}
                 {/* You'll need to import CandidateList component from document 3 */}
                 <CandidateList />
               </div>
@@ -1051,7 +1051,7 @@ export default function EmployerDashboard() {
             {activeTab === "applications" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                  <h1 className="text-2xl font-bold text-[#3a4043]">
                     Shortlisted Applicants
                   </h1>
                   <div className="flex gap-2">
@@ -1309,7 +1309,7 @@ export default function EmployerDashboard() {
 
             {activeTab === "tax-calculator" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                <h1 className="text-2xl font-bold text-[#3a4043]">
                   Double Tax Relief Calculator
                 </h1>
                 <Card>

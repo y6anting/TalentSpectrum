@@ -1,121 +1,141 @@
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+// talent-spectrum-app/src/app/api/auth/[...nextauth]/route.ts
+
+// 1. Import necessary types from next-auth
+import NextAuth, { AuthOptions, DefaultSession, DefaultUser } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-// import { PrismaAdapter } from "@next-auth/prisma-adapter"; // Commented out for dashboard development
-// import { PrismaClient } from "@prisma/client"; // Commented out for dashboard development
-import bcrypt from "bcryptjs";
+// No need to import JWT from 'next-auth/jwt' directly for type extension,
+// as it's handled by declaring module 'next-auth/jwt'.
 
-// const prisma = new PrismaClient(); // Commented out for dashboard development
+// 2. Extend NextAuth types correctly
+// This ensures your custom properties (like 'role') are recognized throughout NextAuth's types.
 
-const handler = NextAuth({
-  // adapter: PrismaAdapter(prisma), // Commented out for dashboard development
+declare module "next-auth" {
+  /**
+   * Returned by `useSession`, `getSession` and received as a prop on the `SessionProvider` React Context
+   */
+  interface Session {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      role: string; // Your custom role property
+    } & DefaultSession["user"]; // Merge with the default user properties
+  }
+
+  /**
+   * The shape of the user object returned in the OAuth providers' `profile` callback,
+   * or the Credentials provider's `authorize` callback.
+   */
+  interface User extends DefaultUser {
+    id: string;
+    name: string;
+    email: string;
+    role: string; // Your custom role property
+  }
+}
+
+declare module "next-auth/jwt" {
+  /**
+   * Returned by the `jwt` callback and `getToken`, when using JWT sessions
+   */
+  interface JWT {
+    id: string;
+    name: string;
+    email: string;
+    role: string; // Your custom role property
+  }
+}
+
+// 3. Define authOptions with explicit AuthOptions type
+export const authOptions: AuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
-        userType: { label: "User Type", type: "text" }
+        userType: { label: "User Type", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials) { // Removed `req` as it's not used and simplifies typing
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          return null; // Return null if credentials are missing
         }
 
-        // TEMPORARY: Mock user authentication for dashboard development
-        // Comment out Prisma logic and return mock user
-        // const user = await prisma.user.findUnique({
-        //   where: {
-        //     email: credentials.email,
-        //   },
-        // });
+        try {
+          // Call your backend login API
+          const res = await fetch("http://127.0.0.1:8000/users/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
 
-        // if (!user) {
-        //   return null;
-        // }
-
-        // // For users created via Google OAuth, they won't have a password
-        // if (!user.password) {
-        //   return null;
-        // }
-
-        // const isPasswordValid = await bcrypt.compare(
-        //   credentials.password,
-        //   user.password
-        // );
-
-        // if (!isPasswordValid) {
-        //   return null;
-        // }
-
-        // Mock user for development - any email/password combo will work
-        // TESTING: Change this line to switch roles easily
-        // const role = "CANDIDATE"; // Change to "EMPLOYER" or "CANDIDATE" to test employer dashboard
-        const role = credentials.userType === "employer" ? "EMPLOYER" : 
-                    credentials.userType === "job-coach" ? "JOB_COACH" : "CANDIDATE";
-        return {
-          id: "mock-user-id",
-          email: credentials.email || "",
-          name: "Mock User",
-          role: role,
-          image: undefined,
-        };
+          if (res.ok) {
+            const user = await res.json();
+            // If no error and we have user data, return it.
+            // NextAuth expects a 'user' object with at least an 'id'.
+            // Ensure the returned object matches the extended `User` interface.
+            return {
+              id: user.id.toString(), // Ensure id is a string
+              name: user.name,
+              email: user.email,
+              role: user.role, // Pass the role from your backend
+            };
+          } else {
+            // If the backend returns an error (e.g., 401 Unauthorized)
+            const errorData = await res.json();
+            console.error("Backend login error:", errorData.detail);
+            // Throw an error to be caught by the frontend signIn function
+            // This allows the frontend to display specific error messages.
+            throw new Error(errorData.detail || "Invalid credentials");
+          }
+        } catch (error: any) {
+          console.error("Error during login:", error);
+          // Re-throw the error or return null based on desired frontend handling
+          throw new Error(error.message || "An unexpected error occurred during login.");
+        }
       },
     }),
+    // GoogleProvider can be added here if needed, but we are ignoring it for this task.
   ],
-  session: {
-    strategy: "jwt",
-  },
   callbacks: {
+    // 4. Callback parameters are now correctly typed by NextAuth due to `authOptions: AuthOptions`
     async jwt({ token, user }) {
-      if (user) {
+      // The `user` object is only available on the first sign in (i.e., when `authorize` returns a user)
+      if (user) { // `user` is now correctly typed as `User` (our extended type)
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
         token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token && token.sub) {
-        session.user.id = token.sub;
-        session.user.role = token.role as "CANDIDATE" | "EMPLOYER" | "JOB_COACH";
+      // Send properties to the client, like an access_token from a provider.
+      // The `token` object is what we populated in the `jwt` callback.
+      if (token) { // `token` is now correctly typed as `JWT` (our extended type)
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.role = token.role;
       }
       return session;
     },
-    async signIn({ user, account, profile }) {
-      // TEMPORARY: Comment out Prisma logic for dashboard development
-      // if (account?.provider === "google") {
-      //   try {
-      //     const existingUser = await prisma.user.findUnique({
-      //       where: { email: user.email! },
-      //     });
-
-      //     if (!existingUser) {
-      //       // Create new user with default role
-      //       await prisma.user.create({
-      //         data: {
-      //           email: user.email!,
-      //           name: user.name,
-      //           image: user.image,
-      //           role: "CANDIDATE", // Default role, can be changed later
-      //         },
-      //       });
-      //     }
-      //   } catch (error) {
-      //     console.error("Error creating user:", error);
-      //     return false;
-      //   }
-      // }
-      
-      // Allow all sign-ins for development
-      return true;
-    },
   },
   pages: {
-    signIn: "/login",
+    signIn: "/login", // Specify your custom login page
+    // error: '/auth/error', // You can define a custom error page
   },
-});
+  session: {
+    strategy: "jwt", // This should now be correctly inferred as `SessionStrategy`
+  },
+  secret: process.env.NEXTAUTH_SECRET, // IMPORTANT: Set this in your .env.local file
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

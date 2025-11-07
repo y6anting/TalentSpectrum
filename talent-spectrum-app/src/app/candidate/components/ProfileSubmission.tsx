@@ -1,4 +1,7 @@
-import { useState } from 'react';
+"use client";
+
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
 
 interface ProfileSubmissionProps {
@@ -21,20 +24,26 @@ interface ProfileSubmissionProps {
     email: string;
     location: string;
   };
-  onSave?: () => void; // Optional callback for profile completion recalculation
+  onSave?: () => void;
 }
 
 export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Get user session
+  const { data: session } = useSession();
+
   const handleSubmitProfile = async () => {
     setIsSubmitting(true);
     setError(null);
+
     try {
-      const userEmail = localStorage.getItem('userEmail');
+      // ✅ Extract user email from session
+      const userEmail = session?.user?.email;
+
       if (!userEmail) {
-        throw new Error('No userEmail found in localStorage');
+        throw new Error("User not logged in or session not found.");
       }
 
       const requestData = {
@@ -44,27 +53,30 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
         location: candidateProfile.location,
       };
 
-      console.log('Saving personal information:', requestData);
+      console.log("Saving personal information:", requestData);
 
-      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/personal_identifiers`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
+      const response = await fetch(
+        `http://127.0.0.1:8000/profiles/${userEmail}/personal_identifiers`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        }
+      );
 
       if (response.ok) {
-        alert('Personal information saved successfully!');
-        if (onSave) onSave(); // Trigger profile completion recalculation
+        alert("Personal information saved successfully!");
+        if (onSave) onSave();
       } else {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        throw new Error('Failed to save personal information.');
+        console.error("API Error Response:", errorText);
+        throw new Error("Failed to save personal information.");
       }
     } catch (error: any) {
-      console.error('Error saving personal information:', error);
-      setError(error.message || 'An error occurred while saving your personal information.');
+      console.error("Error saving personal information:", error);
+      setError(error.message || "An error occurred while saving your personal information.");
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +90,7 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
         onClick={handleSubmitProfile}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Saving...' : 'Save Changes'}
+        {isSubmitting ? "Saving..." : "Save Changes"}
       </Button>
     </div>
   );

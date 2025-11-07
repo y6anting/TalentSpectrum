@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search 
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -1187,6 +1187,7 @@ const handleClosePopup = () => {
                 <nav className="space-y-2">
                   {[
                     { id: "overview", label: "Overview", icon: LayoutDashboard },
+                    { id: "browse jobs", label: "Browse Jobs", icon: Search },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings, children: [
@@ -1393,17 +1394,24 @@ const handleClosePopup = () => {
               </div>
             )}
 
+            {activeTab === "browse jobs" && (
+              <div>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
+                {/* the component goes here */}
+              </div>
+            )}
+
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  <Button
-                  asChild
-                  variant="outline"
-                  className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                >
-                  <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                </Button>
+                  {/* <Button
+                    asChild
+                    variant="outline"
+                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  >
+                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                  </Button> */}
                 </div>
                 <div className="space-y-4">
                   {applications.length > 0 ? applications.map((app) => (

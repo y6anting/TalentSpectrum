@@ -1953,317 +1953,317 @@ const handleClosePopup = () => {
               </div>
             )}
 
-{activeTab === "skills" && (
-  <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+            {activeTab === "skills" && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
 
-    <div className="grid gap-6">
-      {/* ---- Skill Types Card ---- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Skill Types</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { label: "Soft Skills", key: "SoftSkills" },
-            { label: "Hard Skills", key: "HardSkills" },
-          ].map((field) => {
-            const key = field.key as keyof typeof candidateProfile.exp_skill;
-            const value = candidateProfile.exp_skill[key] ?? "";
-
-            return (
-              <div key={key} className="w-full">
-                <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                  {field.label}
-                </label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) =>
-                    setCandidateProfile({
-                      ...candidateProfile,
-                      exp_skill: {
-                        ...candidateProfile.exp_skill,
-                        [key]: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                />
-              </div>
-            );
-          })}
-
-          {/* Save Skills button — unchanged style/location */}
-          <div className="mt-4">
-            <SkillsSubmission
-              exp_skill={candidateProfile.exp_skill}
-              languageProficiencies={languageProficiencies}
-              userEmail={session?.user?.email || ""}
-              onSave={() => {
-                calculateProfileCompletion();
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Language Proficiency Card ---- */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <CardTitle>Language Proficiency</CardTitle>
-            <Button
-              onClick={() => {
-                setLanguageProficiencies([
-                  ...languageProficiencies,
-                  {
-                    id: Date.now(),
-                    language: "",
-                    reading: "",
-                    writing: "",
-                    listening: "",
-                    speaking: "",
-                  },
-                ]);
-              }}
-              className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
-            >
-              + Add Language
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {/* Desktop table view */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm md:text-base">
-              <thead>
-                <tr className="border-b">
-                  {[
-                    "Language",
-                    "Reading",
-                    "Writing",
-                    "Listening",
-                    "Speaking",
-                    "Action",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {languageProficiencies.map((prof, index) => (
-                    <tr key={prof.id || index} className="border-b">
-                    <td className="p-2 min-w-[160px]">
-                      <Select
-                        value={prof.language}
-                        onValueChange={(value) => {
-                          const updated = [...languageProficiencies];
-                          updated[index] = { ...prof, language: value };
-                          setLanguageProficiencies(updated);
-                        }}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[
-                            "Arabic",
-                            "Bengali",
-                            "Chinese",
-                            "English",
-                            "French",
-                            "German",
-                            "Hindi",
-                            "Indonesian",
-                            "Italian",
-                            "Japanese",
-                            "Korean",
-                            "Malay",
-                            "Portuguese",
-                            "Russian",
-                            "Spanish",
-                            "Tamil",
-                            "Thai",
-                            "Turkish",
-                            "Vietnamese",
-                            "Other",
-                          ].map((lang) => (
-                            <SelectItem key={lang} value={lang}>
-                              {lang}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-
-                    {["reading", "writing", "listening", "speaking"].map(
-                      (skill) => (
-                        <td key={skill + prof.id} className="p-2 min-w-[140px]">
-                          <Select
-                            value={String(
-                              prof[skill as keyof LanguageProficiency]
-                            )}
-                            onValueChange={(value) => {
-                              const updated = [...languageProficiencies];
-                              updated[index] = { ...prof, [skill]: value };
-                              setLanguageProficiencies(updated);
-                            }}
-                          >
-                            <SelectTrigger className="w-full md:w-[140px]">
-                              <SelectValue placeholder="Select level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {["Expert", "Intermediate", "Beginner"].map(
-                                (level) => (
-                                  <SelectItem key={level} value={level}>
-                                    {level}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      )
-                    )}
-
-                    <td className="p-2 text-center">
-                      <Button
-                        onClick={() => {
-                          const updated = languageProficiencies.filter(
-                            (_, i) => i !== index
-                          );
-                          setLanguageProficiencies(updated);
-                        }}
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-800 hover:bg-red-100"
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile stacked view */}
-          <div className="flex flex-col gap-4 md:hidden">
-            {languageProficiencies.map((prof, index) => (
-              <div
-                key={prof.id ?? `lang-${index}`} // fallback to index if id missing
-                className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
-              >
-                          <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                    Language
-                  </label>
-                  <Select
-                    value={prof.language}
-                    onValueChange={(value) => {
-                      const updated = [...languageProficiencies];
-                      updated[index] = { ...prof, language: value };
-                      setLanguageProficiencies(updated);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="grid gap-6">
+                  {/* ---- Skill Types Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Skill Types</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       {[
-                        "Arabic",
-                        "Bengali",
-                        "Chinese",
-                        "English",
-                        "French",
-                        "German",
-                        "Hindi",
-                        "Indonesian",
-                        "Italian",
-                        "Japanese",
-                        "Korean",
-                        "Malay",
-                        "Portuguese",
-                        "Russian",
-                        "Spanish",
-                        "Tamil",
-                        "Thai",
-                        "Turkish",
-                        "Vietnamese",
-                        "Other",
-                      ].map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        { label: "Soft Skills", key: "SoftSkills" },
+                        { label: "Hard Skills", key: "HardSkills" },
+                      ].map((field) => {
+                        const key = field.key as keyof typeof candidateProfile.exp_skill;
+                        const value = candidateProfile.exp_skill[key] ?? "";
 
-                {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
-                  <div key={skill}>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                      {skill}
-                    </label>
-                    <Select
-                      value={
-                        prof[skill.toLowerCase() as keyof LanguageProficiency]
-                          ? String(
-                              prof[skill.toLowerCase() as keyof LanguageProficiency]
-                            )
-                          : ""
-                      }
-                      onValueChange={(value) => {
-                        const updated = [...languageProficiencies];
-                        updated[index] = {
-                          ...prof,
-                          [skill.toLowerCase()]: value,
-                        };
-                        setLanguageProficiencies(updated);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["Expert", "Intermediate", "Beginner"].map((level) => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
+                        return (
+                          <div key={key} className="w-full">
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              {field.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) =>
+                                setCandidateProfile({
+                                  ...candidateProfile,
+                                  exp_skill: {
+                                    ...candidateProfile.exp_skill,
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                            />
+                          </div>
+                        );
+                      })}
+
+                      {/* Save Skills button — unchanged style/location */}
+                      <div className="mt-4">
+                        <SkillsSubmission
+                          exp_skill={candidateProfile.exp_skill}
+                          languageProficiencies={languageProficiencies}
+                          userEmail={session?.user?.email || ""}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                          }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ---- Language Proficiency Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <CardTitle>Language Proficiency</CardTitle>
+                        <Button
+                          onClick={() => {
+                            setLanguageProficiencies([
+                              ...languageProficiencies,
+                              {
+                                id: Date.now(),
+                                language: "",
+                                reading: "",
+                                writing: "",
+                                listening: "",
+                                speaking: "",
+                              },
+                            ]);
+                          }}
+                          className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
+                        >
+                          + Add Language
+                        </Button>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent>
+                      {/* Desktop table view */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-sm md:text-base">
+                          <thead>
+                            <tr className="border-b">
+                              {[
+                                "Language",
+                                "Reading",
+                                "Writing",
+                                "Listening",
+                                "Speaking",
+                                "Action",
+                              ].map((heading) => (
+                                <th
+                                  key={heading}
+                                  className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
+                                >
+                                  {heading}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {languageProficiencies.map((prof, index) => (
+                              <tr key={prof.id || index} className="border-b">
+                                <td className="p-2 min-w-[160px]">
+                                  <Select
+                                    value={prof.language}
+                                    onValueChange={(value) => {
+                                      const updated = [...languageProficiencies];
+                                      updated[index] = { ...prof, language: value };
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full md:w-[180px]">
+                                      <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {[
+                                        "Arabic",
+                                        "Bengali",
+                                        "Chinese",
+                                        "English",
+                                        "French",
+                                        "German",
+                                        "Hindi",
+                                        "Indonesian",
+                                        "Italian",
+                                        "Japanese",
+                                        "Korean",
+                                        "Malay",
+                                        "Portuguese",
+                                        "Russian",
+                                        "Spanish",
+                                        "Tamil",
+                                        "Thai",
+                                        "Turkish",
+                                        "Vietnamese",
+                                        "Other",
+                                      ].map((lang) => (
+                                        <SelectItem key={lang} value={lang}>
+                                          {lang}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {["reading", "writing", "listening", "speaking"].map(
+                                  (skill) => (
+                                    <td key={skill + prof.id} className="p-2 min-w-[140px]">
+                                      <Select
+                                        value={String(
+                                          prof[skill as keyof LanguageProficiency]
+                                        )}
+                                        onValueChange={(value) => {
+                                          const updated = [...languageProficiencies];
+                                          updated[index] = { ...prof, [skill]: value };
+                                          setLanguageProficiencies(updated);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full md:w-[140px]">
+                                          <SelectValue placeholder="Select level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {["Expert", "Intermediate", "Beginner"].map(
+                                            (level) => (
+                                              <SelectItem key={level} value={level}>
+                                                {level}
+                                              </SelectItem>
+                                            )
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                  )
+                                )}
+
+                                <td className="p-2 text-center">
+                                  <Button
+                                    onClick={() => {
+                                      const updated = languageProficiencies.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                  >
+                                    Delete
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile stacked view */}
+                      <div className="flex flex-col gap-4 md:hidden">
+                        {languageProficiencies.map((prof, index) => (
+                          <div
+                            key={prof.id ?? `lang-${index}`} // fallback to index if id missing
+                            className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
+                          >
+                            <div>
+                              <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                Language
+                              </label>
+                              <Select
+                                value={prof.language}
+                                onValueChange={(value) => {
+                                  const updated = [...languageProficiencies];
+                                  updated[index] = { ...prof, language: value };
+                                  setLanguageProficiencies(updated);
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "Arabic",
+                                    "Bengali",
+                                    "Chinese",
+                                    "English",
+                                    "French",
+                                    "German",
+                                    "Hindi",
+                                    "Indonesian",
+                                    "Italian",
+                                    "Japanese",
+                                    "Korean",
+                                    "Malay",
+                                    "Portuguese",
+                                    "Russian",
+                                    "Spanish",
+                                    "Tamil",
+                                    "Thai",
+                                    "Turkish",
+                                    "Vietnamese",
+                                    "Other",
+                                  ].map((lang) => (
+                                    <SelectItem key={lang} value={lang}>
+                                      {lang}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
+                              <div key={skill}>
+                                <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                  {skill}
+                                </label>
+                                <Select
+                                  value={
+                                    prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      ? String(
+                                        prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      )
+                                      : ""
+                                  }
+                                  onValueChange={(value) => {
+                                    const updated = [...languageProficiencies];
+                                    updated[index] = {
+                                      ...prof,
+                                      [skill.toLowerCase()]: value,
+                                    };
+                                    setLanguageProficiencies(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select level" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {["Expert", "Intermediate", "Beginner"].map((level) => (
+                                      <SelectItem key={level} value={level}>
+                                        {level}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+
+                            <div className="pt-2">
+                              <Button
+                                onClick={() => {
+                                  const updated = languageProficiencies.filter(
+                                    (_, i) => i !== index
+                                  );
+                                  setLanguageProficiencies(updated);
+                                }}
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
+                              >
+                                Delete Language
+                              </Button>
+                            </div>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => {
-                      const updated = languageProficiencies.filter(
-                        (_, i) => i !== index
-                      );
-                      setLanguageProficiencies(updated);
-                    }}
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
-                  >
-                    Delete Language
-                  </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  </div>
-)}
+            )}
 
 
             {activeTab === "neuro_strength" && (
@@ -2309,7 +2309,7 @@ const handleClosePopup = () => {
                     </div>
                   )}
 
-                  <NeuroStrengthSubmission 
+                  <NeuroStrengthSubmission
                     selectedStrengths={selectedStrengths}
                     onSave={() => {
                       calculateProfileCompletion();
@@ -2446,6 +2446,7 @@ const handleClosePopup = () => {
 
             {activeTab === "mock interview" && (
                     <>
+                    <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
                       {mockInterviewStep === "setup" && (
                         <MockInterviewSetupPage onNavigate={(target) => {
                           if (target === "interview") {
@@ -2472,9 +2473,10 @@ const handleClosePopup = () => {
                     </>
                   )}
 
-                  {activeTab === "Report" && (
-                    <ReportPage />
-                  )}
+            {activeTab === "Report" && (
+              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
+              <ReportPage /></>
+            )}
 
             {activeTab === "Appointment" && (
               <>

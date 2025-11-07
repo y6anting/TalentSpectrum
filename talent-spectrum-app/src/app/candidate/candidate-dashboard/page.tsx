@@ -1073,6 +1073,7 @@ const handleClosePopup = () => {
                 </div>
                 <nav className="space-y-2">
                   {[
+                    { id: "overview", label: "Overview", icon: User },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings, children: [
@@ -1193,6 +1194,11 @@ const handleClosePopup = () => {
                         }}
                         className="rounded-xl overflow-hidden hover:cursor-pointer"
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        onClick={() => {card.icon == Briefcase 
+                          ? handleTabChange("applications") 
+                          : card.icon == Heart 
+                          ? handleTabChange("saved") 
+                          : null}}
                       >
                         <Card>
                           <CardContent className="p-6 text-center">
@@ -2218,7 +2224,7 @@ const handleClosePopup = () => {
 
             {activeTab === "Appointment" && (
               <>
-              <h1 className="text-2xl font-bold text-[#3a4043] pb-5 ">Book an Appointment</h1>
+              <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Book an Appointment</h1>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <div className="p-5 space-y-3">

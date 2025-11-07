@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, 
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -1186,10 +1186,11 @@ const handleClosePopup = () => {
                 </div>
                 <nav className="space-y-2">
                   {[
-                    { id: "overview", label: "Overview", icon: User },
+                    { id: "overview", label: "Overview", icon: LayoutDashboard },
                     { id: "applications", label: "My Applications", icon: LetterTextIcon },
                     { id: "saved", label: "Saved Jobs", icon: Heart },
                     { id: "profile", label: "Profile Settings", icon: Settings, children: [
+                      { id: "profile config", label: "Profile Data", icon: User },
                       { id: "education", label: "Education", icon: Book },
                       { id: "experience", label: "Experience", icon: Briefcase },
                       { id: "skills", label: "Skills", icon: HandFist },
@@ -1527,7 +1528,7 @@ const handleClosePopup = () => {
               </div>
             )}
 
-            {activeTab === "profile" && (
+            {activeTab === "profile config" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
                 <div className="grid gap-6">

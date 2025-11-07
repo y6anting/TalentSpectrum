@@ -215,7 +215,7 @@ const mockMatchedCandidates: MatchedCandidate[] = [
   {
     id: "match-3",
     candidateId: "mei-ling-3",
-    jobTitle: "Data Scientist",
+    jobTitle: "Finance Analyst",
     overallMatchPercentage: 78,
     candidateSummary: {
       id: "mei-ling-3",
@@ -297,7 +297,7 @@ export default function MatchedCandidates({
   const candidates = mockMatchedCandidates.filter(
     (candidate) => candidate.jobTitle === jobTitle
   );
-
+  // const candidates = mockMatchedCandidates;
   const handleViewCandidateDetails = (candidate: MatchedCandidate) => {
     setSelectedCandidate(candidate);
     setIsDetailModalOpen(true);

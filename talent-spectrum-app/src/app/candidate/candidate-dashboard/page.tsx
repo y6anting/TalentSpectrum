@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, 
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -35,7 +35,6 @@ export default function CandidateDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
-
 
   type Environment = {
     patternRecognition: string;
@@ -807,6 +806,7 @@ export default function CandidateDashboard() {
   // Handle tab switching
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Update individual education record
@@ -913,8 +913,6 @@ export default function CandidateDashboard() {
     );
   }
 
-  // Appointment helpers moved to Appointment/page.tsx
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -935,119 +933,123 @@ export default function CandidateDashboard() {
         </div>
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 sticky top-4 self-start">
             <div className="lg:sticky lg:top-8">
               <Card>
                 <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                    {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
+                      {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
+                      <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
-                    <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-[#635bff]">Profile Completion</span>
+                      <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-[#635bff] h-2 rounded-full"
+                        style={{ width: `${candidateProfile.profileCompletion}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#635bff]">Profile Completion</span>
-                    <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-[#635bff] h-2 rounded-full"
-                      style={{ width: `${candidateProfile.profileCompletion}%` }}
-                    />
-                  </div>
-                </div>
-                <nav className="space-y-2">
-                  {[
-                    { id: "applications", label: "My Applications", icon: LetterTextIcon },
-                    { id: "saved", label: "Saved Jobs", icon: Heart },
-                    { id: "profile", label: "Profile Settings", icon: Settings, children: [
-                      { id: "education", label: "Education", icon: Book },
-                      { id: "experience", label: "Experience", icon: Briefcase },
-                      { id: "skills", label: "Skills", icon: HandFist },
-                      { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
-                      { id: "environment", label: "Preferred Environment", icon: House },
-                    ],},
-                    { id: "job coach", label: "Job Coach", icon: UserStar, children: [
-                      { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
-                      { id: "Appointment", label: "Appointment", icon: CalendarClock },
-                      { id: "Report", label: "Report", icon: FileText },
-                    ],},
+                  <nav className="space-y-2">
+                    {[
+                      { id: "overview", label: "Overview", icon: LayoutDashboard },
+                      { id: "browse jobs", label: "Browse Jobs", icon: Search },
+                      { id: "applications", label: "My Applications", icon: LetterTextIcon },
+                      { id: "saved", label: "Saved Jobs", icon: Heart },
+                      {
+                        id: "profile", label: "Profile Settings", icon: Settings, children: [
+                          { id: "profile config", label: "Profile Data", icon: User },
+                          { id: "education", label: "Education", icon: Book },
+                          { id: "experience", label: "Experience", icon: Briefcase },
+                          { id: "skills", label: "Skills", icon: HandFist },
+                          { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+                          { id: "environment", label: "Preferred Environment", icon: House },
+                        ],
+                      },
+                      {
+                        id: "job coach", label: "Job Coach", icon: UserStar, children: [
+                          { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
+                          { id: "Appointment", label: "Appointment", icon: CalendarClock },
+                          { id: "Report", label: "Report", icon: FileText },
+                        ],
+                      },
 
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    const hasChildren = Boolean(item.children);
-                    const isOpen = !!openDropdowns[item.id];
-                    
-                    return (
-                      <div key={item.id}>
-                        <button
-                          onClick={() => {
-                            if (hasChildren) {
-                              setOpenDropdowns((prev) => ({
-                                ...prev,
-                                [item.id]: !prev[item.id],
-                              }));
-                            } else {
-                              handleTabChange(item.id);
-                            }
-                          }}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                            activeTab === item.id
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const hasChildren = Boolean(item.children);
+                      const isOpen = !!openDropdowns[item.id];
+
+                      return (
+                        <div key={item.id}>
+                          <button
+                            onClick={() => {
+                              if (hasChildren) {
+                                setOpenDropdowns((prev) => ({
+                                  ...prev,
+                                  [item.id]: !prev[item.id],
+                                }));
+                              } else {
+                                handleTabChange(item.id);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === item.id
                               ? "bg-[#635bff] text-white"
                               : "text-[#3a4043] hover:bg-gray-100"
-                          } hover:cursor-pointer`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {item.label}
-                          </div>
+                              } hover:cursor-pointer`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              {item.label}
+                            </div>
 
-                          {hasChildren && (
-                            <svg
-                              className={`h-4 w-4 transform transition-transform ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )}
-                        </button>
+                            {hasChildren && (
+                              <svg
+                                className={`h-4 w-4 transform transition-transform ${isOpen ? "rotate-180" : ""
+                                  }`}
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                          </button>
 
-                        {hasChildren && isOpen && (
-                          <div className="ml-6 mt-1 space-y-1">
-                            {item.children?.map((child) => {
-                              const ChildIcon = child.icon;
-                              return (
-                                <button
-                                  key={child.id}
-                                  onClick={() => handleTabChange(child.id)}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                                    activeTab === child.id
+                          {hasChildren && isOpen && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {item.children?.map((child) => {
+                                const ChildIcon = child.icon;
+                                return (
+                                  <button
+                                    key={child.id}
+                                    onClick={() => handleTabChange(child.id)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === child.id
                                       ? "bg-[#635bff] text-white"
                                       : "text-[#3a4043] hover:bg-gray-100"
-                                  } hover:cursor-pointer`}
-                                >
-                                  <ChildIcon className="h-4 w-4" />
-                                  {child.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </nav>
-              </CardContent>
-            </Card>
+                                      } hover:cursor-pointer`}
+                                  >
+                                    <ChildIcon className="h-4 w-4" />
+                                    {child.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </nav>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
@@ -1085,6 +1087,13 @@ export default function CandidateDashboard() {
                         }}
                         className="rounded-xl overflow-hidden hover:cursor-pointer"
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        onClick={() => {
+                          card.icon == Briefcase
+                            ? handleTabChange("applications")
+                            : card.icon == Heart
+                              ? handleTabChange("saved")
+                              : null
+                        }}
                       >
                         <Card>
                           <CardContent className="p-6 text-center">
@@ -1165,17 +1174,24 @@ export default function CandidateDashboard() {
               </div>
             )}
 
+            {activeTab === "browse jobs" && (
+              <div>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
+                {/* the component goes here */}
+              </div>
+            )}
+
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  <Button
-                  asChild
-                  variant="outline"
-                  className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                >
-                  <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                </Button>
+                  {/* <Button
+                    asChild
+                    variant="outline"
+                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  >
+                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                  </Button> */}
                 </div>
                 <div className="space-y-4">
                   {applications.length > 0 ? applications.map((app) => (
@@ -1300,7 +1316,7 @@ export default function CandidateDashboard() {
               </div>
             )}
 
-            {activeTab === "profile" && (
+            {activeTab === "profile config" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
                 <div className="grid gap-6">
@@ -1327,7 +1343,7 @@ export default function CandidateDashboard() {
                               {field.label}
                               {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
-            
+
                             {field.type === "select" ? (
                               <Select
                                 value={
@@ -1336,10 +1352,10 @@ export default function CandidateDashboard() {
                                   ] as string) || ""
                                 }
                                 onValueChange={(val) => {
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                  setCandidateProfile({
+                                    ...candidateProfile,
+                                    personalIdentifiers: {
+                                      ...candidateProfile.personalIdentifiers,
                                       [field.key as string]: val,
                                     },
                                     name: field.key === "fullName" ? val : candidateProfile.name,
@@ -1350,9 +1366,8 @@ export default function CandidateDashboard() {
                                   }
                                 }}
                               >
-                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${
-                                  errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
-                                }`}>
+                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
+                                  }`}>
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
@@ -1365,7 +1380,7 @@ export default function CandidateDashboard() {
                               </Select>
                             ) : (
                               <>
-                        <input
+                                <input
                                   type={field.type}
                                   value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers] || ""}
                                   onChange={(e) => {
@@ -1389,28 +1404,27 @@ export default function CandidateDashboard() {
 
                                     setErrors({ ...errors, [field.key]: error });
 
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                    setCandidateProfile({
+                                      ...candidateProfile,
+                                      personalIdentifiers: {
+                                        ...candidateProfile.personalIdentifiers,
                                         [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
                                       },
                                       name: field.key === "fullName" ? e.target.value : candidateProfile.name,
                                       email: field.key === "emailAddress" ? e.target.value : candidateProfile.email,
                                     });
                                   }}
-                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${
-                                    errors[field.key as string]
-                                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
-                                      : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
-                                  }`}
+                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${errors[field.key as string]
+                                    ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
+                                    : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
+                                    }`}
                                 />
                                 {errors[field.key as string] && (
                                   <p className="text-red-500 text-xs mt-1">{errors[field.key as string]}</p>
                                 )}
                               </>
                             )}
-                      </div>
+                          </div>
                         ))}
                       </div>
 
@@ -1524,30 +1538,30 @@ export default function CandidateDashboard() {
                 </div>
 
                 <div className="flex justify-end mb-4">
-                    <Button
-                      onClick={() =>
-                        setEducations([
-                          ...educations,
-                          {
-                            id: Date.now(),
-                            level: "",
-                            fieldOfStudy: "",
-                            institution: "",
-                            graduationYear: null,
-                            cgpa_grade: "",
-                            award: "",
-                          },
-                        ])
-                      }
-                      className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                    >
-                      + Add Education
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() =>
+                      setEducations([
+                        ...educations,
+                        {
+                          id: Date.now(),
+                          level: "",
+                          fieldOfStudy: "",
+                          institution: "",
+                          graduationYear: null,
+                          cgpa_grade: "",
+                          award: "",
+                        },
+                      ])
+                    }
+                    className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+                  >
+                    + Add Education
+                  </Button>
+                </div>
 
                 <div className="flex justify-end">
-                  <EducationSubmission 
-                    educations={educations} 
+                  <EducationSubmission
+                    educations={educations}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
@@ -1608,7 +1622,7 @@ export default function CandidateDashboard() {
                                   </SelectContent>
                                 </Select>
                               ) : (
-                              <input
+                                <input
                                   type={field.type}
                                   // Ensure value is formatted as YYYY-MM for type="month"
                                   value={String(exp[field.key as keyof typeof exp] ?? "").substring(0, 7)} // <--- CHANGE HERE: substring(0,7)
@@ -1654,7 +1668,7 @@ export default function CandidateDashboard() {
                                 className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                               />
                             )}
-                            </div>
+                          </div>
 
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -1727,317 +1741,317 @@ export default function CandidateDashboard() {
               </div>
             )}
 
-{activeTab === "skills" && (
-  <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+            {activeTab === "skills" && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
 
-    <div className="grid gap-6">
-      {/* ---- Skill Types Card ---- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Skill Types</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { label: "Soft Skills", key: "SoftSkills" },
-            { label: "Hard Skills", key: "HardSkills" },
-          ].map((field) => {
-            const key = field.key as keyof typeof candidateProfile.exp_skill;
-            const value = candidateProfile.exp_skill[key] ?? "";
-
-            return (
-              <div key={key} className="w-full">
-                <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                  {field.label}
-                </label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) =>
-                    setCandidateProfile({
-                      ...candidateProfile,
-                      exp_skill: {
-                        ...candidateProfile.exp_skill,
-                        [key]: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                />
-              </div>
-            );
-          })}
-
-          {/* Save Skills button — unchanged style/location */}
-          <div className="mt-4">
-            <SkillsSubmission
-              exp_skill={candidateProfile.exp_skill}
-              languageProficiencies={languageProficiencies}
-              userEmail={session?.user?.email || ""}
-              onSave={() => {
-                calculateProfileCompletion();
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Language Proficiency Card ---- */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <CardTitle>Language Proficiency</CardTitle>
-            <Button
-              onClick={() => {
-                setLanguageProficiencies([
-                  ...languageProficiencies,
-                  {
-                    id: Date.now(),
-                    language: "",
-                    reading: "",
-                    writing: "",
-                    listening: "",
-                    speaking: "",
-                  },
-                ]);
-              }}
-              className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
-            >
-              + Add Language
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {/* Desktop table view */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm md:text-base">
-              <thead>
-                <tr className="border-b">
-                  {[
-                    "Language",
-                    "Reading",
-                    "Writing",
-                    "Listening",
-                    "Speaking",
-                    "Action",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {languageProficiencies.map((prof, index) => (
-                    <tr key={prof.id || index} className="border-b">
-                    <td className="p-2 min-w-[160px]">
-                      <Select
-                        value={prof.language}
-                        onValueChange={(value) => {
-                          const updated = [...languageProficiencies];
-                          updated[index] = { ...prof, language: value };
-                          setLanguageProficiencies(updated);
-                        }}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[
-                            "Arabic",
-                            "Bengali",
-                            "Chinese",
-                            "English",
-                            "French",
-                            "German",
-                            "Hindi",
-                            "Indonesian",
-                            "Italian",
-                            "Japanese",
-                            "Korean",
-                            "Malay",
-                            "Portuguese",
-                            "Russian",
-                            "Spanish",
-                            "Tamil",
-                            "Thai",
-                            "Turkish",
-                            "Vietnamese",
-                            "Other",
-                          ].map((lang) => (
-                            <SelectItem key={lang} value={lang}>
-                              {lang}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-
-                    {["reading", "writing", "listening", "speaking"].map(
-                      (skill) => (
-                        <td key={skill + prof.id} className="p-2 min-w-[140px]">
-                          <Select
-                            value={String(
-                              prof[skill as keyof LanguageProficiency]
-                            )}
-                            onValueChange={(value) => {
-                              const updated = [...languageProficiencies];
-                              updated[index] = { ...prof, [skill]: value };
-                              setLanguageProficiencies(updated);
-                            }}
-                          >
-                            <SelectTrigger className="w-full md:w-[140px]">
-                              <SelectValue placeholder="Select level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {["Expert", "Intermediate", "Beginner"].map(
-                                (level) => (
-                                  <SelectItem key={level} value={level}>
-                                    {level}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      )
-                    )}
-
-                    <td className="p-2 text-center">
-                      <Button
-                        onClick={() => {
-                          const updated = languageProficiencies.filter(
-                            (_, i) => i !== index
-                          );
-                          setLanguageProficiencies(updated);
-                        }}
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-800 hover:bg-red-100"
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile stacked view */}
-          <div className="flex flex-col gap-4 md:hidden">
-            {languageProficiencies.map((prof, index) => (
-              <div
-                key={prof.id ?? `lang-${index}`} // fallback to index if id missing
-                className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
-              >
-                          <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                    Language
-                  </label>
-                  <Select
-                    value={prof.language}
-                    onValueChange={(value) => {
-                      const updated = [...languageProficiencies];
-                      updated[index] = { ...prof, language: value };
-                      setLanguageProficiencies(updated);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="grid gap-6">
+                  {/* ---- Skill Types Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Skill Types</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       {[
-                        "Arabic",
-                        "Bengali",
-                        "Chinese",
-                        "English",
-                        "French",
-                        "German",
-                        "Hindi",
-                        "Indonesian",
-                        "Italian",
-                        "Japanese",
-                        "Korean",
-                        "Malay",
-                        "Portuguese",
-                        "Russian",
-                        "Spanish",
-                        "Tamil",
-                        "Thai",
-                        "Turkish",
-                        "Vietnamese",
-                        "Other",
-                      ].map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        { label: "Soft Skills", key: "SoftSkills" },
+                        { label: "Hard Skills", key: "HardSkills" },
+                      ].map((field) => {
+                        const key = field.key as keyof typeof candidateProfile.exp_skill;
+                        const value = candidateProfile.exp_skill[key] ?? "";
 
-                {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
-                  <div key={skill}>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                      {skill}
-                    </label>
-                    <Select
-                      value={
-                        prof[skill.toLowerCase() as keyof LanguageProficiency]
-                          ? String(
-                              prof[skill.toLowerCase() as keyof LanguageProficiency]
-                            )
-                          : ""
-                      }
-                      onValueChange={(value) => {
-                        const updated = [...languageProficiencies];
-                        updated[index] = {
-                          ...prof,
-                          [skill.toLowerCase()]: value,
-                        };
-                        setLanguageProficiencies(updated);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["Expert", "Intermediate", "Beginner"].map((level) => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
+                        return (
+                          <div key={key} className="w-full">
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              {field.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) =>
+                                setCandidateProfile({
+                                  ...candidateProfile,
+                                  exp_skill: {
+                                    ...candidateProfile.exp_skill,
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                            />
+                          </div>
+                        );
+                      })}
+
+                      {/* Save Skills button — unchanged style/location */}
+                      <div className="mt-4">
+                        <SkillsSubmission
+                          exp_skill={candidateProfile.exp_skill}
+                          languageProficiencies={languageProficiencies}
+                          userEmail={session?.user?.email || ""}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                          }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ---- Language Proficiency Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <CardTitle>Language Proficiency</CardTitle>
+                        <Button
+                          onClick={() => {
+                            setLanguageProficiencies([
+                              ...languageProficiencies,
+                              {
+                                id: Date.now(),
+                                language: "",
+                                reading: "",
+                                writing: "",
+                                listening: "",
+                                speaking: "",
+                              },
+                            ]);
+                          }}
+                          className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
+                        >
+                          + Add Language
+                        </Button>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent>
+                      {/* Desktop table view */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-sm md:text-base">
+                          <thead>
+                            <tr className="border-b">
+                              {[
+                                "Language",
+                                "Reading",
+                                "Writing",
+                                "Listening",
+                                "Speaking",
+                                "Action",
+                              ].map((heading) => (
+                                <th
+                                  key={heading}
+                                  className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
+                                >
+                                  {heading}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {languageProficiencies.map((prof, index) => (
+                              <tr key={prof.id || index} className="border-b">
+                                <td className="p-2 min-w-[160px]">
+                                  <Select
+                                    value={prof.language}
+                                    onValueChange={(value) => {
+                                      const updated = [...languageProficiencies];
+                                      updated[index] = { ...prof, language: value };
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full md:w-[180px]">
+                                      <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {[
+                                        "Arabic",
+                                        "Bengali",
+                                        "Chinese",
+                                        "English",
+                                        "French",
+                                        "German",
+                                        "Hindi",
+                                        "Indonesian",
+                                        "Italian",
+                                        "Japanese",
+                                        "Korean",
+                                        "Malay",
+                                        "Portuguese",
+                                        "Russian",
+                                        "Spanish",
+                                        "Tamil",
+                                        "Thai",
+                                        "Turkish",
+                                        "Vietnamese",
+                                        "Other",
+                                      ].map((lang) => (
+                                        <SelectItem key={lang} value={lang}>
+                                          {lang}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {["reading", "writing", "listening", "speaking"].map(
+                                  (skill) => (
+                                    <td key={skill + prof.id} className="p-2 min-w-[140px]">
+                                      <Select
+                                        value={String(
+                                          prof[skill as keyof LanguageProficiency]
+                                        )}
+                                        onValueChange={(value) => {
+                                          const updated = [...languageProficiencies];
+                                          updated[index] = { ...prof, [skill]: value };
+                                          setLanguageProficiencies(updated);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full md:w-[140px]">
+                                          <SelectValue placeholder="Select level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {["Expert", "Intermediate", "Beginner"].map(
+                                            (level) => (
+                                              <SelectItem key={level} value={level}>
+                                                {level}
+                                              </SelectItem>
+                                            )
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                  )
+                                )}
+
+                                <td className="p-2 text-center">
+                                  <Button
+                                    onClick={() => {
+                                      const updated = languageProficiencies.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                  >
+                                    Delete
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile stacked view */}
+                      <div className="flex flex-col gap-4 md:hidden">
+                        {languageProficiencies.map((prof, index) => (
+                          <div
+                            key={prof.id ?? `lang-${index}`} // fallback to index if id missing
+                            className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
+                          >
+                            <div>
+                              <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                Language
+                              </label>
+                              <Select
+                                value={prof.language}
+                                onValueChange={(value) => {
+                                  const updated = [...languageProficiencies];
+                                  updated[index] = { ...prof, language: value };
+                                  setLanguageProficiencies(updated);
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "Arabic",
+                                    "Bengali",
+                                    "Chinese",
+                                    "English",
+                                    "French",
+                                    "German",
+                                    "Hindi",
+                                    "Indonesian",
+                                    "Italian",
+                                    "Japanese",
+                                    "Korean",
+                                    "Malay",
+                                    "Portuguese",
+                                    "Russian",
+                                    "Spanish",
+                                    "Tamil",
+                                    "Thai",
+                                    "Turkish",
+                                    "Vietnamese",
+                                    "Other",
+                                  ].map((lang) => (
+                                    <SelectItem key={lang} value={lang}>
+                                      {lang}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
+                              <div key={skill}>
+                                <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                  {skill}
+                                </label>
+                                <Select
+                                  value={
+                                    prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      ? String(
+                                        prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      )
+                                      : ""
+                                  }
+                                  onValueChange={(value) => {
+                                    const updated = [...languageProficiencies];
+                                    updated[index] = {
+                                      ...prof,
+                                      [skill.toLowerCase()]: value,
+                                    };
+                                    setLanguageProficiencies(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select level" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {["Expert", "Intermediate", "Beginner"].map((level) => (
+                                      <SelectItem key={level} value={level}>
+                                        {level}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+
+                            <div className="pt-2">
+                              <Button
+                                onClick={() => {
+                                  const updated = languageProficiencies.filter(
+                                    (_, i) => i !== index
+                                  );
+                                  setLanguageProficiencies(updated);
+                                }}
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
+                              >
+                                Delete Language
+                              </Button>
+                            </div>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => {
-                      const updated = languageProficiencies.filter(
-                        (_, i) => i !== index
-                      );
-                      setLanguageProficiencies(updated);
-                    }}
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
-                  >
-                    Delete Language
-                  </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  </div>
-)}
+            )}
 
 
             {activeTab === "neuro_strength" && (
@@ -2083,7 +2097,7 @@ export default function CandidateDashboard() {
                     </div>
                   )}
 
-                  <NeuroStrengthSubmission 
+                  <NeuroStrengthSubmission
                     selectedStrengths={selectedStrengths}
                     onSave={() => {
                       calculateProfileCompletion();
@@ -2205,57 +2219,60 @@ export default function CandidateDashboard() {
                       })}
                     </CardContent>
                   </Card>
-                  </div>
+                </div>
 
-                  <div className="flex justify-end mt-4">
+                <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
                   />
-                  </div>
                 </div>
-              )}
+              </div>
+            )}
 
             {activeTab === "mock interview" && (
-                    <>
-                      {mockInterviewStep === "setup" && (
-                        <MockInterviewSetupPage onNavigate={(target) => {
-                          if (target === "interview") {
-                            setMockInterviewStep("process");
-                          }
-                        }} />
-                      )}
+              <>
+                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
+                {mockInterviewStep === "setup" && (
+                  <MockInterviewSetupPage onNavigate={(target) => {
+                    if (target === "interview") {
+                      setMockInterviewStep("process");
+                    }
+                  }} />
+                )}
 
-                      {mockInterviewStep === "process" && (
-                        <MockInterviewProcessPage onNavigate={(target) => {
-                          if (target === "feedback") {
-                            setMockInterviewStep("feedback");
-                          }
-                        }} />
-                      )}
+                {mockInterviewStep === "process" && (
+                  <MockInterviewProcessPage onNavigate={(target) => {
+                    if (target === "feedback") {
+                      setMockInterviewStep("feedback");
+                    }
+                  }} />
+                )}
 
-                      {mockInterviewStep === "feedback" && (
-                        <MockInterviewFeedbackPage onNavigate={(target) => {
-                          if (target === "setup") {
-                            setMockInterviewStep("setup");
-                          }
-                        }} />
-                      )}
-                    </>
-                  )}
+                {mockInterviewStep === "feedback" && (
+                  <MockInterviewFeedbackPage onNavigate={(target) => {
+                    if (target === "setup") {
+                      setMockInterviewStep("setup");
+                    }
+                  }} />
+                )}
+              </>
+            )}
 
-                  {activeTab === "Report" && (
-                    <ReportPage />
-                  )}
+            {activeTab === "Report" && (
+              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
+                <ReportPage /></>
+            )}
 
             {activeTab === "Appointment" && (
               <AppointmentPage />
             )}
-              
+
           </div>
         </div>
+        
       </div>
     </div>
   );

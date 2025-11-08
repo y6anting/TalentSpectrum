@@ -25,6 +25,7 @@ import MockInterviewSetupPage from "./mock-interview/setup/page";
 import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
 import ReportPage from "./Report/page";
+import AppointmentPage from "./Appointment/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -890,7 +891,7 @@ export default function CandidateDashboard() {
 
   const currentYear = new Date().getFullYear();
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
   if (isLoading) {
     return (
@@ -1170,6 +1171,7 @@ const handleClosePopup = () => {
 const handleRemove = (index: number) => {
   setAppointmentBookedSessions((prev) => prev.filter((_, i) => i !== index));
 };
+  // Appointment helpers moved to Appointment/page.tsx
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -1195,115 +1197,119 @@ const handleRemove = (index: number) => {
             <div className="lg:sticky lg:top-8">
               <Card>
                 <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                    {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
+                      {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
+                      <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
-                    <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-[#635bff]">Profile Completion</span>
+                      <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-[#635bff] h-2 rounded-full"
+                        style={{ width: `${candidateProfile.profileCompletion}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#635bff]">Profile Completion</span>
-                    <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-[#635bff] h-2 rounded-full"
-                      style={{ width: `${candidateProfile.profileCompletion}%` }}
-                    />
-                  </div>
-                </div>
-                <nav className="space-y-2">
-                  {[
-                    { id: "overview", label: "Overview", icon: LayoutDashboard },
-                    { id: "browse jobs", label: "Browse Jobs", icon: Search },
-                    { id: "applications", label: "My Applications", icon: LetterTextIcon },
-                    { id: "saved", label: "Saved Jobs", icon: Heart },
-                    { id: "profile", label: "Profile Settings", icon: Settings, children: [
-                      { id: "profile config", label: "Profile Data", icon: User },
-                      { id: "education", label: "Education", icon: Book },
-                      { id: "experience", label: "Experience", icon: Briefcase },
-                      { id: "skills", label: "Skills", icon: HandFist },
-                      { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
-                      { id: "environment", label: "Preferred Environment", icon: House },
-                    ],},
-                    { id: "job coach", label: "Job Coach", icon: UserStar, children: [
-                      { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
-                      { id: "Appointment", label: "Appointment", icon: CalendarClock },
-                      { id: "Report", label: "Report", icon: FileText },
-                    ],},
+                  <nav className="space-y-2">
+                    {[
+                      { id: "overview", label: "Overview", icon: LayoutDashboard },
+                      { id: "browse jobs", label: "Browse Jobs", icon: Search },
+                      { id: "applications", label: "My Applications", icon: LetterTextIcon },
+                      { id: "saved", label: "Saved Jobs", icon: Heart },
+                      {
+                        id: "profile", label: "Profile Settings", icon: Settings, children: [
+                          { id: "profile config", label: "Profile Data", icon: User },
+                          { id: "education", label: "Education", icon: Book },
+                          { id: "experience", label: "Experience", icon: Briefcase },
+                          { id: "skills", label: "Skills", icon: HandFist },
+                          { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+                          { id: "environment", label: "Preferred Environment", icon: House },
+                        ],
+                      },
+                      {
+                        id: "job coach", label: "Job Coach", icon: UserStar, children: [
+                          { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
+                          { id: "Appointment", label: "Appointment", icon: CalendarClock },
+                          { id: "Report", label: "Report", icon: FileText },
+                        ],
+                      },
 
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    const hasChildren = Boolean(item.children);
-                    const isOpen = openDropdown === item.id;
-                    
-                    return (
-                      <div key={item.id}>
-                        <button
-                          onClick={() => {
-                            if (hasChildren) {
-                              setOpenDropdown(isOpen ? null : item.id);
-                            } else {
-                              handleTabChange(item.id);
-                            }
-                          }}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                            activeTab === item.id
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const hasChildren = Boolean(item.children);
+                      const isOpen = !!openDropdowns[item.id];
+
+                      return (
+                        <div key={item.id}>
+                          <button
+                            onClick={() => {
+                              if (hasChildren) {
+                                setOpenDropdowns((prev) => ({
+                                  ...prev,
+                                  [item.id]: !prev[item.id],
+                                }));
+                              } else {
+                                handleTabChange(item.id);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === item.id
                               ? "bg-[#635bff] text-white"
                               : "text-[#3a4043] hover:bg-gray-100"
-                          } hover:cursor-pointer`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {item.label}
-                          </div>
+                              } hover:cursor-pointer`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              {item.label}
+                            </div>
 
-                          {hasChildren && (
-                            <svg
-                              className={`h-4 w-4 transform transition-transform ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )}
-                        </button>
+                            {hasChildren && (
+                              <svg
+                                className={`h-4 w-4 transform transition-transform ${isOpen ? "rotate-180" : ""
+                                  }`}
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                          </button>
 
-                        {hasChildren && isOpen && (
-                          <div className="ml-6 mt-1 space-y-1">
-                            {item.children?.map((child) => {
-                              const ChildIcon = child.icon;
-                              return (
-                                <button
-                                  key={child.id}
-                                  onClick={() => handleTabChange(child.id)}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                                    activeTab === child.id
+                          {hasChildren && isOpen && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {item.children?.map((child) => {
+                                const ChildIcon = child.icon;
+                                return (
+                                  <button
+                                    key={child.id}
+                                    onClick={() => handleTabChange(child.id)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === child.id
                                       ? "bg-[#635bff] text-white"
                                       : "text-[#3a4043] hover:bg-gray-100"
-                                  } hover:cursor-pointer`}
-                                >
-                                  <ChildIcon className="h-4 w-4" />
-                                  {child.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </nav>
-              </CardContent>
-            </Card>
+                                      } hover:cursor-pointer`}
+                                  >
+                                    <ChildIcon className="h-4 w-4" />
+                                    {child.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </nav>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
@@ -1341,11 +1347,13 @@ const handleRemove = (index: number) => {
                         }}
                         className="rounded-xl overflow-hidden hover:cursor-pointer"
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        onClick={() => {card.icon == Briefcase 
-                          ? handleTabChange("applications") 
-                          : card.icon == Heart 
-                          ? handleTabChange("saved") 
-                          : null}}
+                        onClick={() => {
+                          card.icon == Briefcase
+                            ? handleTabChange("applications")
+                            : card.icon == Heart
+                              ? handleTabChange("saved")
+                              : null
+                        }}
                       >
                         <Card>
                           <CardContent className="p-6 text-center">
@@ -1595,7 +1603,7 @@ const handleRemove = (index: number) => {
                               {field.label}
                               {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
-            
+
                             {field.type === "select" ? (
                               <Select
                                 value={
@@ -1604,10 +1612,10 @@ const handleRemove = (index: number) => {
                                   ] as string) || ""
                                 }
                                 onValueChange={(val) => {
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                  setCandidateProfile({
+                                    ...candidateProfile,
+                                    personalIdentifiers: {
+                                      ...candidateProfile.personalIdentifiers,
                                       [field.key as string]: val,
                                     },
                                     name: field.key === "fullName" ? val : candidateProfile.name,
@@ -1618,9 +1626,8 @@ const handleRemove = (index: number) => {
                                   }
                                 }}
                               >
-                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${
-                                  errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
-                                }`}>
+                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
+                                  }`}>
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
@@ -1633,7 +1640,7 @@ const handleRemove = (index: number) => {
                               </Select>
                             ) : (
                               <>
-                        <input
+                                <input
                                   type={field.type}
                                   value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers] || ""}
                                   onChange={(e) => {
@@ -1657,28 +1664,27 @@ const handleRemove = (index: number) => {
 
                                     setErrors({ ...errors, [field.key]: error });
 
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                    setCandidateProfile({
+                                      ...candidateProfile,
+                                      personalIdentifiers: {
+                                        ...candidateProfile.personalIdentifiers,
                                         [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
                                       },
                                       name: field.key === "fullName" ? e.target.value : candidateProfile.name,
                                       email: field.key === "emailAddress" ? e.target.value : candidateProfile.email,
                                     });
                                   }}
-                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${
-                                    errors[field.key as string]
-                                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
-                                      : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
-                                  }`}
+                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${errors[field.key as string]
+                                    ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
+                                    : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
+                                    }`}
                                 />
                                 {errors[field.key as string] && (
                                   <p className="text-red-500 text-xs mt-1">{errors[field.key as string]}</p>
                                 )}
                               </>
                             )}
-                      </div>
+                          </div>
                         ))}
                       </div>
 
@@ -1792,30 +1798,30 @@ const handleRemove = (index: number) => {
                 </div>
 
                 <div className="flex justify-end mb-4">
-                    <Button
-                      onClick={() =>
-                        setEducations([
-                          ...educations,
-                          {
-                            id: Date.now(),
-                            level: "",
-                            fieldOfStudy: "",
-                            institution: "",
-                            graduationYear: null,
-                            cgpa_grade: "",
-                            award: "",
-                          },
-                        ])
-                      }
-                      className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                    >
-                      + Add Education
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() =>
+                      setEducations([
+                        ...educations,
+                        {
+                          id: Date.now(),
+                          level: "",
+                          fieldOfStudy: "",
+                          institution: "",
+                          graduationYear: null,
+                          cgpa_grade: "",
+                          award: "",
+                        },
+                      ])
+                    }
+                    className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+                  >
+                    + Add Education
+                  </Button>
+                </div>
 
                 <div className="flex justify-end">
-                  <EducationSubmission 
-                    educations={educations} 
+                  <EducationSubmission
+                    educations={educations}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
@@ -1876,7 +1882,7 @@ const handleRemove = (index: number) => {
                                   </SelectContent>
                                 </Select>
                               ) : (
-                              <input
+                                <input
                                   type={field.type}
                                   value={String(exp[field.key as keyof typeof exp] ?? "")}
                                   onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
@@ -1920,7 +1926,7 @@ const handleRemove = (index: number) => {
                                 className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                               />
                             )}
-                            </div>
+                          </div>
 
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -2471,51 +2477,51 @@ const handleRemove = (index: number) => {
                       })}
                     </CardContent>
                   </Card>
-                  </div>
+                </div>
 
-                  <div className="flex justify-end mt-4">
+                <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
                   />
-                  </div>
                 </div>
-              )}
+              </div>
+            )}
 
             {activeTab === "mock interview" && (
-                    <>
-                    <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
-                      {mockInterviewStep === "setup" && (
-                        <MockInterviewSetupPage onNavigate={(target) => {
-                          if (target === "interview") {
-                            setMockInterviewStep("process");
-                          }
-                        }} />
-                      )}
+              <>
+                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
+                {mockInterviewStep === "setup" && (
+                  <MockInterviewSetupPage onNavigate={(target) => {
+                    if (target === "interview") {
+                      setMockInterviewStep("process");
+                    }
+                  }} />
+                )}
 
-                      {mockInterviewStep === "process" && (
-                        <MockInterviewProcessPage onNavigate={(target) => {
-                          if (target === "feedback") {
-                            setMockInterviewStep("feedback");
-                          }
-                        }} />
-                      )}
+                {mockInterviewStep === "process" && (
+                  <MockInterviewProcessPage onNavigate={(target) => {
+                    if (target === "feedback") {
+                      setMockInterviewStep("feedback");
+                    }
+                  }} />
+                )}
 
-                      {mockInterviewStep === "feedback" && (
-                        <MockInterviewFeedbackPage onNavigate={(target) => {
-                          if (target === "setup") {
-                            setMockInterviewStep("setup");
-                          }
-                        }} />
-                      )}
-                    </>
-                  )}
+                {mockInterviewStep === "feedback" && (
+                  <MockInterviewFeedbackPage onNavigate={(target) => {
+                    if (target === "setup") {
+                      setMockInterviewStep("setup");
+                    }
+                  }} />
+                )}
+              </>
+            )}
 
             {activeTab === "Report" && (
               <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
-              <ReportPage /></>
+                <ReportPage /></>
             )}
 
             {activeTab === "Appointment" && (
@@ -2865,6 +2871,7 @@ const handleRemove = (index: number) => {
 
           </div>
         </div>
+        <AppointmentPage />
       </div>
     </div>
   );

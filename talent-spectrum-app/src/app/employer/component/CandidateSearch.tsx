@@ -159,10 +159,10 @@ export default function CandidateList() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#3a4043] mb-2">Candidate Pool</h1>
+          <h1 className="text-2xl font-bold text-[#3a4043] mb-2">Candidate Pool</h1>
           <p className="text-[#6f7a80]">
             Discover and connect with exceptional neurodivergent talent
           </p>

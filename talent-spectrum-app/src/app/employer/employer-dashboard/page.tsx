@@ -310,7 +310,7 @@ export default function EmployerDashboard() {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEditJob = async () => {
+const handleSaveEditJob = async () => {
     if (!editJobData || !editJobData.id) {
       setErrors({ general: "No job selected" });
       return;
@@ -365,6 +365,9 @@ export default function EmployerDashboard() {
           prev.map((j) => (j.id === updated.id ? updated : j))
         );
       }
+
+      // Show success alert here
+      alert("Job edited successfully!"); // <--- ADDED THIS LINE
 
       setIsEditModalOpen(false);
       setSelectedJob(null);

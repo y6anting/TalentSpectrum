@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react"; // Import useEffect
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/card";
 import { Button } from "@/app/components/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/select";
@@ -27,27 +27,55 @@ export default function EditJobModal({ isOpen, editJobData, setEditJobData, erro
   const [department, setDepartment] = useState<string>((editJobData as any)?.department || "");
 
   // Skills management (mirror Post Job skills UI)
-  const initialSkills = useMemo(
-    () => (typeof editJobData?.soft_skills === "string"
-      ? editJobData.soft_skills.split(",").map(s => s.trim()).filter(Boolean)
-      : []),
+  const initialSkillsValue = useMemo( // Renamed to avoid conflict with state variable
+    () => {
+      const skillsArray = typeof editJobData?.soft_skills === "string"
+        ? editJobData.soft_skills.split(",").map(s => s.trim()).filter(Boolean)
+        : [];
+      console.log("DEBUG: useMemo calculated initialSkillsValue:", skillsArray); // Debug log
+      return skillsArray;
+    },
     [editJobData?.soft_skills]
   );
-  const [skills, setSkills] = useState<string[]>(initialSkills);
+
+  const [skills, setSkills] = useState<string[]>([]); // Initialize as empty, will be set by useEffect
   const [newSkill, setNewSkill] = useState<string>("");
+
+  // EFFECT TO SYNCHRONIZE 'skills' STATE WITH 'editJobData.soft_skills' PROP
+  useEffect(() => {
+    console.log("DEBUG: useEffect triggered for soft_skills prop change."); // Debug log
+    console.log("DEBUG: Setting skills state to:", initialSkillsValue); // Debug log
+    setSkills(initialSkillsValue);
+    // Reset newSkill input when the modal's job data changes
+    setNewSkill("");
+  }, [initialSkillsValue]); // Depend on the memoized value
 
   const addSkill = () => {
     const skill = newSkill.trim();
-    if (!skill || skills.includes(skill)) return;
+    console.log("DEBUG: Attempting to add skill:", skill); // Debug log
+    console.log("DEBUG: Current skills state before add:", skills); // Debug log
+
+    if (!skill || skills.includes(skill)) {
+      console.log("DEBUG: Skill is empty or already exists. Not adding."); // Debug log
+      return;
+    }
     const next = [...skills, skill];
     setSkills(next);
     setNewSkill("");
+    // Update the parent's editJobData immediately
     setEditJobData((p: any) => ({ ...p, soft_skills: next.join(", ") }));
+    console.log("DEBUG: skills state after add:", next); // Debug log
+    console.log("DEBUG: editJobData.soft_skills updated to:", next.join(", ")); // Debug log
   };
+
   const removeSkill = (skillToRemove: string) => {
+    console.log("DEBUG: Attempting to remove skill:", skillToRemove); // Debug log
     const next = skills.filter(s => s !== skillToRemove);
     setSkills(next);
+    // Update the parent's editJobData immediately
     setEditJobData((p: any) => ({ ...p, soft_skills: next.join(", ") }));
+    console.log("DEBUG: skills state after remove:", next); // Debug log
+    console.log("DEBUG: editJobData.soft_skills updated to:", next.join(", ")); // Debug log
   };
 
   // Full accommodations list (parity with Post Job)
@@ -220,6 +248,11 @@ export default function EditJobModal({ isOpen, editJobData, setEditJobData, erro
               />
               <Button type="button" variant="outline" onClick={addSkill}><Plus className="h-4 w-4" /></Button>
             </div>
+            {/* CORRECTED: Wrapped console.log in an IIFE that returns null */}
+            {(() => {
+              console.log("DEBUG: skills array for rendering:", skills);
+              return null;
+            })()}
             {skills.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {skills.map(skill => (

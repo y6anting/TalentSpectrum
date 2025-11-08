@@ -1556,7 +1556,7 @@ export default function CandidateDashboard() {
               </div>
             )}
 
-            {activeTab === "experience" && (
+             {activeTab === "experience" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
 
@@ -1584,7 +1584,7 @@ export default function CandidateDashboard() {
                             { label: "Title", key: "title", type: "text" },
                             { label: "Seniority", key: "seniorityLevel", type: "select", options: ["Non-executive", "Executive", "Managerial", "Head of Department", "C-suite"] },
                             { label: "Industry", key: "industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"] },
-                            { label: "Start Date", key: "start", type: "date" },
+                            { label: "Start Date", key: "start", type: "month" }, // <--- CHANGE HERE: type to "month"
                           ].map((field) => (
                             <div key={field.key}>
                               <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -1610,7 +1610,8 @@ export default function CandidateDashboard() {
                               ) : (
                               <input
                                   type={field.type}
-                                  value={String(exp[field.key as keyof typeof exp] ?? "")}
+                                  // Ensure value is formatted as YYYY-MM for type="month"
+                                  value={String(exp[field.key as keyof typeof exp] ?? "").substring(0, 7)} // <--- CHANGE HERE: substring(0,7)
                                   onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
                                   className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                                 />
@@ -1644,8 +1645,9 @@ export default function CandidateDashboard() {
                             </div>
                             {!exp.isCurrent && (
                               <input
-                                type="date"
-                                value={exp.end || ""}
+                                type="month" // <--- CHANGE HERE: type to "month"
+                                // Ensure value is formatted as YYYY-MM for type="month"
+                                value={exp.end ? exp.end.substring(0, 7) : ""} // <--- CHANGE HERE: substring(0,7)
                                 onChange={(e) =>
                                   updateExperience(exp.id, { end: e.target.value })
                                 }

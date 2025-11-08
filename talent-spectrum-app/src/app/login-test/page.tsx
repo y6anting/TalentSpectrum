@@ -54,7 +54,7 @@ interface EmployerProfile {
   work_mode: string;
   experience_level: string;
   location: string;
-  salary_range: number;
+  salary_range: number; // This is the integer code
   job_summary: string;
   job_requirements: string | null;
   soft_skills: string | null;
@@ -240,6 +240,23 @@ export default function DashboardPage() {
     );
   };
 
+  // NEW: Helper function to format salary range
+  const formatSalaryRange = (rangeCode: number | undefined): string => {
+    if (rangeCode === undefined || rangeCode === null) {
+      return "N/A";
+    }
+    switch (rangeCode) {
+      case 1: return "Below RM 3,000";
+      case 2: return "RM 3,000 - RM 5,000";
+      case 3: return "RM 5,001 - RM 8,000";
+      case 4: return "RM 8,001 - RM 12,000";
+      case 5: return "RM 12,001 - RM 18,000";
+      case 6: return "RM 18,001 - RM 25,000";
+      case 7: return "Above RM 25,000";
+      default: return `Unknown (Code: ${rangeCode})`;
+    }
+  };
+
 
   // If status is "authenticated", session.user will contain the data
   return (
@@ -280,50 +297,133 @@ export default function DashboardPage() {
               {candidates.map((candidate) => (
                 <div key={candidate.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">{candidate.name}</h3>
-                    <p className="text-gray-700 text-sm mb-2">{candidate.title} {candidate.location && `- ${candidate.location}`}</p>
-
-                    {/* Basic Info */}
-                    {renderDetail("ID", candidate.id)}
-                    {renderDetail("User ID", candidate.user_id)}
-                    {renderDetail("Email", candidate.candidate_email)}
-                    {renderDetail("Profile Completion", `${candidate.profile_completion}%`)}
-                    {renderDetail("Years Experience", candidate.experience)}
-                    {renderDetail("Status", candidate.status)}
-                    {renderDetail("Availability", candidate.availability)}
-                    {renderDetail("Work Style", candidate.workStyle)}
-                    {renderDetail("Salary Expectation", candidate.salaryExpectation)}
-                    {renderDetail("Match Score", candidate.matchScore)}
-                    {renderDetail("Last Active", candidate.lastActive)}
-
-                    {/* Skills & Strengths (Derived) */}
-                    {candidate.skills.length > 0 && (
-                      <p className="text-gray-600 text-sm mt-2"><strong>Skills:</strong> {candidate.skills.join(", ")}</p>
-                    )}
-                    {candidate.neurodivergentStrengths.length > 0 && (
-                      <p className="text-gray-600 text-sm"><strong>Neurodivergent Strengths:</strong> {candidate.neurodivergentStrengths.join(", ")}</p>
-                    )}
-
-                    {/* Accommodations (Derived & Raw) */}
-                    {candidate.accommodationsRequested && (
-                      <p className="text-blue-600 text-sm font-medium mt-2">
-                        <strong>Accommodations Requested:</strong> {candidate.accommodationDetails}
-                      </p>
-                    )}
-                    {renderDetail("Raw Accommodations", candidate.raw_accommodations)}
-
-                    {/* Raw JSON Fields - Displayed using JSON.stringify for full detail */}
-                    {renderDetail("Preferences (Raw)", candidate.raw_preferences)}
-                    {renderDetail("Personal Identifiers (Raw)", candidate.raw_personal_identifiers)}
-                    {renderDetail("Education (Raw)", candidate.raw_education)}
-                    {renderDetail("Experience (Raw)", candidate.raw_experience)}
-                    {renderDetail("Skills (Raw)", candidate.raw_skills)}
-                    {renderDetail("Language Proficiencies (Raw)", candidate.raw_language_proficiencies)}
-                    {renderDetail("Environment (Raw)", candidate.raw_environment)}
-                    {renderDetail("Neurodivergent Strengths (Raw)", candidate.raw_neurodivergent_strengths)}
-                    {renderDetail("Applications (Raw)", candidate.raw_applications)}
-                    {renderDetail("Saved Jobs (Raw)", candidate.raw_saved_jobs)}
-
+                    {<p className="text-gray-600 text-xs mt-2"><strong>Candidate Name:</strong> {candidate.raw_personal_identifiers.fullName}</p>}
+                    {<p className="text-gray-600 text-xs mt-2"><strong>NRIC:</strong> {candidate.raw_personal_identifiers.nric}</p>}
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Education:</strong>
+                      {Array.isArray(candidate.raw_education) && candidate.raw_education.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {candidate.raw_education.map((edu: any, index: number) => (
+                            <li key={edu.id || index}>
+                              {edu.level && <span>{edu.level}</span>}
+                              {edu.fieldOfStudy && <span> in {edu.fieldOfStudy}</span>}
+                              {edu.institution && <span> from {edu.institution}</span>}
+                              {edu.graduationYear && <span> ({edu.graduationYear})</span>}
+                              {edu.cgpa_grade && <span> – CGPA: {edu.cgpa_grade}</span>}
+                              {edu.award && <span> – {edu.award}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span> No education data </span>
+                      )}
+                    </div>
+                    }
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Experience:</strong>
+                      {Array.isArray(candidate.raw_experience) && candidate.raw_experience.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {candidate.raw_experience.map((exp: any) => (
+                            <li key={exp.id} className="mb-1">
+                              {exp.Title && <span className="font-medium">{exp.Title}</span>}
+                              {exp.employer && <span> at {exp.employer}</span>}
+                              {exp.start && (
+                                <span>
+                                  {" "}
+                                  ({exp.start} – {exp.isCurrent ? "Present" : exp.end || "N/A"})
+                                </span>
+                              )}
+                              {exp.ProjectHighlights && (
+                                <div className="ml-2 text-gray-500">
+                                  <strong>Projects:</strong> {exp.ProjectHighlights}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span> No experience data </span>
+                      )}
+                    </div>
+                    }   
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Skills:</strong>
+                      {candidate.raw_skills ? (
+                        <div className="ml-4">
+                          {candidate.raw_skills.HardSkills && candidate.raw_skills.HardSkills.length > 0 && (
+                            <div>
+                              <strong>Hard Skills:</strong>
+                              <ul className="list-disc ml-4">
+                                {candidate.raw_skills.HardSkills.map((skill: string, index: number) => (
+                                  <li key={index}>{skill}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {candidate.raw_skills.SoftSkills && candidate.raw_skills.SoftSkills.length > 0 && (
+                            <div className="mt-1">
+                              <strong>Soft Skills:</strong>
+                              <ul className="list-disc ml-4">
+                                {candidate.raw_skills.SoftSkills.map((skill: string, index: number) => (
+                                  <li key={index}>{skill}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span> No skills data </span>
+                      )}
+                    </div>
+                    }    
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Language Proficiencies:</strong>
+                      {Array.isArray(candidate.raw_language_proficiencies) &&
+                      candidate.raw_language_proficiencies.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {candidate.raw_language_proficiencies.map((lang: any, index: number) => (
+                            <li key={index}>
+                              <span className="font-medium">{lang.language}</span> — 
+                              Reading: {lang.reading}, Writing: {lang.writing}, Listening: {lang.listening}, Speaking: {lang.speaking}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span> No language proficiency data </span>
+                      )}
+                    </div>
+                    }
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Environment:</strong>
+                      {candidate.raw_environment ? (
+                        <ul className="list-disc ml-4">
+                          {Object.entries(candidate.raw_environment)
+                            .filter(([_, value]) => value) // show only non-empty values
+                            .map(([key, value]) => (
+                              <li key={key}>
+                                <strong>{key}:</strong> {String(value)}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <span> No environment data </span>
+                      )}
+                    </div>
+                    }
+                    {<div className="text-gray-600 text-xs mt-2">
+                      <strong>Neurodivergent Strengths:</strong>
+                      {Array.isArray(candidate.raw_neurodivergent_strengths) &&
+                      candidate.raw_neurodivergent_strengths.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {candidate.raw_neurodivergent_strengths.map((strength: string, index: number) => (
+                            <li key={index}>{strength}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span> No neurodivergent strengths data </span>
+                      )}
+                    </div>
+                    }                                                                                               
                     {/* Timestamps */}
                     {candidate.created_at && <p className="text-gray-600 text-xs mt-2"><strong>Created At:</strong> {new Date(candidate.created_at).toLocaleString()}</p>}
                     {candidate.updated_at && <p className="text-gray-600 text-xs"><strong>Updated At:</strong> {new Date(candidate.updated_at).toLocaleString()}</p>}
@@ -372,7 +472,8 @@ export default function DashboardPage() {
                     {renderDetail("Work Mode", job.work_mode)}
                     {renderDetail("Experience Level", job.experience_level)}
                     {renderDetail("Location", job.location)}
-                    {renderDetail("Salary Range", `$${job.salary_range}`)}
+                    {/* UPDATED: Use formatSalaryRange helper */}
+                    {renderDetail("Salary Range", formatSalaryRange(job.salary_range))}
                     {renderDetail("Job Summary", job.job_summary)}
                     {renderDetail("Job Requirements", job.job_requirements)}
                     {renderDetail("Soft Skills", job.soft_skills)}

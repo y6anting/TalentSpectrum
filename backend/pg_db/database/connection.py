@@ -9,24 +9,42 @@ load_dotenv()
 
 Base = declarative_base()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = None # Initialize DATABASE_URL
 
-if DATABASE_URL:
-    print(f'Using SQLite: {DATABASE_URL}')
+# --- Step 1: Try to use SQLite first if DATABASE_URL is provided and starts with "sqlite" ---
+env_database_url = os.getenv("DATABASE_URL")
+
+if env_database_url and env_database_url.startswith("sqlite"):
+    DATABASE_URL = env_database_url
+    print(f'Using SQLite from DATABASE_URL: {DATABASE_URL}')
 else:
-    # Try to read PostgreSQL connection details
+    # --- Step 2: If no valid SQLite DATABASE_URL, try to construct PostgreSQL URL ---
+    print("SQLite DATABASE_URL not found or not a SQLite URL. Attempting to use PostgreSQL.")
+
     DB_USER = os.getenv("DB_USER")
     DB_PASSWORD = os.getenv("DB_PASSWORD")
     DB_HOST = os.getenv("DB_HOST")
     DB_PORT = os.getenv("DB_PORT")
     DB_NAME = os.getenv("DB_NAME")
+
+    # Add validation for PostgreSQL connection details (similar to your working code)
+    if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+        raise ValueError(
+            "One or more PostgreSQL database environment variables (DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME) "
+            "are not set. Cannot connect to PostgreSQL. "
+            "Ensure these are set in your .env file or environment, or provide a valid SQLite DATABASE_URL."
+        )
+
+    # Construct PostgreSQL URL. Using psycopg2 as in your new code.
+    # If you prefer psycopg (for psycopg3), change 'psycopg2' to 'psycopg'.
     DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     print(f'Using Supabase/PostgreSQL: {DATABASE_URL}')
 
-
+# --- Create the SQLAlchemy engine based on the determined DATABASE_URL ---
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
+    # PostgreSQL specific engine configuration
     engine = create_engine(
         DATABASE_URL,
         pool_size=5,
@@ -37,7 +55,6 @@ else:
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
 def get_db():
     db = SessionLocal()
     try:
@@ -46,11 +63,13 @@ def get_db():
         db.close()
 
 def create_tables():
+    # Note: Ensure all your SQLAlchemy models (e.g., LoginUser, Profile)
+    # are imported somewhere before this function is called,
+    # so that Base.metadata knows about them.
     Base.metadata.create_all(bind=engine)
 
 def drop_tables():
     Base.metadata.drop_all(bind=engine)
-
 
 
 

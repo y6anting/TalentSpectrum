@@ -34,6 +34,7 @@ class CandidateProfile(Base):
     neurodivergent_strengths = Column(JSON)  # Neurodivergent strengths
     applications = Column(JSON)  # Applications
     saved_jobs = Column(JSON)  # Saved jobs
+    exp_skill = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

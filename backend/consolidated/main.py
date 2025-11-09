@@ -61,6 +61,8 @@ if os.path.exists(LOGO_DIR):
 #     print("✅ Database tables created successfully")
 #     print("📚 API Documentation: http://localhost:8000/docs")
 
+create_tables()
+
 @app.get("/")
 def read_root():
     return {

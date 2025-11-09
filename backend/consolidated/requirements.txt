@@ -1,0 +1,56 @@
+# Database
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2
+pydantic
+python-multipart
+pydantic[email]
+python-dotenv
+
+# Resume Extractor
+fastapi
+uvicorn
+pypdf
+langchain==0.2.14
+langchain-core==0.2.36
+langchain-text-splitters
+langchain
+langchain-community==0.2.11
+langchain-google-genai==1.0.5
+google-generativeai
+python-dotenv
+python-multipart
+
+
+# Resume Feedback
+fastapi
+uvicorn
+python-dotenv
+langchain
+langchain-google-genai
+langchain-core
+pypdf
+python-multipart
+
+
+# TrainerBook
+fastapi
+uvicorn
+python-dotenv
+langchain
+langchain-google-genai
+langchain-community
+sentence-transformers
+pypdf
+pymongo
+langchain-mongodb
+tiktoken
+
+
+# Edge-tts
+fastapi
+uvicorn
+edge-tts
+python-multipart
+

@@ -139,7 +139,7 @@ const MethodSelection: React.FC<{
   job: Job;
 }> = ({ setFillMethod, backButtonRef, selectionHeaderRef, selectionCardsRef, setCurrentPage, job }) => (
   <div className="min-h-screen py-8 px-4">
-    <div className="max-w-[1400px] mx-auto">
+  <div className="page-wrap">
       <div ref={backButtonRef}>
         <Button
           variant="ghost"
@@ -1518,7 +1518,7 @@ export default function JobApplicationForm({ setCurrentPage }: JobApplicationFor
 
   return (
     <div className="min-h-screen py-8 px-4 bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto">
+  <div className="page-wrap">
         <div ref={backButtonRef}>
           <Button
             variant="ghost"

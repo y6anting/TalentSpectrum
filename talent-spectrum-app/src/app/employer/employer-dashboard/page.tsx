@@ -597,6 +597,8 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     fetchData();
   }, [session, status, router]);
 
+  
+
   const renderInputField = (
     label: string,
     field: string,
@@ -638,7 +640,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="page-wrap py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
@@ -650,9 +652,9 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-8 space-y-4">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="sticky top-[var(--app-header-height)]">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -738,7 +740,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div>
             {activeTab === "overview" && (
               <div className="space-y-4">
                 <div className="grid md:grid-cols-3 gap-6">

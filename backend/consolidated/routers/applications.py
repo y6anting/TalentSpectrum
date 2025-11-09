@@ -111,9 +111,6 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         return {"message": "Application submitted successfully", "application": new_application}
 
-    except HTTPException as e:
-        # Let intended HTTP errors pass through
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error applying to job: {e}")
@@ -128,8 +125,6 @@ async def get_candidate_applications(candidate_email: str, db: DbDep):
         applications = db.query(JobApplication).filter(JobApplication.candidate_id == candidate.id).all()
         return applications
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching applications: {e}")
 
@@ -159,8 +154,6 @@ async def get_employer_applications(employer_email: str, db: DbDep):
                 "salary": application.salary,
             })
         return apps
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching employer applications: {e}")
 
@@ -225,8 +218,6 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         return {"message": "Job saved successfully", "saved_job": new_saved_job}
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saving job: {e}")
@@ -241,8 +232,6 @@ async def get_saved_jobs(candidate_email: str, db: DbDep):
         saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_id == candidate.id).all()
         return saved_jobs
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching saved jobs: {e}")
 
@@ -258,8 +247,6 @@ async def unsave_job(saved_job_id: int, db: DbDep):
 
         return {"message": "Job removed from saved jobs"}
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error removing saved job: {e}")

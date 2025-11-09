@@ -170,9 +170,9 @@ export default function JobCoachCandidate() {
           <p className="text-[#6f7a80]">Here's your session management</p>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-8">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div>
             <div className="lg:sticky lg:top-8">
               <Card>
                 <CardContent className="p-6">
@@ -244,7 +244,7 @@ export default function JobCoachCandidate() {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+            <div>
             {activeTab === "candidates" && (
               <div className="space-y-6">
                 <div className="mb-6">
@@ -547,6 +547,7 @@ export default function JobCoachCandidate() {
                               <Button
                                 variant="outline"
                                 className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                                onClick={() => setActiveTab("appointment")}
                               >
                                 <Calendar className="w-4 h-4 mr-2" />
                                 Schedule

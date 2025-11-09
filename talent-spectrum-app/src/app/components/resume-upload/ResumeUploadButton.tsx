@@ -90,9 +90,9 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
           try {
             console.log(`Attempting to update DB for email: ${userEmail} with parsed data.`);
             const response = await fetch(
-              `http://127.0.0.1:8000/profiles/${userEmail}/resume`, // <--- Use userEmail here
+              `http://127.0.0.1:8000/profiles/${userEmail}`, // <--- Use userEmail here
               {
-                method: "PATCH",
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(dataToSet),
               }

@@ -471,11 +471,20 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
             </div> */}
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 py-6">
-              <Link href="/candidate/candidate-dashboard">
-                <Button className="w-fit bg-[#635BFF] hover:from-blue-700 hover:cursor-pointer hover:bg-[#5748e5] text-white px-8 py-3 rounded-md shadow-lg">
+              {/* <Link href="/candidate/candidate-dashboard">
+                <Button className="w-fit bg-[#635BFF] hover:from-blue-700 hover:cursor-pointer hover:bg-[#5748e5] text-white px-8 py-3 rounded-md shadow-lg"
+                onClick={() => {
+                  // Clear session data and redirect to setup
+                  sessionStorage.removeItem('mockInterviewSession');
+                  if (onNavigate) {
+                    onNavigate("setup");
+                  } else {
+                    router.push('/candidate/candidate-dashboard/mock-interview/setup');
+                  }
+                }}>
                   Back to Dashboard
                 </Button>
-              </Link>
+              </Link> */}
               <Button
                 variant="outline"
                 className="w-fit px-4 py-2 rounded-md 

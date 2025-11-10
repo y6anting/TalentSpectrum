@@ -73,7 +73,7 @@ class EmployerApplicationResponse(BaseModel):
 async def apply_to_job(db: DbDep, application: JobApplicationRequest):
     try:
         # Get candidate profile by email
-        candidate = db.query(CandidateProfile).filter(CandidateProfile.email == application.candidate_email).first()
+        candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == application.candidate_email).first()
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate profile not found")
 
@@ -84,7 +84,8 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         # Check if already applied
         existing_application = db.query(JobApplication).filter(
-            JobApplication.candidate_id == candidate.id,
+            # JobApplication.candidate_id == candidate.id,
+            JobApplication.candidate_email == candidate.candidate_email,
             JobApplication.job_title == job.job_title,
             JobApplication.company == job.employer_email.split('@')[0]
         ).first()
@@ -94,7 +95,8 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         # Create new application
         new_application = JobApplication(
-            candidate_id=candidate.id,
+            # candidate_id=candidate.id,
+            candidate_email = candidate.candidate_email,
             job_title=job.job_title,
             company=job.employer_email.split('@')[0].replace('.', ' ').replace('_', ' ').title(),
             applied_date=datetime.utcnow(),
@@ -111,9 +113,6 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         return {"message": "Application submitted successfully", "application": new_application}
 
-    except HTTPException as e:
-        # Let intended HTTP errors pass through
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error applying to job: {e}")
@@ -121,15 +120,14 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 @router.get("/applications/{candidate_email}")
 async def get_candidate_applications(candidate_email: str, db: DbDep):
     try:
-        candidate = db.query(CandidateProfile).filter(CandidateProfile.email == candidate_email).first()
+        candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == candidate_email).first()
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-        applications = db.query(JobApplication).filter(JobApplication.candidate_id == candidate.id).all()
+        # applications = db.query(JobApplication).filter(JobApplication.candidate_id == candidate.id).all()
+        applications = db.query(JobApplication).filter(JobApplication.candidate_email == candidate.candidate_email).all()
         return applications
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching applications: {e}")
 
@@ -159,8 +157,6 @@ async def get_employer_applications(employer_email: str, db: DbDep):
                 "salary": application.salary,
             })
         return apps
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching employer applications: {e}")
 
@@ -169,7 +165,7 @@ async def get_employer_applications(employer_email: str, db: DbDep):
 async def save_job(db: DbDep, saved_job: SavedJobRequest):
     try:
         # Get candidate profile by email
-        candidate = db.query(CandidateProfile).filter(CandidateProfile.email == saved_job.candidate_email).first()
+        candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == saved_job.candidate_email).first()
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate profile not found")
 
@@ -180,7 +176,7 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         # Check if already saved
         existing_saved_job = db.query(SavedJob).filter(
-            SavedJob.candidate_id == candidate.id,
+            SavedJob.candidate_email == candidate.candidate_email,
             SavedJob.job_title == job.job_title,
             SavedJob.company == job.employer_email.split('@')[0]
         ).first()
@@ -208,7 +204,7 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         # Create new saved job
         new_saved_job = SavedJob(
-            candidate_id=candidate.id,
+            candidate_email=candidate.candidate_email,
             job_title=job.job_title,
             company=job.employer_email.split('@')[0].replace('.', ' ').replace('_', ' ').title(),
             location=job.location,
@@ -225,8 +221,6 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         return {"message": "Job saved successfully", "saved_job": new_saved_job}
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saving job: {e}")
@@ -234,15 +228,13 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 @router.get("/saved/{candidate_email}")
 async def get_saved_jobs(candidate_email: str, db: DbDep):
     try:
-        candidate = db.query(CandidateProfile).filter(CandidateProfile.email == candidate_email).first()
+        candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == candidate_email).first()
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-        saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_id == candidate.id).all()
+        saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_email == candidate.candidate_email).all()
         return saved_jobs
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching saved jobs: {e}")
 
@@ -258,8 +250,6 @@ async def unsave_job(saved_job_id: int, db: DbDep):
 
         return {"message": "Job removed from saved jobs"}
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error removing saved job: {e}")

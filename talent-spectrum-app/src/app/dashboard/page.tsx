@@ -121,10 +121,10 @@ function CandidateDashboard({
 
   return (
     <div className="min-h-screen bg-[#faf9f7]">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+      <div className="page-wrap py-8">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="sticky top-[var(--app-header-height)]">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -182,7 +182,7 @@ function CandidateDashboard({
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div>
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <div>

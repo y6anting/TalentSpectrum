@@ -55,7 +55,7 @@ export default function CandidateList() {
       try {
         setIsLoading(true);
         setError(null);
-        const res = await fetch("http://127.0.0.1:8000/profiles/all/candidate-profiles");
+        const res = await fetch("http://127.0.0.1:8000/profiles/");
         if (!res.ok) throw new Error(`Failed to fetch profiles: ${res.status}`);
         const data = await res.json();
         const mapped = (Array.isArray(data) ? data : []).map((p: any) => {

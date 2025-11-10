@@ -74,7 +74,7 @@ export default function JobDetailsPage({ params, setCurrentPage }: JobDetailsPag
 
   return (
     <div className="min-h-screen py-10 px-4 bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto">
+  <div className="page-wrap">
         {/* Back Button */}
         <Button
           variant="ghost"

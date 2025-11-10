@@ -50,7 +50,7 @@ const DirectUpload: React.FC<DirectUploadProps> = ({
 
     try {
       const response = await axios.post<ParsedInfo>(
-        "http://localhost:8002/upload_pdf",
+        "http://localhost:8000/resume-extractor/upload_pdf",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },

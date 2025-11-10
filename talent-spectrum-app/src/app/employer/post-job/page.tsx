@@ -311,7 +311,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       {" "}
       {/* Adjusted for consistency with dashboard bg */}
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
+      <div className="page-wrap flex flex-col gap-6">
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div>

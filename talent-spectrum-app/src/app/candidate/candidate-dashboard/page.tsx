@@ -2263,7 +2263,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "Report" && (
               <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
-                <ReportPage /></>
+                <ReportPage handleTabChangeProp={() => handleTabChange("mock interview")}/></>
             )}
 
             {activeTab === "Appointment" && (

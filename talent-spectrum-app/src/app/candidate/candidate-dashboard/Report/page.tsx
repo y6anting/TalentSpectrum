@@ -64,7 +64,11 @@ const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
   );
 };
 
-const ReportPage: React.FC = () => {
+interface ReportPageProp {
+  handleTabChangeProp?: () => void;
+}
+
+const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
   const router = useRouter();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -613,28 +617,30 @@ const ReportPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="mb-4">
-                  <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mock Interview Completed Yet</h4>
-                  <p className="text-gray-600 mb-6">
-                    Complete a mock interview to get personalized feedback on your interview performance.
-                  </p>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="mb-4">
+                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                    <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mock Interview Completed Yet</h4>
+                    <p className="text-gray-600 mb-6">
+                      Complete a mock interview to get personalized feedback on your interview performance.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (handleTabChangeProp) handleTabChangeProp();
+                    }}
+                    className="bg-[#635BFF] hover:bg-[#5648E8] text-white hover:cursor-pointer"
+                  >
+                    Start Mock Interview
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => router.push('/candidate/candidate-dashboard')}
-                  className="bg-[#635BFF] hover:bg-[#5648E8] text-white hover:cursor-pointer"
-                >
-                  Start Mock Interview
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Next Steps */}
+          {/* Next Steps */}
         {/* <Card className="mt-6 border-0 shadow-lg bg-gradient-to-r from-[#635BFF]/10 to-purple-100/50 backdrop-blur-sm">
           <CardContent className="p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Next Steps</h3>

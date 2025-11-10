@@ -17,7 +17,9 @@ from routers import (
     tts,
     mock_interview,
     trainerbook,
-    company
+    company,
+    ai_matching,
+    match_results
 )
 
 # Initialize FastAPI app
@@ -29,13 +31,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS - Enhanced for development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Create necessary directories
@@ -82,7 +85,9 @@ def read_root():
             "resume-extractor",
             "text-to-speech",
             "mock-interview",
-            "trainerbook"
+            "trainerbook",
+            "ai-matching",
+            "match-results"
         ]
     }
 
@@ -106,6 +111,8 @@ app.include_router(resume_extractor.router, prefix="/resume-extractor", tags=["R
 app.include_router(tts.router, prefix="/tts", tags=["Text-to-Speech"])
 app.include_router(mock_interview.router, prefix="/mock-interview", tags=["Mock Interview"])
 app.include_router(trainerbook.router, prefix="/trainerbook", tags=["TrainerBook"])
+app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
+app.include_router(match_results.router, prefix="/match_results", tags=["Match Results"])
 
 if __name__ == "__main__":
     import uvicorn

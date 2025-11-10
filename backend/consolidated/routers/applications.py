@@ -121,15 +121,19 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 async def get_candidate_applications(candidate_email: str, db: DbDep):
     try:
         candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == candidate_email).first()
+        
+        # If no profile exists yet, just return empty array
         if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate profile not found")
+            return []
 
         # applications = db.query(JobApplication).filter(JobApplication.candidate_id == candidate.id).all()
         applications = db.query(JobApplication).filter(JobApplication.candidate_email == candidate.candidate_email).all()
         return applications
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching applications: {e}")
+        print(f"Error fetching applications: {e}")
+        # Return empty array instead of 500 error
+        return []
 
 @router.get("/applications/employer/{employer_email}")
 async def get_employer_applications(employer_email: str, db: DbDep):
@@ -228,15 +232,20 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 @router.get("/saved/{candidate_email}")
 async def get_saved_jobs(candidate_email: str, db: DbDep):
     try:
+        # Check if candidate profile exists, but don't fail if it doesn't
         candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == candidate_email).first()
+        
+        # If no profile exists yet, just return empty array
         if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate profile not found")
+            return []
 
         saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_email == candidate.candidate_email).all()
         return saved_jobs
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching saved jobs: {e}")
+        print(f"Error fetching saved jobs: {e}")
+        # Return empty array instead of 500 error
+        return []
 
 @router.delete("/saved/{saved_job_id}")
 async def unsave_job(saved_job_id: int, db: DbDep):

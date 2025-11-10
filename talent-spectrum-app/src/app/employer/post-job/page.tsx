@@ -23,6 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/app/components/accordion";
+import { useSession } from "next-auth/react";
 
 /* SECTION IDs and titles (kept only the active sections) */
 const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
@@ -30,7 +31,7 @@ const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
 const SECTION_TITLES: Record<string, string> = {
   "job-info": "Job Information",
   "job-desc": "Job Description",
-  skills: "Required Skills",
+  skills: "Required Skills", // Title remains "Required Skills" for UI
   "neuro-friendly": "Neurodivergent-Friendly Accommodations",
 };
 
@@ -55,13 +56,14 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
   const [jobType, setJobType] = useState("");
   const [jobSummary, setJobSummary] = useState("");
   const [workLocation, setWorkLocation] = useState("");
-  const [salaryRange, setSalaryRange] = useState<string>("");
+  const [salaryRange, setSalaryRange] = useState<string>(""); // Changed to string to match Select value
   const [jobRequirements, setJobRequirements] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
   const [jobLocation, setJobLocation] = useState("");
-  const [skills, setSkills] = useState<string[]>([]);
+  const [softSkills, setSoftSkills] = useState<string[]>([]); // Renamed from 'skills' to 'softSkills'
   const [newSkill, setNewSkill] = useState("");
   const [accommodations, setAccommodations] = useState<string[]>([]);
+  const { data: session } = useSession();
 
   const jobTypes = [
     "Full-time",
@@ -108,14 +110,26 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
 
   // Skills / accommodations helpers
   const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
+    const skillToAdd = newSkill.trim();
+    console.log("DEBUG: Attempting to add skill:", skillToAdd); // DEBUG LOG
+    console.log("DEBUG: Current softSkills before add:", softSkills); // DEBUG LOG
+
+    if (skillToAdd && !softSkills.includes(skillToAdd)) {
+      const updatedSkills = [...softSkills, skillToAdd];
+      setSoftSkills(updatedSkills);
       setNewSkill("");
+      console.log("DEBUG: softSkills array after adding:", updatedSkills); // DEBUG LOG
+    } else if (!skillToAdd) {
+      console.log("DEBUG: Skill to add is empty or just whitespace.");
+    } else {
+      console.log("DEBUG: Skill already exists:", skillToAdd);
     }
   };
 
   const removeSkill = (skillToRemove: string) => {
-    setSkills(skills.filter((skill) => skill !== skillToRemove));
+    const updatedSkills = softSkills.filter((skill) => skill !== skillToRemove);
+    setSoftSkills(updatedSkills);
+    console.log("DEBUG: softSkills array after removing:", updatedSkills); // DEBUG LOG
   };
 
   const toggleAccommodation = (accommodation: string) => {
@@ -164,7 +178,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("🚀 Form submitted");
-    console.log("📝 Form state:", {
+    console.log("📝 Form state (before validation):", {
       jobTitle,
       jobType,
       workLocation,
@@ -173,6 +187,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
       salaryRange,
       jobSummary,
       jobRequirements,
+      softSkills, // Ensure this is logged
     });
 
     const validation = runValidation();
@@ -195,59 +210,62 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
       return;
     }
 
-    // Get employer email from localStorage
-    const employerEmail = localStorage.getItem("employerEmail");
-    if (!employerEmail) {
-      alert("Please log in as an employer to post jobs.");
-      return;
-    }
-
-    // Construct request payload to match your FastAPI PostJobRequest model
-    const payload = {
-      employer_email: employerEmail,
-      job_title: jobTitle,
-      job_type: jobType,
-      work_mode: workLocation,
-      experience_level: experienceLevel,
-      location: jobLocation,
-      salary_range: parseInt(salaryRange),
-      job_summary: jobSummary,
-      job_requirements: jobRequirements || null,
-      soft_skills: skills.join(", ") || null,
-      flexible_work_hour: accommodations.includes("Flexible work hours"),
-      sensory_friendly_environment: accommodations.includes(
-        "Sensory-friendly environment"
-      ),
-      peer_support_system: accommodations.includes("Peer support system"),
-      dedicated_workspace: accommodations.includes(
-        "Dedicated workspace (not hot desk)"
-      ),
-      neurodiversity_awareness_training: accommodations.includes(
-        "Neurodiversity awareness training"
-      ),
-      regular_supervisor_check_in: accommodations.includes(
-        "Regular check-in with supervisor"
-      ),
-      zero_tolerance_bullying_mobbing_policy: accommodations.includes(
-        "Zero tolerance policy for bullying & mobbing"
-      ),
-      augmentative_alternative_communication: accommodations.includes(
-        "Alternative communication app allowed"
-      ),
-      quiet_room: accommodations.includes("Quiet room/space"),
-      sensory_aids: accommodations.includes("Sensory aids allowed"),
-      provide_visual_guidance: accommodations.includes(
-        "Use visual project-tracking tool"
-      ),
-      uses_project_management_tools: accommodations.includes(
-        "Use visual project-tracking tool"
-      ),
-      optional_social_event: accommodations.includes("No forced social event"),
-      mental_health_support: accommodations.includes("Mental health support"),
-      near_public_transport: accommodations.includes("Near public transport"),
-    };
-
     try {
+      const employerEmail = session?.user?.email;
+      if (!employerEmail) {
+        throw new Error("No user email found in session");
+      }
+
+      // Construct request payload to match your FastAPI PostJobRequest model
+      const payload = {
+        employer_email: employerEmail,
+        job_title: jobTitle,
+        job_type: jobType,
+        work_mode: workLocation,
+        experience_level: experienceLevel,
+        location: jobLocation,
+        // Parse salaryRange to integer as it's an index for the salaryRanges array
+        salary_range: parseInt(salaryRange),
+        job_summary: jobSummary,
+        job_requirements: jobRequirements || null,
+        soft_skills: softSkills.join(", ") || null, // This is the critical line
+        flexible_work_hour: accommodations.includes("Flexible work hours"),
+        sensory_friendly_environment: accommodations.includes(
+          "Sensory-friendly environment"
+        ),
+        peer_support_system: accommodations.includes("Peer support system"),
+        dedicated_workspace: accommodations.includes(
+          "Dedicated workspace (not hot desk)"
+        ),
+        neurodiversity_awareness_training: accommodations.includes(
+          "Neurodiversity awareness training"
+        ),
+        regular_supervisor_check_in: accommodations.includes(
+          "Regular check-in with supervisor"
+        ),
+        zero_tolerance_bullying_mobbing_policy: accommodations.includes(
+          "Zero tolerance policy for bullying & mobbing"
+        ),
+        augmentative_alternative_communication: accommodations.includes(
+          "Alternative communication app allowed"
+        ),
+        quiet_room: accommodations.includes("Quiet room/space"),
+        sensory_aids: accommodations.includes("Sensory aids allowed"),
+        provide_visual_guidance: accommodations.includes(
+          "Use visual project-tracking tool"
+        ),
+        uses_project_management_tools: accommodations.includes(
+          "Use visual project-tracking tool"
+        ),
+        optional_social_event: accommodations.includes("No forced social event"),
+        mental_health_support: accommodations.includes("Mental health support"),
+        near_public_transport: accommodations.includes("Near public transport"),
+      };
+
+      console.log("DEBUG: Frontend payload before sending:", payload); // DEBUG LOG
+      console.log("DEBUG: Value of softSkills.join(', ') is:", softSkills.join(", ")); // DEBUG LOG
+      console.log("DEBUG: Value of softSkills.join(', ') || null is:", softSkills.join(", ") || null); // DEBUG LOG
+
       console.log("📤 Attempting to send request to backend...");
       const res = await fetch("http://127.0.0.1:8000/jobs", {
         method: "POST",
@@ -275,7 +293,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
       setJobRequirements("");
       setExperienceLevel("");
       setJobLocation("");
-      setSkills([]);
+      setSoftSkills([]); // Changed 'skills' to 'softSkills'
       setNewSkill("");
       setAccommodations([]);
       setErrors({});
@@ -290,7 +308,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
   const contentPadding = "p-4 md:p-6";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       {" "}
       {/* Adjusted for consistency with dashboard bg */}
       <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
@@ -626,7 +644,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                             <Input
                               placeholder="Add a skill"
                               value={newSkill}
-                              onChange={(e) => setNewSkill(e.target.value)}
+                              onChange={(e) => {
+                                setNewSkill(e.target.value);
+                                console.log("DEBUG: newSkill input changed to:", e.target.value); // DEBUG LOG
+                              }}
                               className="border border-gray-300 text-[#3a4043]"
                               onKeyPress={(e) =>
                                 e.key === "Enter" &&
@@ -645,9 +666,9 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
-                          {skills.length > 0 && (
+                          {softSkills.length > 0 && ( // Changed 'skills' to 'softSkills'
                             <div className="flex flex-wrap gap-2">
-                              {skills.map((skill) => (
+                              {softSkills.map((skill) => ( // Changed 'skills' to 'softSkills'
                                 <Badge
                                   key={skill}
                                   variant="secondary"

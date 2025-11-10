@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card"
 import { Badge } from "@/app/components/badge";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, 
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -32,6 +32,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import AppointmentPage from "./Appointment/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -42,15 +43,7 @@ export default function CandidateDashboard() {
   const { data: session, status } = useSession();
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
 
-  const [jobCoachSearch, setJobCoachSearch] = useState('');
-  const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
-  const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
-  const [showPopup, setShowPopup] = useState(false);
-  const [bookingInfo, setBookingInfo] = useState<{ coach?: string; date?: Date; time?: string } | null>(null);
   const [showMatchingScoreDialog, setShowMatchingScoreDialog] = useState(false);
-
 
   type Environment = {
     patternRecognition: string;
@@ -1080,6 +1073,7 @@ export default function CandidateDashboard() {
   // Handle tab switching
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Handle applying for a saved job - move it from saved to applications
@@ -1156,7 +1150,7 @@ export default function CandidateDashboard() {
 
   const currentYear = new Date().getFullYear();
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
   if (isLoading) {
     return (
@@ -1214,225 +1208,6 @@ export default function CandidateDashboard() {
     );
   }
 
-  const jobCoachTemporary = [
-    {
-      name: "one",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "two",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "three",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-    {
-      name: "four",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "five",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "six",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-    {
-      name: "seven",
-      appointments: [
-        {
-          time: 1730617200
-        },
-        {
-          time: 1730649600
-        },
-        {
-          time: 1730667600
-        }
-      ]
-    },
-    {
-      name: "eight",
-      appointments: [
-        {
-          time: 1730624400
-        },
-        {
-          time: 1730628000
-        },
-        {
-          time: 1730671200
-        }
-      ]
-    },
-    {
-      name: "nine",
-      appointments: [
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730620800
-        },
-        {
-          time: 1730631600
-        },
-      ]
-    },
-  ]
-
-  const filteredJobCoachSearch = jobCoachTemporary.filter((c) =>
-    c.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
-  );
-
-  const handleSelect = (name: string) => {
-  setSelectedCoach((prev) => (prev === name ? null : name));
-  setSelectedDate(null); 
-};
-
-  const selectedCoachData = jobCoachTemporary.find(
-    (c) => c.name === selectedCoach
-  );
-
-  // --- FIX: Store all available appointment dates (not just strings)
-  const availableDays = selectedCoachData
-    ? selectedCoachData.appointments.map(
-        (a) => new Date(a.time * 1000)
-      )
-    : [];
-
-  // Build days for current month
-  const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
-  const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
-
-  const daysArray = Array.from({ length: firstDay + daysInMonth }, (_, i) =>
-    i < firstDay ? null : i - firstDay + 1
-  );
-
-  // When a date is selected, show that day’s appointments
-  const selectedDayAppointments =
-    selectedCoachData && selectedDate
-      ? selectedCoachData.appointments.filter(
-          (a) =>
-            new Date(a.time * 1000).toDateString() ===
-            selectedDate.toDateString()
-        )
-      : [];
-
-  // Navigation handlers
-  const handlePrevMonth = () => {
-    if (appointmentMonth === 0) {
-      setAppointmentMonth(11);
-      setAppointmentYear((y) => y - 1);
-    } else {
-      setAppointmentMonth((m) => m - 1);
-    }
-    setSelectedDate(null);
-  };
-
-  const handleNextMonth = () => {
-    if (appointmentMonth === 11) {
-      setAppointmentMonth(0);
-      setAppointmentYear((y) => y + 1);
-    } else {
-      setAppointmentMonth((m) => m + 1);
-    }
-    setSelectedDate(null);
-  };
-
- 
-
-  // --- FIX: Match available days by date/month/year instead of string match
-  const isDateAvailable = (d: Date) =>
-    availableDays.some(
-      (a) =>
-        a.getDate() === d.getDate() &&
-        a.getMonth() === d.getMonth() &&
-        a.getFullYear() === d.getFullYear()
-    );
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
-  const handleBookClick = (coachName: string, appointment: any) => {
-  const date = new Date(appointment.time * 1000);
-  const formattedTime = date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  setBookingInfo({ coach: coachName, date, time: formattedTime });
-  setShowPopup(true);
-};
-
-const handleClosePopup = () => {
-  setShowPopup(false);
-  setBookingInfo(null);
-};
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1453,116 +1228,123 @@ const handleClosePopup = () => {
         </div>
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 sticky top-4 self-start">
             <div className="lg:sticky lg:top-8">
               <Card>
                 <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                    {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
+                      {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
+                      <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
-                    <p className="text-sm text-gray-600">{candidateProfile.email}</p>
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-[#635bff]">Profile Completion</span>
+                      <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-[#635bff] h-2 rounded-full"
+                        style={{ width: `${candidateProfile.profileCompletion}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[#635bff]">Profile Completion</span>
-                    <span className="text-sm font-medium text-[#635bff]">{candidateProfile.profileCompletion}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-[#635bff] h-2 rounded-full"
-                      style={{ width: `${candidateProfile.profileCompletion}%` }}
-                    />
-                  </div>
-                </div>
-                <nav className="space-y-2">
-                  {[
-                    { id: "applications", label: "My Applications", icon: LetterTextIcon },
-                    { id: "saved", label: "Saved Jobs", icon: Heart },
-                    { id: "profile", label: "Profile Settings", icon: Settings, children: [
-                      { id: "education", label: "Education", icon: Book },
-                      { id: "experience", label: "Experience", icon: Briefcase },
-                      { id: "skills", label: "Skills", icon: HandFist },
-                      { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
-                      { id: "environment", label: "Preferred Environment", icon: House },
-                    ],},
-                    { id: "job coach", label: "Job Coach", icon: UserStar, children: [
-                      { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
-                      { id: "Appointment", label: "Appointment", icon: CalendarClock },
-                      { id: "Report", label: "Report", icon: FileText },
-                    ],},
+                  <nav className="space-y-2">
+                    {[
+                      { id: "overview", label: "Overview", icon: LayoutDashboard },
+                      { id: "browse jobs", label: "Browse Jobs", icon: Search },
+                      { id: "applications", label: "My Applications", icon: LetterTextIcon },
+                      { id: "saved", label: "Saved Jobs", icon: Heart },
+                      {
+                        id: "profile", label: "Profile Settings", icon: Settings, children: [
+                          { id: "profile config", label: "Profile Data", icon: User },
+                          { id: "education", label: "Education", icon: Book },
+                          { id: "experience", label: "Experience", icon: Briefcase },
+                          { id: "skills", label: "Skills", icon: HandFist },
+                          { id: "neuro_strength", label: "Neurodivergent Strengths", icon: BrainCircuit },
+                          { id: "environment", label: "Preferred Environment", icon: House },
+                        ],
+                      },
+                      {
+                        id: "job coach", label: "Job Coach", icon: UserStar, children: [
+                          { id: "mock interview", label: "Mock Interview", icon: MessagesSquare },
+                          { id: "Appointment", label: "Appointment", icon: CalendarClock },
+                          { id: "Report", label: "Report", icon: FileText },
+                        ],
+                      },
 
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    const hasChildren = Boolean(item.children);
-                    const isOpen = openDropdown === item.id;
-                    
-                    return (
-                      <div key={item.id}>
-                        <button
-                          onClick={() => {
-                            if (hasChildren) {
-                              setOpenDropdown(isOpen ? null : item.id);
-                            } else {
-                              handleTabChange(item.id);
-                            }
-                          }}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                            activeTab === item.id
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const hasChildren = Boolean(item.children);
+                      const isOpen = !!openDropdowns[item.id];
+
+                      return (
+                        <div key={item.id}>
+                          <button
+                            onClick={() => {
+                              if (hasChildren) {
+                                setOpenDropdowns((prev) => ({
+                                  ...prev,
+                                  [item.id]: !prev[item.id],
+                                }));
+                              } else {
+                                handleTabChange(item.id);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === item.id
                               ? "bg-[#635bff] text-white"
                               : "text-[#3a4043] hover:bg-gray-100"
-                          } hover:cursor-pointer`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {item.label}
-                          </div>
+                              } hover:cursor-pointer`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              {item.label}
+                            </div>
 
-                          {hasChildren && (
-                            <svg
-                              className={`h-4 w-4 transform transition-transform ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )}
-                        </button>
+                            {hasChildren && (
+                              <svg
+                                className={`h-4 w-4 transform transition-transform ${isOpen ? "rotate-180" : ""
+                                  }`}
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                          </button>
 
-                        {hasChildren && isOpen && (
-                          <div className="ml-6 mt-1 space-y-1">
-                            {item.children?.map((child) => {
-                              const ChildIcon = child.icon;
-                              return (
-                                <button
-                                  key={child.id}
-                                  onClick={() => handleTabChange(child.id)}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${
-                                    activeTab === child.id
+                          {hasChildren && isOpen && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {item.children?.map((child) => {
+                                const ChildIcon = child.icon;
+                                return (
+                                  <button
+                                    key={child.id}
+                                    onClick={() => handleTabChange(child.id)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors ${activeTab === child.id
                                       ? "bg-[#635bff] text-white"
                                       : "text-[#3a4043] hover:bg-gray-100"
-                                  } hover:cursor-pointer`}
-                                >
-                                  <ChildIcon className="h-4 w-4" />
-                                  {child.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </nav>
-              </CardContent>
-            </Card>
+                                      } hover:cursor-pointer`}
+                                  >
+                                    <ChildIcon className="h-4 w-4" />
+                                    {child.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </nav>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
@@ -1600,6 +1382,13 @@ const handleClosePopup = () => {
                         }}
                         className="rounded-xl overflow-hidden hover:cursor-pointer"
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        onClick={() => {
+                          card.icon == Briefcase
+                            ? handleTabChange("applications")
+                            : card.icon == Heart
+                              ? handleTabChange("saved")
+                              : null
+                        }}
                       >
                         <Card>
                           <CardContent className="p-6 text-center">
@@ -1680,17 +1469,24 @@ const handleClosePopup = () => {
               </div>
             )}
 
+            {activeTab === "browse jobs" && (
+              <div>
+                <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
+                {/* the component goes here */}
+              </div>
+            )}
+
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  <Button
-                  asChild
-                  variant="outline"
-                  className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                >
-                  <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                </Button>
+                  {/* <Button
+                    asChild
+                    variant="outline"
+                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  >
+                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                  </Button> */}
                 </div>
                 
                 {applications.length > 0 ? (
@@ -2356,7 +2152,7 @@ const handleClosePopup = () => {
               </div>
             )}
 
-            {activeTab === "profile" && (
+            {activeTab === "profile config" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
                 <div className="grid gap-6">
@@ -2383,7 +2179,7 @@ const handleClosePopup = () => {
                               {field.label}
                               {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
-            
+
                             {field.type === "select" ? (
                               <Select
                                 value={
@@ -2392,10 +2188,10 @@ const handleClosePopup = () => {
                                   ] as string) || ""
                                 }
                                 onValueChange={(val) => {
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                  setCandidateProfile({
+                                    ...candidateProfile,
+                                    personalIdentifiers: {
+                                      ...candidateProfile.personalIdentifiers,
                                       [field.key as string]: val,
                                     },
                                     name: field.key === "fullName" ? val : candidateProfile.name,
@@ -2406,9 +2202,8 @@ const handleClosePopup = () => {
                                   }
                                 }}
                               >
-                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${
-                                  errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
-                                }`}>
+                                <SelectTrigger className={`w-full rounded-lg px-3 py-2 text-left ${errors[field.key as string] ? "border-red-500" : "border-[#e8e6f0]"
+                                  }`}>
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-lg border border-[#e8e6f0] bg-white">
@@ -2421,7 +2216,7 @@ const handleClosePopup = () => {
                               </Select>
                             ) : (
                               <>
-                        <input
+                                <input
                                   type={field.type}
                                   value={candidateProfile.personalIdentifiers[field.key as keyof typeof candidateProfile.personalIdentifiers] || ""}
                                   onChange={(e) => {
@@ -2445,28 +2240,27 @@ const handleClosePopup = () => {
 
                                     setErrors({ ...errors, [field.key]: error });
 
-                            setCandidateProfile({
-                              ...candidateProfile,
-                              personalIdentifiers: {
-                                ...candidateProfile.personalIdentifiers,
+                                    setCandidateProfile({
+                                      ...candidateProfile,
+                                      personalIdentifiers: {
+                                        ...candidateProfile.personalIdentifiers,
                                         [field.key as keyof typeof candidateProfile.personalIdentifiers]: e.target.value,
                                       },
                                       name: field.key === "fullName" ? e.target.value : candidateProfile.name,
                                       email: field.key === "emailAddress" ? e.target.value : candidateProfile.email,
                                     });
                                   }}
-                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${
-                                    errors[field.key as string]
-                                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
-                                      : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
-                                  }`}
+                                  className={`w-full px-3 py-2 border rounded-lg outline-none focus-visible:ring-[1px] ${errors[field.key as string]
+                                    ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/50"
+                                    : "border-[#e8e6f0] focus-visible:border-gray-400 focus-visible:ring-gray-400/50"
+                                    }`}
                                 />
                                 {errors[field.key as string] && (
                                   <p className="text-red-500 text-xs mt-1">{errors[field.key as string]}</p>
                                 )}
                               </>
                             )}
-                      </div>
+                          </div>
                         ))}
                       </div>
 
@@ -2580,30 +2374,30 @@ const handleClosePopup = () => {
                 </div>
 
                 <div className="flex justify-end mb-4">
-                    <Button
-                      onClick={() =>
-                        setEducations([
-                          ...educations,
-                          {
-                            id: Date.now(),
-                            level: "",
-                            fieldOfStudy: "",
-                            institution: "",
-                            graduationYear: null,
-                            cgpa_grade: "",
-                            award: "",
-                          },
-                        ])
-                      }
-                      className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                    >
-                      + Add Education
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() =>
+                      setEducations([
+                        ...educations,
+                        {
+                          id: Date.now(),
+                          level: "",
+                          fieldOfStudy: "",
+                          institution: "",
+                          graduationYear: null,
+                          cgpa_grade: "",
+                          award: "",
+                        },
+                      ])
+                    }
+                    className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+                  >
+                    + Add Education
+                  </Button>
+                </div>
 
                 <div className="flex justify-end">
-                  <EducationSubmission 
-                    educations={educations} 
+                  <EducationSubmission
+                    educations={educations}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
@@ -2612,7 +2406,7 @@ const handleClosePopup = () => {
               </div>
             )}
 
-            {activeTab === "experience" && (
+             {activeTab === "experience" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
 
@@ -2640,7 +2434,7 @@ const handleClosePopup = () => {
                             { label: "Title", key: "title", type: "text" },
                             { label: "Seniority", key: "seniorityLevel", type: "select", options: ["Non-executive", "Executive", "Managerial", "Head of Department", "C-suite"] },
                             { label: "Industry", key: "industry", type: "select", options: ["Aerospace", "Agriculture", "Automotive", "Banking & Finance", "Biotechnology", "Chemical & Petrochemical", "Construction & Building Materials", "Creative & Media", "Digital Economy & Startups", "E-commerce & Retail", "Education", "Electrical & Electronics (E&E)", "Energy & Utilities", "Engineering & Machinery", "Fisheries & Aquaculture", "Food & Beverage Processing", "Forestry & Timber", "Green Technology & Renewable Energy", "Healthcare & Medical", "ICT & Software Development", "Legal & Professional Services", "Logistics & Transportation", "Manufacturing", "Mining & Minerals", "Oil & Gas", "Pharmaceuticals & Medical Devices", "Real Estate & Property Development", "Rubber", "Textiles & Apparel", "Tourism & Hospitality", "Others"] },
-                            { label: "Start Date", key: "start", type: "date" },
+                            { label: "Start Date", key: "start", type: "month" }, // <--- CHANGE HERE: type to "month"
                           ].map((field) => (
                             <div key={field.key}>
                               <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -2664,9 +2458,10 @@ const handleClosePopup = () => {
                                   </SelectContent>
                                 </Select>
                               ) : (
-                              <input
+                                <input
                                   type={field.type}
-                                  value={String(exp[field.key as keyof typeof exp] ?? "")}
+                                  // Ensure value is formatted as YYYY-MM for type="month"
+                                  value={String(exp[field.key as keyof typeof exp] ?? "").substring(0, 7)} // <--- CHANGE HERE: substring(0,7)
                                   onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
                                   className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                                 />
@@ -2700,15 +2495,16 @@ const handleClosePopup = () => {
                             </div>
                             {!exp.isCurrent && (
                               <input
-                                type="date"
-                                value={exp.end || ""}
+                                type="month" // <--- CHANGE HERE: type to "month"
+                                // Ensure value is formatted as YYYY-MM for type="month"
+                                value={exp.end ? exp.end.substring(0, 7) : ""} // <--- CHANGE HERE: substring(0,7)
                                 onChange={(e) =>
                                   updateExperience(exp.id, { end: e.target.value })
                                 }
                                 className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                               />
                             )}
-                            </div>
+                          </div>
 
                           <div>
                             <label className="block text-sm font-medium text-[#3a4043] mb-1">
@@ -2781,317 +2577,317 @@ const handleClosePopup = () => {
               </div>
             )}
 
-{activeTab === "skills" && (
-  <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+            {activeTab === "skills" && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
 
-    <div className="grid gap-6">
-      {/* ---- Skill Types Card ---- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Skill Types</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { label: "Soft Skills", key: "SoftSkills" },
-            { label: "Hard Skills", key: "HardSkills" },
-          ].map((field) => {
-            const key = field.key as keyof typeof candidateProfile.exp_skill;
-            const value = candidateProfile.exp_skill[key] ?? "";
-
-            return (
-              <div key={key} className="w-full">
-                <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                  {field.label}
-                </label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) =>
-                    setCandidateProfile({
-                      ...candidateProfile,
-                      exp_skill: {
-                        ...candidateProfile.exp_skill,
-                        [key]: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
-                />
-              </div>
-            );
-          })}
-
-          {/* Save Skills button — unchanged style/location */}
-          <div className="mt-4">
-            <SkillsSubmission
-              exp_skill={candidateProfile.exp_skill}
-              languageProficiencies={languageProficiencies}
-              userEmail={session?.user?.email || ""}
-              onSave={() => {
-                calculateProfileCompletion();
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Language Proficiency Card ---- */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <CardTitle>Language Proficiency</CardTitle>
-            <Button
-              onClick={() => {
-                setLanguageProficiencies([
-                  ...languageProficiencies,
-                  {
-                    id: Date.now(),
-                    language: "",
-                    reading: "",
-                    writing: "",
-                    listening: "",
-                    speaking: "",
-                  },
-                ]);
-              }}
-              className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
-            >
-              + Add Language
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {/* Desktop table view */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm md:text-base">
-              <thead>
-                <tr className="border-b">
-                  {[
-                    "Language",
-                    "Reading",
-                    "Writing",
-                    "Listening",
-                    "Speaking",
-                    "Action",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {languageProficiencies.map((prof, index) => (
-                    <tr key={prof.id || index} className="border-b">
-                    <td className="p-2 min-w-[160px]">
-                      <Select
-                        value={prof.language}
-                        onValueChange={(value) => {
-                          const updated = [...languageProficiencies];
-                          updated[index] = { ...prof, language: value };
-                          setLanguageProficiencies(updated);
-                        }}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[
-                            "Arabic",
-                            "Bengali",
-                            "Chinese",
-                            "English",
-                            "French",
-                            "German",
-                            "Hindi",
-                            "Indonesian",
-                            "Italian",
-                            "Japanese",
-                            "Korean",
-                            "Malay",
-                            "Portuguese",
-                            "Russian",
-                            "Spanish",
-                            "Tamil",
-                            "Thai",
-                            "Turkish",
-                            "Vietnamese",
-                            "Other",
-                          ].map((lang) => (
-                            <SelectItem key={lang} value={lang}>
-                              {lang}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-
-                    {["reading", "writing", "listening", "speaking"].map(
-                      (skill) => (
-                        <td key={skill + prof.id} className="p-2 min-w-[140px]">
-                          <Select
-                            value={String(
-                              prof[skill as keyof LanguageProficiency]
-                            )}
-                            onValueChange={(value) => {
-                              const updated = [...languageProficiencies];
-                              updated[index] = { ...prof, [skill]: value };
-                              setLanguageProficiencies(updated);
-                            }}
-                          >
-                            <SelectTrigger className="w-full md:w-[140px]">
-                              <SelectValue placeholder="Select level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {["Expert", "Intermediate", "Beginner"].map(
-                                (level) => (
-                                  <SelectItem key={level} value={level}>
-                                    {level}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      )
-                    )}
-
-                    <td className="p-2 text-center">
-                      <Button
-                        onClick={() => {
-                          const updated = languageProficiencies.filter(
-                            (_, i) => i !== index
-                          );
-                          setLanguageProficiencies(updated);
-                        }}
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-800 hover:bg-red-100"
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile stacked view */}
-          <div className="flex flex-col gap-4 md:hidden">
-            {languageProficiencies.map((prof, index) => (
-              <div
-                key={prof.id ?? `lang-${index}`} // fallback to index if id missing
-                className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
-              >
-                          <div>
-                  <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                    Language
-                  </label>
-                  <Select
-                    value={prof.language}
-                    onValueChange={(value) => {
-                      const updated = [...languageProficiencies];
-                      updated[index] = { ...prof, language: value };
-                      setLanguageProficiencies(updated);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="grid gap-6">
+                  {/* ---- Skill Types Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Skill Types</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       {[
-                        "Arabic",
-                        "Bengali",
-                        "Chinese",
-                        "English",
-                        "French",
-                        "German",
-                        "Hindi",
-                        "Indonesian",
-                        "Italian",
-                        "Japanese",
-                        "Korean",
-                        "Malay",
-                        "Portuguese",
-                        "Russian",
-                        "Spanish",
-                        "Tamil",
-                        "Thai",
-                        "Turkish",
-                        "Vietnamese",
-                        "Other",
-                      ].map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        { label: "Soft Skills", key: "SoftSkills" },
+                        { label: "Hard Skills", key: "HardSkills" },
+                      ].map((field) => {
+                        const key = field.key as keyof typeof candidateProfile.exp_skill;
+                        const value = candidateProfile.exp_skill[key] ?? "";
 
-                {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
-                  <div key={skill}>
-                    <label className="block text-sm font-medium text-[#3a4043] mb-1">
-                      {skill}
-                    </label>
-                    <Select
-                      value={
-                        prof[skill.toLowerCase() as keyof LanguageProficiency]
-                          ? String(
-                              prof[skill.toLowerCase() as keyof LanguageProficiency]
-                            )
-                          : ""
-                      }
-                      onValueChange={(value) => {
-                        const updated = [...languageProficiencies];
-                        updated[index] = {
-                          ...prof,
-                          [skill.toLowerCase()]: value,
-                        };
-                        setLanguageProficiencies(updated);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["Expert", "Intermediate", "Beginner"].map((level) => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
+                        return (
+                          <div key={key} className="w-full">
+                            <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                              {field.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) =>
+                                setCandidateProfile({
+                                  ...candidateProfile,
+                                  exp_skill: {
+                                    ...candidateProfile.exp_skill,
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+                            />
+                          </div>
+                        );
+                      })}
+
+                      {/* Save Skills button — unchanged style/location */}
+                      <div className="mt-4">
+                        <SkillsSubmission
+                          exp_skill={candidateProfile.exp_skill}
+                          languageProficiencies={languageProficiencies}
+                          userEmail={session?.user?.email || ""}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                          }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ---- Language Proficiency Card ---- */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <CardTitle>Language Proficiency</CardTitle>
+                        <Button
+                          onClick={() => {
+                            setLanguageProficiencies([
+                              ...languageProficiencies,
+                              {
+                                id: Date.now(),
+                                language: "",
+                                reading: "",
+                                writing: "",
+                                listening: "",
+                                speaking: "",
+                              },
+                            ]);
+                          }}
+                          className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
+                        >
+                          + Add Language
+                        </Button>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent>
+                      {/* Desktop table view */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-sm md:text-base">
+                          <thead>
+                            <tr className="border-b">
+                              {[
+                                "Language",
+                                "Reading",
+                                "Writing",
+                                "Listening",
+                                "Speaking",
+                                "Action",
+                              ].map((heading) => (
+                                <th
+                                  key={heading}
+                                  className="text-left p-2 font-medium text-[#3a4043] whitespace-nowrap"
+                                >
+                                  {heading}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {languageProficiencies.map((prof, index) => (
+                              <tr key={prof.id || index} className="border-b">
+                                <td className="p-2 min-w-[160px]">
+                                  <Select
+                                    value={prof.language}
+                                    onValueChange={(value) => {
+                                      const updated = [...languageProficiencies];
+                                      updated[index] = { ...prof, language: value };
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full md:w-[180px]">
+                                      <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {[
+                                        "Arabic",
+                                        "Bengali",
+                                        "Chinese",
+                                        "English",
+                                        "French",
+                                        "German",
+                                        "Hindi",
+                                        "Indonesian",
+                                        "Italian",
+                                        "Japanese",
+                                        "Korean",
+                                        "Malay",
+                                        "Portuguese",
+                                        "Russian",
+                                        "Spanish",
+                                        "Tamil",
+                                        "Thai",
+                                        "Turkish",
+                                        "Vietnamese",
+                                        "Other",
+                                      ].map((lang) => (
+                                        <SelectItem key={lang} value={lang}>
+                                          {lang}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {["reading", "writing", "listening", "speaking"].map(
+                                  (skill) => (
+                                    <td key={skill + prof.id} className="p-2 min-w-[140px]">
+                                      <Select
+                                        value={String(
+                                          prof[skill as keyof LanguageProficiency]
+                                        )}
+                                        onValueChange={(value) => {
+                                          const updated = [...languageProficiencies];
+                                          updated[index] = { ...prof, [skill]: value };
+                                          setLanguageProficiencies(updated);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full md:w-[140px]">
+                                          <SelectValue placeholder="Select level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {["Expert", "Intermediate", "Beginner"].map(
+                                            (level) => (
+                                              <SelectItem key={level} value={level}>
+                                                {level}
+                                              </SelectItem>
+                                            )
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                  )
+                                )}
+
+                                <td className="p-2 text-center">
+                                  <Button
+                                    onClick={() => {
+                                      const updated = languageProficiencies.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      setLanguageProficiencies(updated);
+                                    }}
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                  >
+                                    Delete
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile stacked view */}
+                      <div className="flex flex-col gap-4 md:hidden">
+                        {languageProficiencies.map((prof, index) => (
+                          <div
+                            key={prof.id ?? `lang-${index}`} // fallback to index if id missing
+                            className="border border-[#e8e6f0] rounded-lg p-3 space-y-3"
+                          >
+                            <div>
+                              <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                Language
+                              </label>
+                              <Select
+                                value={prof.language}
+                                onValueChange={(value) => {
+                                  const updated = [...languageProficiencies];
+                                  updated[index] = { ...prof, language: value };
+                                  setLanguageProficiencies(updated);
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "Arabic",
+                                    "Bengali",
+                                    "Chinese",
+                                    "English",
+                                    "French",
+                                    "German",
+                                    "Hindi",
+                                    "Indonesian",
+                                    "Italian",
+                                    "Japanese",
+                                    "Korean",
+                                    "Malay",
+                                    "Portuguese",
+                                    "Russian",
+                                    "Spanish",
+                                    "Tamil",
+                                    "Thai",
+                                    "Turkish",
+                                    "Vietnamese",
+                                    "Other",
+                                  ].map((lang) => (
+                                    <SelectItem key={lang} value={lang}>
+                                      {lang}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {["Reading", "Writing", "Listening", "Speaking"].map((skill) => (
+                              <div key={skill}>
+                                <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                                  {skill}
+                                </label>
+                                <Select
+                                  value={
+                                    prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      ? String(
+                                        prof[skill.toLowerCase() as keyof LanguageProficiency]
+                                      )
+                                      : ""
+                                  }
+                                  onValueChange={(value) => {
+                                    const updated = [...languageProficiencies];
+                                    updated[index] = {
+                                      ...prof,
+                                      [skill.toLowerCase()]: value,
+                                    };
+                                    setLanguageProficiencies(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select level" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {["Expert", "Intermediate", "Beginner"].map((level) => (
+                                      <SelectItem key={level} value={level}>
+                                        {level}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+
+                            <div className="pt-2">
+                              <Button
+                                onClick={() => {
+                                  const updated = languageProficiencies.filter(
+                                    (_, i) => i !== index
+                                  );
+                                  setLanguageProficiencies(updated);
+                                }}
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
+                              >
+                                Delete Language
+                              </Button>
+                            </div>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => {
-                      const updated = languageProficiencies.filter(
-                        (_, i) => i !== index
-                      );
-                      setLanguageProficiencies(updated);
-                    }}
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-800 hover:bg-red-100 w-full"
-                  >
-                    Delete Language
-                  </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  </div>
-)}
+            )}
 
 
             {activeTab === "neuro_strength" && (
@@ -3137,7 +2933,7 @@ const handleClosePopup = () => {
                     </div>
                   )}
 
-                  <NeuroStrengthSubmission 
+                  <NeuroStrengthSubmission
                     selectedStrengths={selectedStrengths}
                     onSave={() => {
                       calculateProfileCompletion();
@@ -3259,322 +3055,60 @@ const handleClosePopup = () => {
                       })}
                     </CardContent>
                   </Card>
-                  </div>
+                </div>
 
-                  <div className="flex justify-end mt-4">
+                <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
                   />
-                  </div>
                 </div>
-              )}
+              </div>
+            )}
 
             {activeTab === "mock interview" && (
-                    <>
-                      {mockInterviewStep === "setup" && (
-                        <MockInterviewSetupPage onNavigate={(target) => {
-                          if (target === "interview") {
-                            setMockInterviewStep("process");
-                          }
-                        }} />
-                      )}
-
-                      {mockInterviewStep === "process" && (
-                        <MockInterviewProcessPage onNavigate={(target) => {
-                          if (target === "feedback") {
-                            setMockInterviewStep("feedback");
-                          }
-                        }} />
-                      )}
-
-                      {mockInterviewStep === "feedback" && (
-                        <MockInterviewFeedbackPage onNavigate={(target) => {
-                          if (target === "setup") {
-                            setMockInterviewStep("setup");
-                          }
-                        }} />
-                      )}
-                    </>
-                  )}
-
-                  {activeTab === "Report" && (
-                    <ReportPage />
-                  )}
-
-            {activeTab === "Appointment" && (
               <>
-              <h1 className="text-2xl font-bold text-[#3a4043] pb-5 ">Book an Appointment</h1>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 focus-within:border-[#635bff] transition-colors">
-                      <input
-                        className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
-                        placeholder="Find and select a job coach:"
-                        onChange={(e) => setJobCoachSearch(e.target.value)}
-                      />
-                    </div>
-                    <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
-                      {filteredJobCoachSearch.length > 0 ? (
-                        filteredJobCoachSearch.map((coach, index) => {
-                          const isSelected = selectedCoach === coach.name;
-                          return (
-                            <li
-                              key={index}
-                              onClick={() => handleSelect(coach.name)}
-                              className={` p-3 border rounded-lg cursor-pointer transition flex items-center gap-3 ${isSelected
-                                ? "bg-[#635bff] text-white border-[#635bff]"
-                                : "hover:bg-[#f5f3ff] text-gray-800"
-                                }`}
-                            >
-                              {/* Profile picture placeholder */}
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isSelected ? "bg-white text-[#635bff]" : "bg-[#635bff] text-white"
-                                  }`}
-                              >
-                                {coach.name.charAt(0).toUpperCase()}
-                              </div>
-
-                              {/* Coach name */}
-                              <p className="font-semibold">{coach.name}</p>
-                            </li>
-                          );
-                        })
-                      ) : (
-                        <p className="text-gray-400 text-sm mt-2 text-center">
-                          No matching coaches found.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-                <Card>
-                  <div className="p-5">
-                    {selectedCoach ? (
-                      <>
-                        <div className="flex justify-between items-center mb-3">
-                          <button
-                            onClick={handlePrevMonth}
-                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
-                          >
-                            ← Prev
-                          </button>
-                          <h2 className="font-bold text-lg">
-                            {monthNames[appointmentMonth]} {appointmentYear}
-                          </h2>
-                          <button
-                            onClick={handleNextMonth}
-                            className="cursor-pointer text-[#635bff] font-bold hover:text-[#4b44e0]"
-                          >
-                            Next →
-                          </button>
-                        </div>
-
-                        {/* Days of week */}
-                        <div className="grid grid-cols-7 gap-2 text-center text-sm mb-3">
-                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                            <div key={d} className="font-semibold">
-                              {d}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Calendar Days */}
-                        <div className="grid grid-cols-7 gap-2 text-center text-sm">
-                          {daysArray.map((day, i) => {
-                            if (!day) return <div key={i}></div>;
-                            const date = new Date(appointmentYear, appointmentMonth, day);
-                            const available = isDateAvailable(date);
-                            const isSelected =
-                              selectedDate?.toDateString() === date.toDateString();
-
-                            return (
-                              <div
-                                key={i}
-                                onClick={() => {
-                                  setSelectedDate(date);
-                                }}
-                                className={`p-2 rounded-lg cursor-pointer transition ${isSelected
-                                    ? "bg-[#635bff] text-white font-bold"
-                                    : available
-                                      ? "bg-[#e0e7ff] hover:bg-[#c7d2fe] text-[#4338ca]"
-                                      : "text-gray-400 hover:bg-gray-100"
-                                  }`}
-                              >
-                                {day}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Appointments */}
-                        {selectedDayAppointments.length > 0 ? (
-                          <div className="mt-5">
-                            <div className="flex items-center gap-2 mb-2">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z"
-                                />
-                              </svg>
-                              <h3 className="font-semibold text-gray-800">Available Time Slots for {selectedCoach}:</h3>
-                            </div>
-
-                            <p className="text-sm text-gray-500 mb-4">
-                              Slots for {selectedDate?.toLocaleDateString(undefined, {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
-                            </p>
-
-                            <ul className="space-y-3">
-                              {selectedDayAppointments.map((a, i) => (
-                                <li
-                                  key={i}
-                                  className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
-                                >
-                                  <div className="flex items-center gap-2 text-gray-700">
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 text-gray-500"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
-                                    <span className="font-medium">
-                                      {new Date(a.time * 1000).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                  </div>
-
-                                  <button onClick={() => handleBookClick(selectedCoach!, a)} 
-                                    className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
-                                  >
-                                    Book
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : selectedDate ? (
-                          <p className="mt-5 text-gray-400 text-center pt-5">
-                            No available appointments on this day.
-                          </p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-gray-400 text-center pt-[10%]">
-                        Select a coach to view their calendar.
-                      </p>
-                    )}
-                  </div>
-                </Card>
-                {showPopup && bookingInfo && (
-                  <div
-                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
-                    onClick={handleClosePopup}
-                  >
-                    <div
-                      className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-sm text-center space-y-4 transform animate-scaleIn"
-                    >
-                      <h2 className="text-lg font-semibold text-gray-800">
-                        Confirm Your Booking
-                      </h2>
-
-                      <div className="text-gray-600 space-y-1">
-                        <p>
-                          <span className="font-medium">Coach:</span> {bookingInfo.coach}
-                        </p>
-                        <p>
-                          <span className="font-medium">Date:</span>{" "}
-                          {bookingInfo.date?.toLocaleDateString(undefined, {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                        <p>
-                          <span className="font-medium">Time:</span> {bookingInfo.time}
-                        </p>
-                      </div>
-
-                      <div className="flex justify-center gap-3 pt-3">
-                        <button
-                          onClick={handleClosePopup}
-                          className="cursor-pointer px-4 py-2 rounded-md border text-gray-700 hover:bg-[#c7d2fe] hover:text-[#635bff] transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            alert('Booking confirmed!');
-                            handleClosePopup();
-                          }}
-                          className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
-                        >
-                          Confirm
-                        </button>
-                      </div>
-                    </div>
-
-                    <style>
-                      {`
-                        @keyframes fadeIn {
-                          from { opacity: 0; }
-                          to { opacity: 1; }
-                        }
-                        @keyframes scaleIn {
-                          from {
-                            opacity: 0;
-                            transform: scale(0.95);
-                          }
-                          to {
-                            opacity: 1;
-                            transform: scale(1);
-                          }
-                        }
-
-                        .animate-fadeIn {
-                          animation: fadeIn 0.25s ease-out forwards;
-                        }
-                        .animate-scaleIn {
-                          animation: scaleIn 0.25s ease-out forwards;
-                        }
-                      `}
-                    </style>
-                  </div>
+                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
+                {mockInterviewStep === "setup" && (
+                  <MockInterviewSetupPage onNavigate={(target) => {
+                    if (target === "interview") {
+                      setMockInterviewStep("process");
+                    }
+                  }} />
                 )}
 
+                {mockInterviewStep === "process" && (
+                  <MockInterviewProcessPage onNavigate={(target) => {
+                    if (target === "feedback") {
+                      setMockInterviewStep("feedback");
+                    }
+                  }} />
+                )}
 
-              </div>
+                {mockInterviewStep === "feedback" && (
+                  <MockInterviewFeedbackPage onNavigate={(target) => {
+                    if (target === "setup") {
+                      setMockInterviewStep("setup");
+                    }
+                  }} />
+                )}
               </>
             )}
-              
+
+            {activeTab === "Report" && (
+              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
+                <ReportPage /></>
+            )}
+
+            {activeTab === "Appointment" && (
+              <AppointmentPage />
+            )}
+
           </div>
         </div>
+        
       </div>
     </div>
   );

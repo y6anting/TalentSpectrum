@@ -1,5 +1,3 @@
-# backend/pg_db/main.py
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -9,18 +7,19 @@ from database.connection import create_tables, engine, Base
 
 # Import models so they register with SQLAlchemy
 from database.models import users
-from database.models import candidate # <--- UNCOMMENTED THIS LINE
+from database.models import candidate
+from database.models import match_result # <--- NEW: Import the match_result model
 
 # Import routers
 from routers.users import router as users_router
 from routers.profiles import router as profiles_router
 from routers.company import router as company_router
-# from routers.profile_others import router as profile_others_router
 from routers.jobs import router as jobs_router
 from routers.applications import router as applications_router
-# from routers.resume_extract import router as resume_extract_router
+from routers.match_result_route import router as match_results_router # <--- NEW: Import the match_results router
 
 # --- Database Initialization ---
+# Ensure this call is made *after* all models (like match_result) are imported
 create_tables()
 
 # --- App Initialization ---
@@ -54,8 +53,7 @@ def read_root():
 # --- Router Registration ---
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(profiles_router, prefix="/profiles", tags=["profiles"])
-# app.include_router(profile_others_router, prefix="/profile_others", tags=["profile_others"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])
-# app.include_router(resume_extract_router, prefix="/resume", tags=["resume"])
 app.include_router(company_router, prefix="/company", tags=["company"])
+app.include_router(match_results_router, prefix="/match_results", tags=["match_results"])

@@ -19,43 +19,60 @@ router = APIRouter()
 
 DbDep = Annotated[Session, Depends(get_db)]
 
-@router.get("/")
+@router.get("/all")
 async def get_appointment_all(db: DbDep):
     return db.query(Appointment).all()
 
-@router.get("/{jobCoach}+{dateTime}")
-async def get_appointment_by_coach_and_time(jobCoach: str, dateTime: datetime, db: DbDep):
+@router.get("/{jobCoach}")
+async def get_unbooked_appointments_by_coach(jobCoach: str, db: DbDep):
     appointment = db.query(Appointment).filter(
-        (Appointment.jobCoach == jobCoach) 
-        & (Appointment.dateTime == dateTime)
-    ).first()
+        (Appointment.jobCoach == jobCoach)
+        & (Appointment.candidate.is_(None))
+    ).all()
     if appointment is not None:
         return appointment
     
     raise HTTPException(status_code= 404, detail= "Appointment not found")
 
-# @router.get("/{candidate}")
+@router.get("/booked/{candidate}")
+async def get_appointments_from_candidate(candidate: str, db: DbDep):
+    appointments = (
+        db.query(Appointment)
+        .filter(Appointment.candidate == candidate)
+        .all()
+    )
 
-# @router.get("/")
-# async def get_all_unbooked_appointments(db: DbDep)
+    if not appointments:
+        raise HTTPException(status_code=404, detail="No appointments found for this candidate")
+
+    return appointments
 
 @router.post("/")
 async def new_appointment(new_app: AppointmentCreate, db: DbDep):
     try:
-        new_appointment = Appointment(
+        appointment = Appointment(
             jobCoach=new_app.jobCoach,
             dateTime=new_app.dateTime,
         )
-        db.add(new_appointment)
+        db.add(appointment)
         db.commit()
-        db.refresh(new_appointment)
-        return {"message": "Appointment booked successfully", "id": new_appointment.id}
+        db.refresh(appointment)
+        return {"message": "Appointment booked successfully", "id": appointment.id}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating appointment: {e}")
 
-# @router.put("/book")
-# async def book_appointment(id: int, candidate: str, db:DbDep)
+@router.put("/book")
+async def book_appointment(id: int, candidate: str, db:DbDep):
+    appointment = db.query(Appointment).filter(
+        (Appointment.id == id) 
+    ).first()
+    if appointment is None:
+        raise HTTPException(status_code= 404, detail= "Appointment not found")
+    appointment.candidate = candidate
+    db.add(appointment)
+    db.commit()
+    return {"message": f"Appointment booked by {candidate}"}
 
 @router.delete("/{id}")
 async def delete_appointment(id: int, db: DbDep):

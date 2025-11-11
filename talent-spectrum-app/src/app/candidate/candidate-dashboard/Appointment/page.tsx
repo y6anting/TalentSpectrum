@@ -20,16 +20,17 @@ export default function AppointmentPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null);
   const [appointmentBookedSessions, setAppointmentBookedSessions] = useState<BookingInfo[]>([]);
-  const jobCoachTemporary = [
-    { name: "one", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "two", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "three", appointments: [{ time: 1762639400 }, { time: 1763639400 }, { time: 1764639400 }] },
-    { name: "four", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "five", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "six", appointments: [{ time: 1562639400 }, { time: 1767676700 }, { time: 1762006700 }] },
-    { name: "seven", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "eight", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "nine", appointments: [{ time: 1762639400 }, { time: 1763639400 }, { time: 1764639400 }] },
+  const jobCoachTemporary = [{name: "one"}, {name: "two"}, {name: "three"}]
+  const appointmentsTemporary = [
+    { jobCoach: "one", candidate: "", dateTime: 1762153200 },
+    { jobCoach: "one", candidate: "", dateTime: 1762185600 },
+    { jobCoach: "one", candidate: "", dateTime: 1762207200 },
+    { jobCoach: "two", candidate: "", dateTime: 1765421400 },
+    { jobCoach: "two", candidate: "", dateTime: 1764421400 },
+    { jobCoach: "two", candidate: "", dateTime: 1763641400 },
+    { jobCoach: "three", candidate: "", dateTime: 1762639400 },
+    { jobCoach: "three", candidate: "", dateTime: 1763639400 },
+    { jobCoach: "three", candidate: "", dateTime: 1764639400 }
   ];
   const handleConfirmBooking = () => {
     if (!bookingInfo?.coach || !bookingInfo?.date || !bookingInfo?.time) {
@@ -63,11 +64,9 @@ export default function AppointmentPage() {
     setSelectedDate(null);
   };
 
-  const selectedCoachData = jobCoachTemporary.find((c) => c.name === selectedCoach);
-
-  const availableDays = selectedCoachData
-    ? selectedCoachData.appointments.map((a) => new Date(a.time * 1000))
-    : [];
+  const availableDays = appointmentsTemporary
+  .filter((a) => a.jobCoach === selectedCoach)
+  .map((a) => new Date(a.dateTime * 1000));
 
   const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
   const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
@@ -75,12 +74,14 @@ export default function AppointmentPage() {
     i < firstDay ? null : i - firstDay + 1
   );
 
-  const selectedDayAppointments =
-    selectedCoachData && selectedDate
-      ? selectedCoachData.appointments.filter(
-        (a) => new Date(a.time * 1000).toDateString() === selectedDate.toDateString()
+  const selectedDayappointmentsTemporary =
+  selectedCoach && selectedDate
+    ? appointmentsTemporary.filter(
+        (a) =>
+          a.jobCoach === selectedCoach &&
+          new Date(a.dateTime * 1000).toDateString() === selectedDate.toDateString()
       )
-      : [];
+    : [];
 
   const handlePrevMonth = () => {
     if (appointmentMonth === 0) {
@@ -123,7 +124,7 @@ export default function AppointmentPage() {
   ];
 
   const handleBookClick = (coachName: string, appointment: any) => {
-    const date = new Date(appointment.time * 1000);
+    const date = new Date(appointment.dateTime * 1000);
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setBookingInfo({ coach: coachName, date, time: formattedTime });
     setShowPopup(true);
@@ -240,8 +241,8 @@ export default function AppointmentPage() {
                   })}
                 </div>
 
-                {/* Appointments */}
-                {selectedDayAppointments.length > 0 ? (
+                {/* appointmentsTemporary */}
+                {selectedDayappointmentsTemporary.length > 0 ? (
                   <div className="mt-5">
                     <div className="flex items-center gap-2 mb-2">
                       <svg
@@ -271,7 +272,7 @@ export default function AppointmentPage() {
                     </p>
 
                     <ul className="space-y-3">
-                      {selectedDayAppointments.map((a, i) => (
+                      {selectedDayappointmentsTemporary.map((a, i) => (
                         <li
                           key={i}
                           className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
@@ -292,7 +293,7 @@ export default function AppointmentPage() {
                               />
                             </svg>
                             <span className="font-medium">
-                              {new Date(a.time * 1000).toLocaleTimeString([], {
+                              {new Date(a.dateTime * 1000).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -310,7 +311,7 @@ export default function AppointmentPage() {
                   </div>
                 ) : selectedDate ? (
                   <p className="mt-5 text-gray-400 text-center pt-5">
-                    No available appointments on this day.
+                    No available appointmentsTemporary on this day.
                   </p>
                 ) : null}
               </>

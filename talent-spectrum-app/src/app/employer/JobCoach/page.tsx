@@ -42,7 +42,7 @@ export default function EmployerJobCoach() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="page-wrap py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <motion.div

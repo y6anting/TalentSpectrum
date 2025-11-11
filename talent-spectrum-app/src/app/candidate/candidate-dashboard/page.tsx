@@ -26,6 +26,7 @@ import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
 import ReportPage from "./Report/page";
 import AppointmentPage from "./Appointment/page";
+import CandidateJobListing from "../JobListing/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -860,7 +861,7 @@ export default function CandidateDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="page-wrap py-8">
           <div className="flex flex-col-2 justify-between">
             <div className="mb-8">
               <Skeleton className="h-8 w-64 mb-2" />
@@ -871,13 +872,13 @@ export default function CandidateDashboard() {
               <Skeleton className="h-12 w-32 rounded-full" />
             </div>
           </div>
-          <div className="grid lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1">
+          <div className="grid lg:grid-cols-[260px_1fr] gap-8">
+            <div>
               <div className="bg-white rounded-lg p-6">
                 <ProfileSkeleton />
               </div>
             </div>
-            <div className="lg:col-span-3">
+            <div>
               <div className="space-y-6">
                 <div className="grid md:grid-cols-3 gap-6">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -915,26 +916,11 @@ export default function CandidateDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col-2 justify-between">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-[#3a4043] mb-1">Welcome back, {candidateProfile.name.split(' ')[0]}!</h1>
-            <p className="text-gray-600">Here's your job search activity and recommendations.</p>
-          </div>
-          <div className="flex flex-wrap gap-4 justify-center mt-6">
-            <ResumeUploadButton
-              buttonText="Upload Resume"
-              buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-              onResumeProcessed={(parsedInfo) => {
-                console.log("Resume processed:", parsedInfo);
-              }}
-            />
-          </div>
-        </div>
-        <div className="grid lg:grid-cols-4 gap-8">
+      <div className="page-wrap py-8">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8 py-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1 sticky top-4 self-start">
-            <div className="lg:sticky lg:top-8">
+          <div className="sticky top-[var(--app-header-height)] self-start">
+            <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-6">
@@ -1054,9 +1040,18 @@ export default function CandidateDashboard() {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === "overview" && (
-              <div className="space-y-6">
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-wrap gap-4 py-2 justify-end">
+                <ResumeUploadButton
+                  buttonText="Upload Resume"
+                  buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  onResumeProcessed={(parsedInfo) => {
+                    console.log("Resume processed:", parsedInfo);
+                  }}
+                />
+              </div>
+              {activeTab === "overview" && (
+                <div className="space-y-6">
                 <div className="grid md:grid-cols-3 gap-6">
                   {[
                     {
@@ -1175,10 +1170,10 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "browse jobs" && (
-              <div>
-                <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
-                {/* the component goes here */}
-              </div>
+              // <div className="space-y-4">
+              //   <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
+                <CandidateJobListing />
+              // </div>
             )}
 
             {activeTab === "applications" && (

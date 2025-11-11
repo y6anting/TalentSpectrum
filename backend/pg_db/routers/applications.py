@@ -218,6 +218,8 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         return {"message": "Job saved successfully", "saved_job": new_saved_job}
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saving job: {e}")
@@ -232,6 +234,8 @@ async def get_saved_jobs(candidate_email: str, db: DbDep):
         saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_id == candidate.id).all()
         return saved_jobs
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching saved jobs: {e}")
 
@@ -247,6 +251,8 @@ async def unsave_job(saved_job_id: int, db: DbDep):
 
         return {"message": "Job removed from saved jobs"}
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error removing saved job: {e}")

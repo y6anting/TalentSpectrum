@@ -39,6 +39,7 @@ import {
   Upload,
 } from "lucide-react";
 import { motion } from "motion/react";
+import AppointmentPage from "@/app/candidate/candidate-dashboard/Appointment/page";
 
 export default function JobCoachDashboard() {
   const router = useRouter();
@@ -224,12 +225,12 @@ export default function JobCoachDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="page-wrap py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#3a4043] mb-2">
+          {/* <h1 className="text-3xl font-bold text-[#3a4043] mb-2">
             Welcome back, Dr. Sarah Chen
           </h1>
-          <p className="text-[#6f7a80]">Here's your session management</p>
+          <p className="text-[#6f7a80]">Here's your session management</p> */}
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8">
@@ -264,6 +265,11 @@ export default function JobCoachDashboard() {
                       {
                         id: "candidates",
                         label: "Candidate List",
+                        icon: Users,
+                      },
+                      {
+                        id: "AI Consult",
+                        label: "AI Consult",
                         icon: Users,
                       },
                     ].map((item) => {
@@ -333,7 +339,7 @@ export default function JobCoachDashboard() {
                   </CardContent>
                 </Card>
 
-                <div className="mb-6">
+                <div className="pb-6">
                   <p className="text-[#6f7a80]">
                     Showing {filteredCandidates.length} of {candidates.length}{" "}
                     candidates
@@ -401,7 +407,7 @@ export default function JobCoachDashboard() {
                               className="bg-[#635bff] hover:bg-[#524aff] text-white"
                               onClick={() =>
                                 router.push(
-                                  `/job-coach/candidate/${candidate.id}`
+                                  `/job-coach/Candidate/${candidate.id}`
                                 )
                               }
                             >
@@ -411,7 +417,8 @@ export default function JobCoachDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-gray-300"
+                              className="border-gray-300 hover:cursor-pointer"
+                              onClick={() => setActiveTab("appointment")}
                             >
                               <Calendar className="w-3 h-3 mr-1" />
                               Schedule
@@ -590,14 +597,7 @@ export default function JobCoachDashboard() {
             )}
 
             {activeTab === "appointment" && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
-                  Appointment
-                </h2>
-                <p className="text-[#6f7a80]">
-                  View and manage your appointments here.
-                </p>
-              </div>
+              <AppointmentPage />
             )}
           </div>
         </div>

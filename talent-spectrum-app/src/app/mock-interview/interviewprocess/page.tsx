@@ -546,7 +546,7 @@ const MockInterviewProcessPage = () => {
       }`}>
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
-          <div className="max-w-[1400px] mx-auto px-4 py-4">
+  <div className="mx-auto py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
@@ -570,7 +570,7 @@ const MockInterviewProcessPage = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-[1400px] mx-auto px-4 py-8">
+  <div className="page-wrap py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Side - Avatar */}
             <div className="lg:col-span-1">

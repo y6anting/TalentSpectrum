@@ -497,7 +497,7 @@ export default function CandidateInfoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div className="page-wrap py-8">
         
         {/* Skip Button - Top Right */}
         <div className="mb-6 flex justify-end">
@@ -561,7 +561,7 @@ export default function CandidateInfoPage() {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-[1400px] mx-auto">
+  <div className="page-wrap">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">

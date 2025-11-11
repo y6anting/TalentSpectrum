@@ -473,7 +473,7 @@ function CandidateJobListingContent() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          {/* <div className="text-red-500 text-6xl mb-4">⚠️</div> */}
           <h2 className="text-2xl font-bold text-[#3a4043] mb-2">Error Loading Jobs</h2>
           <p className="text-[#6f7a80] mb-4">{fetchError}</p>
           <Button 
@@ -489,7 +489,6 @@ function CandidateJobListingContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         {/* <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#3a4043] mb-2">Job Opportunities</h1>
@@ -565,7 +564,7 @@ function CandidateJobListingContent() {
         </Card>
 
         {/* Results Summary */}
-        <div className="mb-3">
+        <div className="my-4 px-3">
           <p className="text-[#6f7a80]">
             Showing {filteredJobs.length} of {jobs.length} jobs
           </p>
@@ -852,7 +851,6 @@ function CandidateJobListingContent() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }
@@ -860,7 +858,9 @@ function CandidateJobListingContent() {
 export default function CandidateJobListing() {
   return (
     <ToastProvider>
-      <CandidateJobListingContent />
+      <div className="page-wrap">
+        <CandidateJobListingContent />
+      </div>
     </ToastProvider>
   );
 }

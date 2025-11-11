@@ -16,6 +16,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { API_ENDPOINTS } from "@/app/config/api";
 
 interface ReportData {
   resume_feedback: {
@@ -99,32 +100,36 @@ const ReportPage: React.FC = () => {
           return;
         }
 
-        // If no stored report, use mock data immediately
-        // This prevents long loading times from API calls
+        // Try to fetch from consolidated backend
+        try {
+          const resumeFile = await getResumeFile();
+          if (resumeFile) {
+            // Fetch both resume feedback and summary in parallel
+            const [feedbackResponse, summaryResponse] = await Promise.all([
+              fetchResumeFeedback(resumeFile),
+              fetchResumeSummary(resumeFile)
+            ]);
+
+            // Combine the responses
+            const combinedData: ReportData = {
+              resume_feedback: feedbackResponse.resume_feedback,
+              career_guidance: feedbackResponse.career_guidance,
+              resume_summary: summaryResponse
+            };
+
+            sessionStorage.setItem("resumeReport", JSON.stringify(combinedData));
+            setReportData(combinedData);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Failed to fetch from API:", err);
+        }
+
+        // Fallback to mock data if API fails
         const mockData = getMockReportData();
         setReportData(mockData);
         setLoading(false);
-
-        // Optionally: Try to fetch from backend in the background
-        // Uncomment below if you want to fetch real data after showing mock data
-        /*
-        try {
-          const response = await fetch("/api/ResumeFeedback", {
-            method: "POST",
-            body: await createFormDataWithResume(),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.feedback) {
-              sessionStorage.setItem("resumeReport", JSON.stringify(data.feedback));
-              setReportData(data.feedback);
-            }
-          }
-        } catch (err) {
-          console.error("Background fetch failed:", err);
-        }
-        */
       } catch (error) {
         console.error("Error loading report:", error);
         setError("Failed to load report. Using sample data.");
@@ -148,22 +153,68 @@ const ReportPage: React.FC = () => {
     return null;
   };
 
-  const createFormDataWithResume = async (): Promise<FormData> => {
-    const formData = new FormData();
-    
-    // Try to fetch the resume PDF from the backend
+  const getResumeFile = async (): Promise<File | null> => {
     try {
+      // Check if user has uploaded a resume in sessionStorage
+      const uploadedResume = sessionStorage.getItem("uploadedResume");
+      if (uploadedResume) {
+        const resumeData = JSON.parse(uploadedResume);
+        const response = await fetch(resumeData.url);
+        const blob = await response.blob();
+        return new File([blob], resumeData.filename, { type: "application/pdf" });
+      }
+
+      // Try to fetch the default resume PDF
       const resumeResponse = await fetch("/pdfs/resume-txt.pdf");
       if (resumeResponse.ok) {
         const blob = await resumeResponse.blob();
-        formData.append("file", blob, "resume-txt.pdf");
-        console.log("Resume PDF loaded and appended to FormData.");
+        return new File([blob], "resume-txt.pdf", { type: "application/pdf" });
       }
     } catch (err) {
       console.error("Could not load resume PDF:", err);
     }
     
-    return formData;
+    return null;
+  };
+
+  const fetchResumeFeedback = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(API_ENDPOINTS.RESUME_FEEDBACK, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch resume feedback");
+    }
+
+    const data = await response.json();
+    
+    // Parse the feedback if it's a string
+    if (typeof data.feedback === "string") {
+      return JSON.parse(data.feedback);
+    }
+    
+    return data.feedback || data;
+  };
+
+  const fetchResumeSummary = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(API_ENDPOINTS.RESUME_SUMMARY, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch resume summary");
+    }
+
+    const data = await response.json();
+    return data.summary;
   };
 
   const getMockReportData = (): ReportData => ({

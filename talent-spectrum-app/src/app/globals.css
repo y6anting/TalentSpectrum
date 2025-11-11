@@ -119,6 +119,11 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+:root {
+  /* Adjust if your fixed header height differs */
+  --app-header-height: 81px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -126,4 +131,13 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Global page content wrapper for wider layout with small side gutters */
+.page-wrap {
+  max-width: min(92vw, 1800px);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(12px, 3vw, 28px);
+  padding-right: clamp(12px, 3vw, 28px);
 }

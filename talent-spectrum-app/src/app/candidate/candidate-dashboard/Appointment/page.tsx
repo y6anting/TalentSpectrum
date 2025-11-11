@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Card } from "@/app/components/card";
-import { Calendar, Video, User, Clock } from "lucide-react"
+import { Calendar, Video, User, Clock, Search } from "lucide-react"
 
 type Appointment = {
   id: number;
@@ -53,16 +53,27 @@ export default function AppointmentPage() {
       return;
     }
 
-    setAppointments(prev =>
-      prev.map(a =>
+    setAppointments(prev => {
+      const updated = prev.map(a =>
         a.id === selectedAppointmentId
-          ? { ...a, candidate: "John Doe" } // set the candidate
+          ? { ...a, candidate: "John Doe" }
           : a
-      )
-    );
+      );
 
-    // Clear selection and close popup
+      if (selectedCoach) {
+        const hasAvailable = updated.some(
+          a => a.jobCoach === selectedCoach && a.candidate === null
+        );
+        if (!hasAvailable) {
+          setSelectedCoach(null);
+        }
+      }
+
+      return updated;
+    });
+
     setSelectedAppointmentId(null);
+    setSelectedDate(null);
     setShowPopup(false);
   };
 
@@ -84,9 +95,13 @@ export default function AppointmentPage() {
     setSelectedDate(null);
   };
 
-  const availableDays = appointments
-    .filter((a) => a.jobCoach === selectedCoach)
-    .map((a) => a.dateTime);
+  const availableDays = React.useMemo(() => {
+    if (!selectedCoach) return [];
+    return appointments
+      .filter(a => a.jobCoach === selectedCoach && a.candidate === null)
+      .map(a => a.dateTime);
+  }, [appointments, selectedCoach]);
+
 
   const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
   const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
@@ -94,14 +109,16 @@ export default function AppointmentPage() {
     i < firstDay ? null : i - firstDay + 1
   );
 
-  const selectedDayAppointments =
-    selectedCoach && selectedDate
-      ? appointments.filter(
-        (a) =>
-          a.jobCoach === selectedCoach &&
-          formatDate(a.dateTime) === formatDate(selectedDate)
-      )
-      : [];
+  const selectedDayAppointments = React.useMemo(() => {
+    if (!selectedCoach || !selectedDate) return [];
+    return appointments.filter(
+      (a) =>
+        a.jobCoach === selectedCoach &&
+        formatDate(a.dateTime) === formatDate(selectedDate) &&
+        a.candidate === null
+    );
+  }, [appointments, selectedCoach, selectedDate]);
+
 
   const handlePrevMonth = () => {
     if (appointmentMonth === 0) {
@@ -142,7 +159,7 @@ export default function AppointmentPage() {
   ];
 
   const handleBookClick = (appointment: any) => {
-    setSelectedAppointmentId(appointment.id); // store the appointment id
+    setSelectedAppointmentId(appointment.id); 
     setShowPopup(true);
   };
 
@@ -163,6 +180,7 @@ export default function AppointmentPage() {
                 placeholder="Find and select a job coach:"
                 onChange={(e) => setJobCoachSearch(e.target.value)}
               />
+              <Search className="text-gray-400 w-5 h-5" />
             </div>
             <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
               {filteredJobCoachSearch.length > 0 ? (
@@ -241,9 +259,7 @@ export default function AppointmentPage() {
                     return (
                       <div
                         key={i}
-                        onClick={() => {
-                          setSelectedDate(date);
-                        }}
+                        onClick={() => setSelectedDate(date)}
                         className={`p-2 rounded-lg cursor-pointer transition ${isSelected
                           ? "bg-[#635bff] text-white font-bold"
                           : available
@@ -441,7 +457,7 @@ export default function AppointmentPage() {
                   {/* Close button */}
                   <button
                     onClick={() => handleRemove(a.id)}
-                    className="cursor-pointer absolute top-3 right-3 text-red-500 hover:text-red-600 text-sm"
+                    className="cursor-pointer absolute top-3 right-3 text-black-500 hover:text-red-600 text-sm"
                   >
                     ✕
                   </button>

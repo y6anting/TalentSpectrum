@@ -19,30 +19,6 @@ DbDep = Annotated[Session, Depends(get_db)]
 async def get_appointment_all(db: DbDep):
     return db.query(Appointment).all()
 
-@router.get("/{jobCoach}")
-async def get_unbooked_appointments_by_coach(jobCoach: str, db: DbDep):
-    appointment = db.query(Appointment).filter(
-        (Appointment.jobCoach == jobCoach)
-        & (Appointment.candidate.is_(None))
-    ).all()
-    if appointment is not None:
-        return appointment
-    
-    raise HTTPException(status_code= 404, detail= "Appointment not found")
-
-@router.get("/booked/{candidate}")
-async def get_appointments_from_candidate(candidate: str, db: DbDep):
-    appointments = (
-        db.query(Appointment)
-        .filter(Appointment.candidate == candidate)
-        .all()
-    )
-
-    if not appointments:
-        raise HTTPException(status_code=404, detail="No appointments found for this candidate")
-
-    return appointments
-
 @router.post("/")
 async def new_appointment(new_app: AppointmentCreate, db: DbDep):
     try:
@@ -69,6 +45,18 @@ async def book_appointment(id: int, candidate: str, db:DbDep):
     db.add(appointment)
     db.commit()
     return {"message": f"Appointment booked by {candidate}"}
+
+@router.put("/unbook")
+async def book_appointment(id: int, db:DbDep):
+    appointment = db.query(Appointment).filter(
+        (Appointment.id == id) 
+    ).first()
+    if appointment is None:
+        raise HTTPException(status_code= 404, detail= "Appointment not found")
+    appointment.candidate = None
+    db.add(appointment)
+    db.commit()
+    return {"message": f"Appointment unbooked"}
 
 @router.delete("/{id}")
 async def delete_appointment(id: int, db: DbDep):

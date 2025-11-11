@@ -11,6 +11,8 @@ type Appointment = {
   dateTime: Date;
 };
 
+const BASE_URL = "http://localhost:8000/appointment";
+
 export default function AppointmentPage() {
   const [jobCoachSearch, setJobCoachSearch] = useState('');
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
@@ -19,17 +21,24 @@ export default function AppointmentPage() {
   const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    { id: 1, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 5) },
-    { id: 2, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 14) },
-    { id: 3, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 20) },
-    { id: 4, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 10, 1) },
-    { id: 5, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 4, 21) },
-    { id: 6, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 25, 4) },
-    { id: 7, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 5, 5) },
-    { id: 8, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 18, 5) },
-    { id: 9, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 1, 5) },
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const candidateNameTemp = "Proxy Candidate";
+  const meetUrl = "https://chatgpt.com" // change this url to google meet. make sure it has https
+  const fetchAppointments = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/all`)
+      if (!res.ok) throw new Error("Failed to fetch appointments");
+      const data: Appointment[] = await res.json();
+      const converted = data.map(a => ({ ...a, dateTime: new Date(a.dateTime) }));
+      setAppointments(converted);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchAppointments(); // call it once on mount
+  }, []);
 
   const selectedAppointment = appointments.find(
     (a) => a.id === selectedAppointmentId
@@ -47,43 +56,68 @@ export default function AppointmentPage() {
 
   const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (selectedAppointmentId === null) {
       alert("No appointment selected.");
       return;
     }
 
-    setAppointments(prev => {
-      const updated = prev.map(a =>
-        a.id === selectedAppointmentId
-          ? { ...a, candidate: "John Doe" }
-          : a
+    try {
+      const res = await fetch(
+        `${BASE_URL}/book?id=${selectedAppointmentId}&candidate=${encodeURIComponent(candidateNameTemp)}`,
+        {
+          method: "PUT",
+        }
       );
 
+      if (!res.ok) throw new Error("Failed to book appointment");
+
+      // Update frontend state
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === selectedAppointmentId ? { ...a, candidate: candidateNameTemp } : a
+        )
+      );
+
+      setSelectedAppointmentId(null);
+      setSelectedDate(null);
+
+      // Deselect coach if no remaining slots
       if (selectedCoach) {
-        const hasAvailable = updated.some(
+        const hasAvailable = appointments.some(
           a => a.jobCoach === selectedCoach && a.candidate === null
         );
-        if (!hasAvailable) {
-          setSelectedCoach(null);
-        }
+        if (!hasAvailable) setSelectedCoach(null);
       }
 
-      return updated;
-    });
-
-    setSelectedAppointmentId(null);
-    setSelectedDate(null);
-    setShowPopup(false);
+      setShowPopup(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to book appointment.");
+    }
   };
 
+  const handleRemove = async (id: number) => {
+    try {
+      const res = await fetch(`${BASE_URL}/unbook?id=${id}`, {
+        method: "PUT",
+      });
 
-  const handleRemove = (id: number) => {
-    setAppointments(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, candidate: null } : a
-      )
-    );
+      if (!res.ok) {
+        throw new Error("Failed to unbook appointment");
+      }
+
+      // Update frontend state
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === id ? { ...a, candidate: null } : a
+        )
+      );
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to unbook appointment.");
+    }
   };
 
   const filteredJobCoachSearch = jobCoaches.filter((c) =>
@@ -159,7 +193,7 @@ export default function AppointmentPage() {
   ];
 
   const handleBookClick = (appointment: any) => {
-    setSelectedAppointmentId(appointment.id); 
+    setSelectedAppointmentId(appointment.id);
     setShowPopup(true);
   };
 
@@ -448,7 +482,7 @@ export default function AppointmentPage() {
           {/* Session cards */}
           <div className="flex flex-wrap gap-4">
             {appointments
-              .filter(a => a.candidate != null) // Only show booked appointments
+              .filter(a => ((a.candidate != null) && (a.candidate == candidateNameTemp)))
               .map((a, i) => (
                 <div
                   key={i}
@@ -506,7 +540,13 @@ export default function AppointmentPage() {
                   )}
 
                   {/* Join meeting link */}
-                  <button className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap">
+                  <button
+                    onClick={() => {
+                      const url = meetUrl || "https://example.com";
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap">
+
                     <Video size={14} />
                     Join Meeting
                   </button>

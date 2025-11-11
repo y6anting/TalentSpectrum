@@ -36,7 +36,7 @@ async def get_jobs_by_employer(employer_email: str, db: DbDep):
 @router.post("/")
 async def create_job(db: DbDep, job: PostJobRequest):
     try:
-        new_job = Post_Job(**job.dict())
+        new_job = Post_Job(**job.model_dump())
         db.add(new_job)
         db.commit()
         db.refresh(new_job)
@@ -50,7 +50,7 @@ async def update_job(db: DbDep, job_id: int, job: PostJobRequest):
     existing = db.query(Post_Job).filter(Post_Job.id == job_id).first()
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
-    for key, value in job.dict().items():
+    for key, value in job.model_dump().items():
         setattr(existing, key, value)
     db.commit()
     db.refresh(existing)
@@ -80,7 +80,7 @@ async def create_company(db: DbDep, company: CompanyRequest):
         if existing:
             raise HTTPException(status_code=400, detail="Company with this email already exists")
         
-        new_company = Company(**company.dict())
+        new_company = Company(**company.model_dump())
         db.add(new_company)
         db.commit()
         db.refresh(new_company)
@@ -95,7 +95,7 @@ async def update_company(email: str, db: DbDep, company_data: CompanyRequest):
     if not existing:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    for key, value in company_data.dict(exclude_unset=True).items():
+    for key, value in company_data.model_dump(exclude_unset=True).items():
         setattr(existing, key, value)
     db.commit()
     db.refresh(existing)

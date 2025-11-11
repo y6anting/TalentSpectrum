@@ -99,7 +99,7 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
         return await update_profile(db, user_email, profile)
 
     # Create the main profile
-    profile_data = profile.dict(exclude_unset=True, exclude_none=True)
+    profile_data = profile.model_dump(exclude_unset=True, exclude_none=True)
     
     # Remove fields that shouldn't be in the profile table
     educations_data = profile_data.pop('educations', [])
@@ -156,7 +156,7 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
         raise HTTPException(status_code=404, detail="Profile not found")
     
     # Get the dict and exclude unset/None values
-    profile_data = profile.dict(exclude_unset=True, exclude_none=True)
+    profile_data = profile.model_dump(exclude_unset=True, exclude_none=True)
     
     # Handle email/candidate_email field mapping
     if 'candidate_email' in profile_data and 'email' not in profile_data:

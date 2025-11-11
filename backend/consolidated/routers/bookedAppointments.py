@@ -1,12 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Annotated
 from datetime import datetime
-import os
-import shutil
-import re
 
 from database.connection import get_db
 from database.models.appointment import Appointment

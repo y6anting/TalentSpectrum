@@ -20,18 +20,30 @@ export default function AppointmentPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null);
   const [appointmentBookedSessions, setAppointmentBookedSessions] = useState<BookingInfo[]>([]);
-  const jobCoachTemporary = [{name: "one"}, {name: "two"}, {name: "three"}]
-  const appointmentsTemporary = [
-    { jobCoach: "one", candidate: "", dateTime: 1762153200 },
-    { jobCoach: "one", candidate: "", dateTime: 1762185600 },
-    { jobCoach: "one", candidate: "", dateTime: 1762207200 },
-    { jobCoach: "two", candidate: "", dateTime: 1765421400 },
-    { jobCoach: "two", candidate: "", dateTime: 1764421400 },
-    { jobCoach: "two", candidate: "", dateTime: 1763641400 },
-    { jobCoach: "three", candidate: "", dateTime: 1762639400 },
-    { jobCoach: "three", candidate: "", dateTime: 1763639400 },
-    { jobCoach: "three", candidate: "", dateTime: 1764639400 }
+  const appointments = [
+    { id: 1, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 5) },
+    { id: 2, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 14) },
+    { id: 3, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 20) },
+    { id: 4, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 10, 1) },
+    { id: 5, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 4, 21) },
+    { id: 6, jobCoach: "two", candidate: null, dateTime: new Date(2025, 10, 25, 4) },
+    { id: 7, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 5, 5) },
+    { id: 8, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 18, 5) },
+    { id: 9, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 1, 5) },
   ];
+
+  const jobCoaches = Array.from(
+    new Set(
+      appointments
+        .filter(a => a.candidate === null)
+        .map(a => a.jobCoach)
+    )
+  ).map(name => ({ name }));
+
+  console.log(jobCoaches);
+
+  const formatDate = (d: Date) => d.toISOString().slice(0, 10)
+
   const handleConfirmBooking = () => {
     if (!bookingInfo?.coach || !bookingInfo?.date || !bookingInfo?.time) {
       alert("Please select a coach, date, and time before confirming.");
@@ -46,16 +58,13 @@ export default function AppointmentPage() {
 
     // Close popup
     handleClosePopup();
-
-    // Confirmation feedback
-    // alert("Booking confirmed!"); Note: need to use standardized alert message of the site (see JobListing for example)
   };
 
   const handleRemove = (index: number) => {
     setAppointmentBookedSessions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const filteredJobCoachSearch = jobCoachTemporary.filter((c) =>
+  const filteredJobCoachSearch = jobCoaches.filter((c) =>
     c.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
   );
 
@@ -64,9 +73,9 @@ export default function AppointmentPage() {
     setSelectedDate(null);
   };
 
-  const availableDays = appointmentsTemporary
-  .filter((a) => a.jobCoach === selectedCoach)
-  .map((a) => new Date(a.dateTime * 1000));
+  const availableDays = appointments
+    .filter((a) => a.jobCoach === selectedCoach)
+    .map((a) => a.dateTime);
 
   const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
   const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
@@ -74,14 +83,14 @@ export default function AppointmentPage() {
     i < firstDay ? null : i - firstDay + 1
   );
 
-  const selectedDayappointmentsTemporary =
-  selectedCoach && selectedDate
-    ? appointmentsTemporary.filter(
+  const selectedDayAppointments =
+    selectedCoach && selectedDate
+      ? appointments.filter(
         (a) =>
           a.jobCoach === selectedCoach &&
-          new Date(a.dateTime * 1000).toDateString() === selectedDate.toDateString()
+          formatDate(a.dateTime) === formatDate(selectedDate)
       )
-    : [];
+      : [];
 
   const handlePrevMonth = () => {
     if (appointmentMonth === 0) {
@@ -104,9 +113,7 @@ export default function AppointmentPage() {
   };
 
   const isDateAvailable = (d: Date) =>
-    availableDays.some(
-      (a) => a.getDate() === d.getDate() && a.getMonth() === d.getMonth() && a.getFullYear() === d.getFullYear()
-    );
+    availableDays.some((a) => formatDate(a) === formatDate(d));
 
   const monthNames = [
     "January",
@@ -124,7 +131,7 @@ export default function AppointmentPage() {
   ];
 
   const handleBookClick = (coachName: string, appointment: any) => {
-    const date = new Date(appointment.dateTime * 1000);
+    const date = appointment.dateTime;
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setBookingInfo({ coach: coachName, date, time: formattedTime });
     setShowPopup(true);
@@ -241,8 +248,8 @@ export default function AppointmentPage() {
                   })}
                 </div>
 
-                {/* appointmentsTemporary */}
-                {selectedDayappointmentsTemporary.length > 0 ? (
+                {/* appointments */}
+                {selectedDayAppointments.length > 0 ? (
                   <div className="mt-5">
                     <div className="flex items-center gap-2 mb-2">
                       <svg
@@ -272,7 +279,7 @@ export default function AppointmentPage() {
                     </p>
 
                     <ul className="space-y-3">
-                      {selectedDayappointmentsTemporary.map((a, i) => (
+                      {selectedDayAppointments.map((a, i) => (
                         <li
                           key={i}
                           className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
@@ -293,7 +300,7 @@ export default function AppointmentPage() {
                               />
                             </svg>
                             <span className="font-medium">
-                              {new Date(a.dateTime * 1000).toLocaleTimeString([], {
+                              {a.dateTime.toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -311,7 +318,7 @@ export default function AppointmentPage() {
                   </div>
                 ) : selectedDate ? (
                   <p className="mt-5 text-gray-400 text-center pt-5">
-                    No available appointmentsTemporary on this day.
+                    No available appointments on this day.
                   </p>
                 ) : null}
               </>
@@ -370,28 +377,28 @@ export default function AppointmentPage() {
 
             <style>
               {`
-                        @keyframes fadeIn {
-                          from { opacity: 0; }
-                          to { opacity: 1; }
-                        }
-                        @keyframes scaleIn {
-                          from {
-                            opacity: 0;
-                            transform: scale(0.95);
-                          }
-                          to {
-                            opacity: 1;
-                            transform: scale(1);
-                          }
-                        }
+                @keyframes fadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                @keyframes scaleIn {
+                  from {
+                    opacity: 0;
+                    transform: scale(0.95);
+                  }
+                  to {
+                      opacity: 1;
+                      transform: scale(1);
+                  }
+                }
 
-                        .animate-fadeIn {
-                          animation: fadeIn 0.25s ease-out forwards;
-                        }
-                        .animate-scaleIn {
-                          animation: scaleIn 0.25s ease-out forwards;
-                        }
-                      `}
+                .animate-fadeIn {
+                  animation: fadeIn 0.25s ease-out forwards;
+                }
+                .animate-scaleIn {
+                  animation: scaleIn 0.25s ease-out forwards;
+                }
+              `}
             </style>
           </div>
         )}

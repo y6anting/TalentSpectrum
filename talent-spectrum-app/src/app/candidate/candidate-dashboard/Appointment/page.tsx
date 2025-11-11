@@ -4,11 +4,11 @@ import React, { useState } from "react";
 import { Card } from "@/app/components/card";
 import { Calendar, Video, User, Clock } from "lucide-react"
 
-type BookingInfo = {
-  coach?: string;
-  date?: Date;
-  time?: string;
-  applierName?: string;
+type Appointment = {
+  id: number;
+  jobCoach: string;
+  candidate: string | null;
+  dateTime: Date;
 };
 
 export default function AppointmentPage() {
@@ -17,10 +17,9 @@ export default function AppointmentPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
   const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-  const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null);
-  const [appointmentBookedSessions, setAppointmentBookedSessions] = useState<BookingInfo[]>([]);
-  const appointments = [
+  const [appointments, setAppointments] = useState<Appointment[]>([
     { id: 1, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 5) },
     { id: 2, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 14) },
     { id: 3, jobCoach: "one", candidate: null, dateTime: new Date(2025, 10, 3, 20) },
@@ -30,7 +29,11 @@ export default function AppointmentPage() {
     { id: 7, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 5, 5) },
     { id: 8, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 18, 5) },
     { id: 9, jobCoach: "three", candidate: null, dateTime: new Date(2025, 10, 1, 5) },
-  ];
+  ]);
+
+  const selectedAppointment = appointments.find(
+    (a) => a.id === selectedAppointmentId
+  );
 
   const jobCoaches = Array.from(
     new Set(
@@ -45,23 +48,31 @@ export default function AppointmentPage() {
   const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
   const handleConfirmBooking = () => {
-    if (!bookingInfo?.coach || !bookingInfo?.date || !bookingInfo?.time) {
-      alert("Please select a coach, date, and time before confirming.");
+    if (selectedAppointmentId === null) {
+      alert("No appointment selected.");
       return;
     }
 
-    // Add the booking to the list
-    setAppointmentBookedSessions((prev) => [...prev, bookingInfo]);
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === selectedAppointmentId
+          ? { ...a, candidate: "John Doe" } // set the candidate
+          : a
+      )
+    );
 
-    // Optionally clear the temp booking info
-    setBookingInfo(null);
-
-    // Close popup
-    handleClosePopup();
+    // Clear selection and close popup
+    setSelectedAppointmentId(null);
+    setShowPopup(false);
   };
 
-  const handleRemove = (index: number) => {
-    setAppointmentBookedSessions((prev) => prev.filter((_, i) => i !== index));
+
+  const handleRemove = (id: number) => {
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, candidate: null } : a
+      )
+    );
   };
 
   const filteredJobCoachSearch = jobCoaches.filter((c) =>
@@ -130,16 +141,14 @@ export default function AppointmentPage() {
     "December",
   ];
 
-  const handleBookClick = (coachName: string, appointment: any) => {
-    const date = appointment.dateTime;
-    const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setBookingInfo({ coach: coachName, date, time: formattedTime });
+  const handleBookClick = (appointment: any) => {
+    setSelectedAppointmentId(appointment.id); // store the appointment id
     setShowPopup(true);
   };
 
   const handleClosePopup = () => {
     setShowPopup(false);
-    setBookingInfo(null);
+    setSelectedAppointmentId(null);
   };
 
   return (
@@ -307,7 +316,7 @@ export default function AppointmentPage() {
                             </span>
                           </div>
 
-                          <button onClick={() => handleBookClick(selectedCoach!, a)}
+                          <button onClick={() => handleBookClick(a)}
                             className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
                           >
                             Book
@@ -329,35 +338,42 @@ export default function AppointmentPage() {
             )}
           </div>
         </Card>
-        {showPopup && bookingInfo && (
+        {showPopup && selectedAppointmentId && (
           <div
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
             onClick={handleClosePopup}
           >
             <div
               className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-sm text-center space-y-4 transform animate-scaleIn"
+              onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
             >
               <h2 className="text-lg font-semibold text-gray-800">
                 Confirm Your Booking
               </h2>
 
-              <div className="text-gray-600 space-y-1">
-                <p>
-                  <span className="font-medium">Coach:</span> {bookingInfo.coach}
-                </p>
-                <p>
-                  <span className="font-medium">Date:</span>{" "}
-                  {bookingInfo.date?.toLocaleDateString(undefined, {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-                <p>
-                  <span className="font-medium">Time:</span> {bookingInfo.time}
-                </p>
-              </div>
+              {selectedAppointment && (
+                <div className="text-gray-600 space-y-1">
+                  <p>
+                    <span className="font-medium">Coach:</span> {selectedAppointment.jobCoach}
+                  </p>
+                  <p>
+                    <span className="font-medium">Date:</span>{" "}
+                    {selectedAppointment.dateTime.toLocaleDateString(undefined, {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                  <p>
+                    <span className="font-medium">Time:</span>{" "}
+                    {selectedAppointment.dateTime.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-center gap-3 pt-3">
                 <button
@@ -377,28 +393,28 @@ export default function AppointmentPage() {
 
             <style>
               {`
-                @keyframes fadeIn {
-                  from { opacity: 0; }
-                  to { opacity: 1; }
-                }
-                @keyframes scaleIn {
-                  from {
-                    opacity: 0;
-                    transform: scale(0.95);
-                  }
-                  to {
-                      opacity: 1;
-                      transform: scale(1);
-                  }
-                }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
 
-                .animate-fadeIn {
-                  animation: fadeIn 0.25s ease-out forwards;
-                }
-                .animate-scaleIn {
-                  animation: scaleIn 0.25s ease-out forwards;
-                }
-              `}
+        .animate-fadeIn {
+          animation: fadeIn 0.25s ease-out forwards;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.25s ease-out forwards;
+        }
+      `}
             </style>
           </div>
         )}
@@ -415,75 +431,80 @@ export default function AppointmentPage() {
 
           {/* Session cards */}
           <div className="flex flex-wrap gap-4">
-            {appointmentBookedSessions.map((b, i) => (
-              <div
-                key={i}
-                className="relative flex flex-col gap-2 p-4 border rounded-xl shadow-sm bg-white w-64"
-              >
-                {/* Close button */}
-                <button
-                  onClick={() => handleRemove(i)}
-                  className="cursor-pointer absolute top-3 right-3 text-red-500 hover:text-red-600 text-sm"
+            {appointments
+              .filter(a => a.candidate != null) // Only show booked appointments
+              .map((a, i) => (
+                <div
+                  key={i}
+                  className="relative flex flex-col gap-2 p-4 border rounded-xl shadow-sm bg-white w-64"
                 >
-                  ✕
-                </button>
+                  {/* Close button */}
+                  <button
+                    onClick={() => handleRemove(a.id)}
+                    className="cursor-pointer absolute top-3 right-3 text-red-500 hover:text-red-600 text-sm"
+                  >
+                    ✕
+                  </button>
 
-                {/* Status badge */}
-                <span className="bg-[#00ff00]/25 text-[#009900] text-xs font-medium px-3 py-1 rounded-md w-fit">
-                  Booked
-                </span>
-
-                {/* Date */}
-                <div className="flex items-center gap-2 text-sm text-gray-700 mt-2">
-                  <Calendar size={16} className="text-gray-500" />
-                  <span className="truncate overflow-hidden text-ellipsis block max-w-[100%]">
-                    {b.date
-                      ? b.date.toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })
-                      : "No date"}
+                  {/* Status badge */}
+                  <span className="bg-[#00ff00]/25 text-[#009900] text-xs font-medium px-3 py-1 rounded-md w-fit">
+                    Booked
                   </span>
-                </div>
 
-                {/* Time */}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <Clock size={16} className="text-gray-500" />
-                  <span>{b.time || "No time"}</span>
-                </div>
+                  {/* Date */}
+                  <div className="flex items-center gap-2 text-sm text-gray-700 mt-2">
+                    <Calendar size={16} className="text-gray-500" />
+                    <span className="truncate overflow-hidden text-ellipsis block max-w-[100%]">
+                      {a.dateTime
+                        ? a.dateTime.toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })
+                        : "No date"}
+                    </span>
+                  </div>
 
-                {/* Coach */}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <User size={16} className="text-gray-500" />
-                  <span>{b.coach || "Unknown coach"}</span>
-                </div>
+                  {/* Time */}
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Clock size={16} className="text-gray-500" />
+                    <span>
+                      {a.dateTime
+                        ? a.dateTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+                        : "No time"}
+                    </span>
+                  </div>
 
-                {/* Applier name */}
-                {b.applierName && (
+                  {/* Coach */}
                   <div className="flex items-center gap-2 text-sm text-gray-700">
                     <User size={16} className="text-gray-500" />
-                    <span className="italic">{b.applierName}</span>
+                    <span>{a.jobCoach || "Unknown coach"}</span>
                   </div>
-                )}
 
-                {/* Join meeting link */}
-                <button
-                  className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap"
-                >
-                  <Video size={14} />
-                  Join Meeting
-                </button>
-              </div>
-            ))}
+                  {/* Applier name */}
+                  {a.candidate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <User size={16} className="text-gray-500" />
+                      <span className="italic">{a.candidate}</span>
+                    </div>
+                  )}
+
+                  {/* Join meeting link */}
+                  <button className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap">
+                    <Video size={14} />
+                    Join Meeting
+                  </button>
+                </div>
+              ))}
 
             {/* Empty state */}
-            {appointmentBookedSessions.length === 0 && (
+            {appointments.filter(a => a.candidate != null).length === 0 && (
               <p className="text-gray-500 text-sm mt-4">No booked sessions yet.</p>
             )}
           </div>
         </div>
       </Card>
+
     </>
   );
 }

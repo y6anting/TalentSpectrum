@@ -26,7 +26,7 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
       
       {/* Global Accessibility Features */}
       <TextToSpeech />
-      <AccessibilitySettings />
+      {/* <AccessibilitySettings /> */}
     </div>
   );
 }

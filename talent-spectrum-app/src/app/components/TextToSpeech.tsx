@@ -15,6 +15,7 @@ const TextToSpeech: React.FC = () => {
   const [isReading, setIsReading] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isCancellingRef = useRef<boolean>(false);
   const buttonRef = useRef<HTMLDivElement>(null);
   const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -166,6 +167,7 @@ const TextToSpeech: React.FC = () => {
     if (!selectedText) return;
 
     // Cancel any ongoing speech
+    isCancellingRef.current = false;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(selectedText);
@@ -190,8 +192,12 @@ const TextToSpeech: React.FC = () => {
       // This allows them to read the same text again if needed
     };
 
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      const err = (event as any)?.error;
+      // Ignore errors triggered by user-initiated cancel/interrupt
+      if (!isCancellingRef.current && err !== 'interrupted' && err !== 'canceled') {
+        console.error('Speech synthesis error:', err || event);
+      }
       setIsReading(false);
       setIsPaused(false);
     };
@@ -229,6 +235,7 @@ const TextToSpeech: React.FC = () => {
     e?.stopPropagation();
     
     // Cancel speech
+    isCancellingRef.current = true;
     window.speechSynthesis.cancel();
     
     // Reset all states
@@ -245,6 +252,7 @@ const TextToSpeech: React.FC = () => {
   useEffect(() => {
     // Stop speech when component unmounts
     return () => {
+      isCancellingRef.current = true;
       window.speechSynthesis.cancel();
       if (selectionTimeoutRef.current) {
         clearTimeout(selectionTimeoutRef.current);

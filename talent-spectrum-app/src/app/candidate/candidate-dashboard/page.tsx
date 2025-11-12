@@ -33,7 +33,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import AppointmentPage from "./Appointment/page";
-import { CandidateJobListingContent as CandidateJobListing } from "../JobListing/page";
+import CandidateJobListing from "../JobListing/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -148,8 +148,6 @@ export default function CandidateDashboard() {
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [selectedSavedJob, setSelectedSavedJob] = useState<any | null>(null);
-  const [expandedSavedJobId, setExpandedSavedJobId] = useState<number | string | null>(null);
-
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     name: "Aminah",
@@ -347,9 +345,10 @@ export default function CandidateDashboard() {
   //   }
   // }, [status, session?.user?.email, candidateProfile.email]);
 
-  // Function to fetch profile data (can be called on mount and after resume upload)
-  const fetchProfileData = async () => {
-    try {
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
       setIsLoading(true);
       if (status === "loading") {
         console.log("Session status: loading, returning.");
@@ -362,10 +361,11 @@ export default function CandidateDashboard() {
         return;
       }
 
-      console.log('Full session object:', session);
-      console.log('Session user email:', session?.user?.email);
+      console.log('Full session object:', session); // Add this
+      console.log('Session user email:', session?.user?.email); // Add this
 
       const sessionEmail = session?.user?.email || "";
+      // const candidate_email = sessionEmail
 
       if (!sessionEmail) {
         console.error('No email found in session.user.email. Cannot fetch profile.');
@@ -377,7 +377,7 @@ export default function CandidateDashboard() {
         const candidate_email = encodeURIComponent(sessionEmail);
         console.log('Using email for profile fetch:', emailToUse);
 
-        const response = await fetch(`/api/profiles?email=${encodeURIComponent(candidate_email)}`, {
+        const response = await fetch(`http://127.0.0.1:8000/profiles/${candidate_email}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -541,28 +541,26 @@ export default function CandidateDashboard() {
           
           setIsLoading(false);
         }
-    } catch (error) {
-      console.error('Error fetching profile data:', error);
-      
-      // If there's an error but we have email, at least populate the email field
-      const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-      if (fallbackEmail) {
-        setCandidateProfile(prev => ({
-          ...prev,
-          email: fallbackEmail,
-          personalIdentifiers: {
-            ...prev.personalIdentifiers,
-            emailAddress: fallbackEmail
-          }
-        }));
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+        
+        // If there's an error but we have email, at least populate the email field
+        const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
+        if (fallbackEmail) {
+          setCandidateProfile(prev => ({
+            ...prev,
+            email: fallbackEmail,
+            personalIdentifiers: {
+              ...prev.personalIdentifiers,
+              emailAddress: fallbackEmail
+            }
+          }));
+        }
+        
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
-    }
-  };
+    };
 
-  // Fetch profile data on mount and when session changes
-  useEffect(() => {
     fetchProfileData();
   }, [status, session]);
 
@@ -576,7 +574,7 @@ export default function CandidateDashboard() {
 
       try {
         const response = await fetch(
-          `/api/profiles?email=${encodeURIComponent(session.user.email)}`
+          `http://127.0.0.1:8000/profiles/${session.user.email}`
         );
 
         if (!response.ok) {
@@ -622,7 +620,7 @@ export default function CandidateDashboard() {
 
     try {
       const response = await fetch(
-        `/api/profiles?email=${encodeURIComponent(session.user.email)}`
+        `http://127.0.0.1:8000/profiles/${session.user.email}`
       );
 
       if (!response.ok) {
@@ -662,75 +660,96 @@ export default function CandidateDashboard() {
   fetchExperienceData();
 }, [session, status]);
 
-  // Fetch applications data from new unified applications API
+  // Fetch applications data from database via Next.js API route
   useEffect(() => {
-    const fetchApplicationsData = async () => {
+    const fetchApplicationsData = async (email: string) => {
       try {
-        if (status !== 'authenticated') return;
-        const email = session?.user?.email;
-        if (!email) return;
-        const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`);
-        if (response.ok) {
-          const data = await response.json();
-          // Backend returns array of applications with snake_case; map to dashboard format
-          const mapped = data.map((app: any) => ({
-            id: app.id,
-            jobTitle: app.job_title,
-            company: app.company,
-            appliedDate: new Date(app.applied_date).toLocaleDateString(),
-            status: app.status,
-            accommodationsRequested: app.accommodations_requested,
-            score: app.score,
-            location: app.location,
-            salary: app.salary,
-            interviewDate: app.interview_date ? new Date(app.interview_date).toLocaleDateString() : null,
-          }));
-          setApplications(mapped);
-        } else {
+        const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
           console.error('Failed to fetch applications:', response.status);
           setApplications([]);
+          return;
         }
-      } catch (err) {
-        console.error('Error fetching applications data:', err);
+
+        const data = await response.json();
+        const mapped = Array.isArray(data)
+          ? data.map((app: any) => ({
+              id: app.id ?? app.application_id ?? undefined,
+              jobTitle: app.jobTitle ?? app.job_title ?? '',
+              company: app.company ?? app.employer ?? '',
+              appliedDate: app.appliedDate ?? app.applied_date ?? '',
+              status: app.status ?? 'under_review',
+              location: app.location ?? '',
+              salary: app.salary ?? '',
+              accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
+              score: app.score ?? undefined,
+            }))
+          : [];
+
+        setApplications(mapped);
+        if (mapped.length > 0 && !selectedApplication) {
+          setSelectedApplication(mapped[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching applications data:', error);
         setApplications([]);
       }
     };
-    fetchApplicationsData();
-  }, [session, status]);
 
-  // Fetch saved jobs from new saved-jobs API
+    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+    if (sessionEmail) {
+      fetchApplicationsData(sessionEmail);
+    }
+  }, [session]);
+
+  // Fetch saved jobs data from database via Next.js API route
   useEffect(() => {
-    const fetchSavedJobsData = async () => {
+    const fetchSavedJobsData = async (email: string) => {
       try {
-        if (status !== 'authenticated') return;
-        const email = session?.user?.email;
-        if (!email) return;
-        const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`);
-        if (response.ok) {
-          const data = await response.json();
-          const mapped = data.map((job: any) => ({
-            id: job.id,
-            title: job.job_title,
-            company: job.company,
-            location: job.location,
-            type: job.job_type,
-            salary: job.salary,
-            isInclusive: job.is_inclusive,
-            hasAccommodations: job.has_accommodations,
-            createdAt: job.created_at,
-          }));
-          setSavedJobs(mapped);
-        } else {
+        const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
           console.error('Failed to fetch saved jobs:', response.status);
           setSavedJobs([]);
+          return;
         }
-      } catch (err) {
-        console.error('Error fetching saved jobs data:', err);
+
+        const data = await response.json();
+        const mapped = Array.isArray(data)
+          ? data.map((job: any) => ({
+              id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
+              jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
+              company: job.company ?? job.employer ?? '',
+              location: job.location ?? '',
+              salary: job.salary ?? '',
+              type: job.type ?? job.job_type ?? '',
+              isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
+              hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
+            }))
+          : [];
+
+        setSavedJobs(mapped);
+        if (mapped.length > 0 && !selectedSavedJob) {
+          setSelectedSavedJob(mapped[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching saved jobs data:', error);
         setSavedJobs([]);
       }
     };
-    fetchSavedJobsData();
-  }, [session, status]);
+
+    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+    if (sessionEmail) {
+      fetchSavedJobsData(sessionEmail);
+    }
+  }, [session]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -796,272 +815,12 @@ export default function CandidateDashboard() {
     console.log('Education state changed:', educations);
   }, [educations]);
 
-  // Load sample applications data (for demonstration)
-  useEffect(() => {
-    // Sample applications data
-    const sampleApplications = [
-      {
-        id: 1,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7500 - RM 10,000 / month",
-        status: "under_review",
-        appliedDate: "2025-01-17",
-        score: 90,
-        accommodationsRequested: true,
-        description: "We are seeking a creative and strategic Marketing Director to lead our marketing team and drive brand awareness across multiple channels. The ideal candidate will have a proven track record in developing and executing comprehensive marketing strategies.",
-        requirements: [
-          "Bachelor's degree in Marketing, Business, or related field",
-          "7+ years of experience in marketing, with 3+ years in a leadership role",
-          "Strong analytical and project management skills",
-          "Excellent communication and presentation abilities",
-          "Experience with digital marketing platforms and analytics tools"
-        ],
-        benefits: [
-          "Competitive salary package",
-          "Health and dental insurance",
-          "Flexible working hours",
-          "Professional development opportunities",
-          "Annual performance bonus"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-28"
-      },
-      {
-        id: 2,
-        jobTitle: "Senior Manager",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 6500 - RM 9000 / month",
-        status: "interview_scheduled",
-        appliedDate: "2025-01-15",
-        interviewDate: "2025-01-25 at 10:00 AM",
-        score: 85,
-        accommodationsRequested: true,
-        description: "Join our dynamic team as a Senior Manager where you'll oversee daily operations, lead a team of professionals, and contribute to strategic planning initiatives.",
-        requirements: [
-          "Bachelor's degree in Business Administration or related field",
-          "5+ years of management experience",
-          "Strong leadership and team building skills",
-          "Excellent problem-solving abilities",
-          "Proficiency in project management tools"
-        ],
-        benefits: [
-          "Comprehensive health coverage",
-          "Retirement savings plan",
-          "Paid time off and holidays",
-          "Team building activities",
-          "Career advancement opportunities"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-15"
-      },
-      {
-        id: 3,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Remote",
-        salary: "RM 8000 - RM 12,000 / month",
-        status: "under_review",
-        appliedDate: "2025-01-12",
-        score: 88,
-        accommodationsRequested: false,
-        description: "Remote opportunity for an experienced Marketing Director to develop and implement marketing strategies that align with business objectives and drive growth.",
-        requirements: [
-          "Master's degree preferred, Bachelor's required",
-          "8+ years in marketing with leadership experience",
-          "Strong digital marketing expertise",
-          "Data-driven decision making skills",
-          "Experience managing remote teams"
-        ],
-        benefits: [
-          "Fully remote position",
-          "Flexible schedule",
-          "Generous PTO policy",
-          "Home office stipend",
-          "Professional development budget"
-        ],
-        companySize: "200-500 employees",
-        founded: "2012",
-        deadline: "2025-03-01"
-      },
-      {
-        id: 4,
-        jobTitle: "Senior Manager",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7000 - RM 9500 / month",
-        status: "under_review",
-        appliedDate: "2025-01-10",
-        score: 92,
-        accommodationsRequested: true,
-        description: "We're looking for a Senior Manager to join our operations team and help streamline processes while maintaining our high standards of quality and customer satisfaction.",
-        requirements: [
-          "Relevant degree in Business or Operations Management",
-          "6+ years of progressive management experience",
-          "Strong analytical and strategic thinking",
-          "Excellent interpersonal skills",
-          "Proven track record of process improvement"
-        ],
-        benefits: [
-          "Competitive compensation package",
-          "Medical and wellness benefits",
-          "Performance-based bonuses",
-          "Learning and development programs",
-          "Work-life balance initiatives"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-20"
-      },
-      {
-        id: 5,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7500 - RM 10,500 / month",
-        status: "under_review",
-        appliedDate: "2025-01-08",
-        score: 87,
-        accommodationsRequested: false,
-        description: "Lead our marketing efforts and shape brand strategy for one of the fastest-growing companies in the region. This role offers the opportunity to make a significant impact.",
-        requirements: [
-          "Bachelor's or Master's in Marketing",
-          "7+ years of marketing experience",
-          "Experience in brand development",
-          "Strong creativity and innovation skills",
-          "Budget management experience"
-        ],
-        benefits: [
-          "Attractive salary and benefits",
-          "Stock options",
-          "Health and wellness programs",
-          "Collaborative work environment",
-          "Career growth opportunities"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-25"
-      }
-    ];
-
-    setApplications(sampleApplications);
-    // Automatically select the first application
-    if (sampleApplications.length > 0) {
-      setSelectedApplication(sampleApplications[0]);
-    }
-
-    // Sample saved jobs data
-    const sampleSavedJobs = [
-      {
-        id: 101,
-        jobTitle: "Software Engineer",
-        company: "TechCorp Solutions",
-        location: "Kuala Lumpur",
-        salary: "RM 6000 - RM 9000 / month",
-        type: "Full-time",
-        score: 88,
-        description: "Join our innovative team as a Software Engineer where you'll develop cutting-edge applications and work with the latest technologies.",
-        requirements: [
-          "Bachelor's degree in Computer Science or related field",
-          "3+ years of software development experience",
-          "Proficiency in JavaScript, React, and Node.js",
-          "Strong problem-solving skills",
-          "Experience with agile methodologies"
-        ],
-        benefits: [
-          "Competitive salary and bonuses",
-          "Health insurance coverage",
-          "Flexible working hours",
-          "Professional development budget",
-          "Modern office environment"
-        ],
-        companySize: "100-500 employees",
-        founded: "2010",
-        deadline: "2025-03-15",
-        isInclusive: true,
-        hasAccommodations: true
-      },
-      {
-        id: 102,
-        jobTitle: "UX Designer",
-        company: "Creative Studio",
-        location: "Remote",
-        salary: "RM 5500 - RM 8000 / month",
-        type: "Full-time",
-        score: 92,
-        description: "We're looking for a talented UX Designer to create intuitive and beautiful user experiences for our diverse range of clients.",
-        requirements: [
-          "Portfolio demonstrating UX design expertise",
-          "4+ years of UX/UI design experience",
-          "Proficiency in Figma, Sketch, or Adobe XD",
-          "Understanding of user-centered design principles",
-          "Experience conducting user research"
-        ],
-        benefits: [
-          "Remote work flexibility",
-          "Generous PTO policy",
-          "Creative freedom",
-          "Latest design tools and software",
-          "Collaborative team culture"
-        ],
-        companySize: "20-50 employees",
-        founded: "2018",
-        deadline: "2025-03-20",
-        isInclusive: true,
-        hasAccommodations: true
-      },
-      {
-        id: 103,
-        jobTitle: "Data Analyst",
-        company: "Analytics Inc",
-        location: "Penang",
-        salary: "RM 5000 - RM 7500 / month",
-        type: "Full-time",
-        score: 85,
-        description: "Seeking a detail-oriented Data Analyst to help us make data-driven decisions and provide insights that drive business growth.",
-        requirements: [
-          "Bachelor's degree in Statistics, Mathematics, or related field",
-          "2+ years of data analysis experience",
-          "Strong SQL and Excel skills",
-          "Experience with data visualization tools (Tableau, Power BI)",
-          "Analytical and critical thinking abilities"
-        ],
-        benefits: [
-          "Competitive compensation",
-          "Health and wellness programs",
-          "Training and development opportunities",
-          "Work-life balance initiatives",
-          "Collaborative work environment"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-03-10",
-        isInclusive: false,
-        hasAccommodations: true
-      }
-    ];
-
-    setSavedJobs(sampleSavedJobs);
-    // Automatically select the first saved job
-    if (sampleSavedJobs.length > 0) {
-      setSelectedSavedJob(sampleSavedJobs[0]);
-    }
-  }, []);
+  // Demo data removed; applications and saved jobs now fetched from database via API
 
   // Handle tab switching
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    // Lightweight re-fetch when user switches to Applications or Saved tabs for consistency
-    if (tabId === 'applications') {
-      refetchApplications();
-    } else if (tabId === 'saved') {
-      refetchSavedJobs();
-    }
   };
 
   // Handle applying for a saved job - move it from saved to applications
@@ -1140,225 +899,6 @@ export default function CandidateDashboard() {
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
-  // Remove a saved job
-  const handleRemoveSavedJob = async (savedJobId: number) => {
-    try {
-      const res = await fetch(`/api/saved-jobs?savedJobId=${savedJobId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setSavedJobs(prev => prev.filter((j: any) => j.id !== savedJobId));
-        // Emit unsaved event so other components could respond if needed
-        window.dispatchEvent(new CustomEvent('jobUnsaved', { detail: { id: savedJobId } }));
-        // Clear expansion if the removed job was expanded
-        if (expandedSavedJobId === savedJobId) {
-          setExpandedSavedJobId(null);
-        }
-      } else {
-        const data = await res.json();
-        console.error('Failed to remove saved job:', data);
-      }
-    } catch (e) {
-      console.error('Error removing saved job:', e);
-    }
-  };
-
-  // Apply to a saved job
-  const handleApplyToSavedJob = async (job: any) => {
-    try {
-      setIsApplyingFromSaved(true);
-      const userEmail = session?.user?.email;
-      if (!userEmail) {
-        alert('Please sign in before applying to jobs.');
-        return;
-      }
-
-      // Check if already applied
-      const alreadyApplied = applications.some(
-        app => app.jobTitle === job.title && app.company === job.company
-      );
-      
-      if (alreadyApplied) {
-        alert('You have already applied to this job.');
-        return;
-      }
-
-      const response = await fetch('/api/applications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          candidate_email: userEmail,
-          job_id: parseInt(job.id),
-          accommodations_requested: job.hasAccommodations || job.isInclusive
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert('Application submitted successfully!');
-        
-        // Add to applications list
-        const newApp = {
-          id: result.id || Date.now(),
-          jobTitle: job.title,
-          company: job.company,
-          appliedDate: new Date().toLocaleDateString(),
-          status: 'under_review',
-          accommodationsRequested: job.hasAccommodations || job.isInclusive,
-          score: 0,
-          location: job.location,
-          salary: job.salary,
-          interviewDate: null,
-        };
-        setApplications(prev => [...prev, newApp]);
-        
-        // Optionally remove from saved jobs after applying
-        // await handleRemoveSavedJob(job.id);
-      } else {
-        const errorData = await response.json();
-        console.error('Application failed:', errorData);
-        
-        if (response.status >= 500) {
-          alert('Service temporarily unavailable. Your application will be processed when the service is restored.');
-        } else {
-          const msg = errorData.error || 'Failed to apply to job';
-          if (msg.toLowerCase().includes('already applied')) {
-            alert('You have already applied to this job.');
-          } else {
-            alert(`Application failed: ${msg}`);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error applying to job:', err);
-      alert('An error occurred while applying to the job');
-    } finally {
-      setIsApplyingFromSaved(false);
-    }
-  };
-
-  // Refetch helpers for tab change
-  const refetchApplications = async () => {
-    try {
-      if (status !== 'authenticated') return;
-      const email = session?.user?.email;
-      if (!email) return;
-      const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`);
-      if (response.ok) {
-        const data = await response.json();
-        const mapped = data.map((app: any) => ({
-          id: app.id,
-          jobTitle: app.job_title,
-          company: app.company,
-          appliedDate: new Date(app.applied_date).toLocaleDateString(),
-          status: app.status,
-          accommodationsRequested: app.accommodations_requested,
-          score: app.score,
-          location: app.location,
-          salary: app.salary,
-          interviewDate: app.interview_date ? new Date(app.interview_date).toLocaleDateString() : null,
-        }));
-        setApplications(mapped);
-      }
-    } catch (err) {
-      console.error('Refetch applications failed:', err);
-    }
-  };
-
-  const refetchSavedJobs = async () => {
-    try {
-      if (status !== 'authenticated') return;
-      const email = session?.user?.email;
-      if (!email) return;
-      const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`);
-      if (response.ok) {
-        const data = await response.json();
-        const mapped = data.map((job: any) => ({
-          id: job.id,
-          title: job.job_title,
-          company: job.company,
-          location: job.location,
-          type: job.job_type,
-          salary: job.salary,
-          isInclusive: job.is_inclusive,
-          hasAccommodations: job.has_accommodations,
-          createdAt: job.created_at,
-        }));
-        setSavedJobs(mapped);
-      }
-    } catch (err) {
-      console.error('Refetch saved jobs failed:', err);
-    }
-  };
-
-  // Real-time event listeners for job actions (apply/save/unsave) originating from JobListing component
-  useEffect(() => {
-    const onJobApplied = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail) return;
-      setApplications(prev => {
-        // Prevent duplicates
-        if (prev.some(app => app.jobTitle === detail.jobTitle && app.company === detail.company)) return prev;
-        const newApp = {
-          id: detail.id,
-          jobTitle: detail.jobTitle,
-          company: detail.company,
-          appliedDate: new Date(detail.appliedDate).toLocaleDateString(),
-          status: detail.status || 'under_review',
-          accommodationsRequested: detail.accommodationsRequested,
-          score: detail.matchScore ?? 0,
-          location: detail.location,
-          salary: detail.salary,
-          interviewDate: null,
-        };
-        return [...prev, newApp];
-      });
-    };
-
-    const onJobSaved = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail) return;
-      setSavedJobs(prev => {
-        if (prev.some(job => job.title === detail.jobTitle && job.company === detail.company)) return prev;
-        const newJob = {
-          id: detail.id,
-          title: detail.jobTitle,
-          company: detail.company,
-          location: detail.location,
-          type: detail.jobType,
-          salary: detail.salary,
-          isInclusive: detail.isInclusive,
-          hasAccommodations: detail.isInclusive,
-          createdAt: new Date().toISOString(),
-        };
-        return [...prev, newJob];
-      });
-    };
-
-    const onJobUnsaved = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail) return;
-      setSavedJobs(prev => {
-        const filtered = prev.filter(job => job.id !== detail.id);
-        // Clear expansion if the unsaved job was expanded
-        if (expandedSavedJobId === detail.id) {
-          setExpandedSavedJobId(null);
-        }
-        return filtered;
-      });
-    };
-
-    window.addEventListener('jobApplied', onJobApplied);
-    window.addEventListener('jobSaved', onJobSaved);
-    window.addEventListener('jobUnsaved', onJobUnsaved);
-
-    return () => {
-      window.removeEventListener('jobApplied', onJobApplied);
-      window.removeEventListener('jobSaved', onJobSaved);
-      window.removeEventListener('jobUnsaved', onJobUnsaved);
-    };
-  }, [expandedSavedJobId]);
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
@@ -1418,7 +958,7 @@ export default function CandidateDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="page-wrap py-8">
-        <div className="grid lg:grid-cols-[300px_1fr] gap-8 py-8">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8 py-8">
           {/* Sidebar */}
           <div className="lg:sticky top-[var(--app-header-height)] self-start">
             <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
@@ -1546,12 +1086,8 @@ export default function CandidateDashboard() {
                 <ResumeUploadButton
                   buttonText="Upload Resume"
                   buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  onResumeProcessed={async (parsedInfo) => {
+                  onResumeProcessed={(parsedInfo) => {
                     console.log("Resume processed:", parsedInfo);
-                    // Wait a moment for database to save, then refresh profile
-                    setTimeout(() => {
-                      fetchProfileData();
-                    }, 1500);
                   }}
                 />
               </div>
@@ -1684,69 +1220,221 @@ export default function CandidateDashboard() {
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <p className="text-gray-600">{applications.length} {applications.length === 1 ? 'application' : 'applications'} submitted</p>
+                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
+                  {/* <Button
+                    asChild
+                    variant="outline"
+                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  >
+                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                  </Button> */}
                 </div>
-                <div className="space-y-4">
-                  {applications.length > 0 ? applications.map((app) => (
-                    <Card key={app.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
-                            <p className="text-[#635bff] font-medium mb-2">{app.company}</p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                
+                {applications.length > 0 ? (
+                  <div className="grid lg:grid-cols-5 gap-6">
+                    {/* Left side - Applications List */}
+                    <div className="lg:col-span-2 space-y-3">
+                      {applications.map((app) => (
+                        <Card 
+                          key={app.id}
+                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            selectedApplication?.id === app.id 
+                              ? 'border-2 border-[#635bff] shadow-md' 
+                              : 'border border-gray-200'
+                          }`}
+                          onClick={() => setSelectedApplication(app)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h3 className="text-base font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
+                                <p className="text-sm text-[#635bff] font-medium">{app.company}</p>
+                              </div>
+                              {getStatusBadge(app.status)}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
                               <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
+                                <MapPin className="h-3 w-3" />
                                 {app.location}
                               </span>
                               <span className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4" />
+                                <DollarSign className="h-3 w-3" />
                                 {app.salary}
                               </span>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Applied {app.appliedDate}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            {app.accommodationsRequested && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                <Shield className="h-3 w-3 mr-1" />
-                                Accommodations Requested
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-gray-500">Posted: {app.appliedDate}</p>
+                              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                                {Math.round(((app.primaryMatchScore || 96) + (app.secondaryMatchScore || 90) + (app.tertiaryMatchScore || 85)) / 3)}% match
                               </Badge>
-                            )}
-                            {app.interviewDate && (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                Interview: {app.interviewDate}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                            {app.status === "interview_scheduled" && (
-                              <Button
-                                size="sm"
-                                className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200 hover:cursor-pointer"
-                                onClick={() => router.push("/mock-interview/setup")}
-                              >
-                                Prepare for Interview
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )) : <div className="flex items-center p-[100px] w-full justify-center">
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Right side - Application Details */}
+                    <div className="lg:col-span-3">
+                      {selectedApplication ? (
+                        <Card className="sticky top-4">
+                          <CardContent className="p-6">
+                            <div className="space-y-6">
+                              {/* Header */}
+                              <div>
+                                <div className="flex items-start justify-between mb-4">
+                                  <div>
+                                    <h2 className="text-2xl font-bold text-[#3a4043] mb-2">
+                                      {selectedApplication.jobTitle}
+                                    </h2>
+                                    <p className="text-lg text-[#635bff] font-medium mb-3">
+                                      {selectedApplication.company}
+                                    </p>
+                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-4 w-4" />
+                                        {selectedApplication.location}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <DollarSign className="h-4 w-4" />
+                                        {selectedApplication.salary}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {selectedApplication.score && (
+                                    <div className="text-center">
+                                      <div className="text-4xl font-bold text-[#635bff] mb-1">
+                                        {selectedApplication.score}%
+                                      </div>
+                                      <p className="text-sm text-gray-600">match</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {getStatusBadge(selectedApplication.status)}
+                                  {selectedApplication.accommodationsRequested && (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Accommodations Requested
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Job Description */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Job Description</h3>
+                                <p className="text-gray-700 leading-relaxed">
+                                  {selectedApplication.description || "No job description available."}
+                                </p>
+                              </div>
+
+                              {/* Requirements */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Requirements</h3>
+                                <ul className="space-y-2">
+                                  {selectedApplication.requirements?.map((req: string, index: number) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                      <span>{req}</span>
+                                    </li>
+                                  )) || (
+                                    <li className="text-gray-500">No specific requirements listed.</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Benefits */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Benefits</h3>
+                                <ul className="space-y-2">
+                                  {selectedApplication.benefits?.map((benefit: string, index: number) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                      <span>{benefit}</span>
+                                    </li>
+                                  )) || (
+                                    <li className="text-gray-500">No benefits information available.</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Company Information */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Company Information</h3>
+                                <div className="space-y-2 text-sm text-gray-700">
+                                  <p><strong>Company Size:</strong> {selectedApplication.companySize || "Not specified"}</p>
+                                  <p><strong>Founded:</strong> {selectedApplication.founded || "Not specified"}</p>
+                                  <p><strong>Application Deadline:</strong> {selectedApplication.deadline || "Not specified"}</p>
+                                </div>
+                              </div>
+
+                              {/* Interview Information */}
+                              {selectedApplication.interviewDate && (
+                                <div className="bg-blue-50 p-4 rounded-lg">
+                                  <h3 className="text-lg font-semibold text-[#3a4043] mb-2">Interview Scheduled</h3>
+                                  <p className="text-gray-700 mb-3">
+                                    <strong>Date:</strong> {selectedApplication.interviewDate}
+                                  </p>
+                                  <Button
+                                    size="sm"
+                                    className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200"
+                                    onClick={() => router.push("/mock-interview/setup")}
+                                  >
+                                    Prepare for Interview
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Actions */}
+                              <div className="flex gap-3 pt-4 border-t">
+                                <Button 
+                                  className="flex-1 bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold cursor-pointer"
+                                  onClick={() => {
+                                    if (selectedApplication) {
+                                      // Remove the application from the list
+                                      setApplications(prev => prev.filter(app => app.id !== selectedApplication.id));
+                                      // Get the remaining applications
+                                      const remainingApplications = applications.filter(app => app.id !== selectedApplication.id);
+                                      // Set the selected application to the first remaining one, or null if none left
+                                      setSelectedApplication(remainingApplications.length > 0 ? remainingApplications[0] : null);
+                                    }
+                                  }}
+                                >
+                                  Withdraw Application
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
+                                  onClick={() => setShowMatchingScoreDialog(true)}
+                                >
+                                  Detailed Matching Score
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <Card className="sticky top-4">
+                          <CardContent className="p-12 text-center">
+                            <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                              Select an Application
+                            </h3>
+                            <p className="text-gray-500">
+                              Click on an application from the list to view details
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center p-[100px] w-full justify-center">
                     <span className="text-[#5748e5] font-bold text-lg">
                       No applied applications. Apply for jobs in "Browse More Jobs" to see them here!
                     </span>
-                  </div>}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1991,64 +1679,223 @@ export default function CandidateDashboard() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
-                  <p className="text-gray-600">{savedJobs.length} jobs saved</p>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
+                  >
+                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
+                  </Button>
                 </div>
-                <div className="grid gap-6">
-                  {savedJobs.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[#635bff] mb-1">{job.title}</h3>
-                            <p className="text-[#635bff] font-medium mb-2">{job.company}</p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                
+                {savedJobs.length > 0 ? (
+                  <div className="grid lg:grid-cols-5 gap-6">
+                    {/* Left side - Saved Jobs List */}
+                    <div className="lg:col-span-2 space-y-3">
+                      {savedJobs.map((job) => (
+                        <Card 
+                          key={job.id}
+                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            selectedSavedJob?.id === job.id 
+                              ? 'border-2 border-[#635bff] shadow-md' 
+                              : 'border border-gray-200'
+                          }`}
+                          onClick={() => setSelectedSavedJob(job)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h3 className="text-base font-semibold text-[#3a4043] mb-1">{job.jobTitle}</h3>
+                                <p className="text-sm text-[#635bff] font-medium">{job.company}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                {job.isInclusive && (
+                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 text-xs">
+                                    <Heart className="h-3 w-3 mr-1" />
+                                    Inclusive
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {job.location}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {job.type}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4" />
+                                <DollarSign className="h-3 w-3" />
                                 {job.salary}
                               </span>
                             </div>
-                            <div className="flex gap-2">
-                              {job.isInclusive && (
-                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
-                                  <Heart className="h-3 w-3 mr-1" />
-                                  Inclusive
-                                </Badge>
-                              )}
-                              {job.hasAccommodations && (
-                                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                  <Shield className="h-3 w-3 mr-1" />
-                                  Accommodations
-                                </Badge>
-                              )}
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-gray-500">Type: {job.type}</p>
+                              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                                {Math.round(((job.primaryMatchScore || 96) + (job.secondaryMatchScore || 90) + (job.tertiaryMatchScore || 85)) / 3)}% match
+                              </Badge>
                             </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Remove
-                            </Button>
-                            <Button size="sm" className="bg-[#635bff] hover:bg-[#827CFF] text-white">
-                              <Link href={`/jobs/${job.id}`}>Apply Now</Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Right side - Job Details */}
+                    <div className="lg:col-span-3">
+                      {selectedSavedJob ? (
+                        <Card className="sticky top-4">
+                          <CardContent className="p-6">
+                            <div className="space-y-6">
+                              {/* Header */}
+                              <div>
+                                <div className="flex items-start justify-between mb-4">
+                                  <div>
+                                    <h2 className="text-2xl font-bold text-[#3a4043] mb-2">
+                                      {selectedSavedJob.jobTitle}
+                                    </h2>
+                                    <p className="text-lg text-[#635bff] font-medium mb-3">
+                                      {selectedSavedJob.company}
+                                    </p>
+                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-4 w-4" />
+                                        {selectedSavedJob.location}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <DollarSign className="h-4 w-4" />
+                                        {selectedSavedJob.salary}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {selectedSavedJob.score && (
+                                    <div className="text-center">
+                                      <div className="text-4xl font-bold text-[#635bff] mb-1">
+                                        {selectedSavedJob.score}%
+                                      </div>
+                                      <p className="text-sm text-gray-600">match</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedSavedJob.isInclusive && (
+                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
+                                      <Heart className="h-3 w-3 mr-1" />
+                                      Inclusive
+                                    </Badge>
+                                  )}
+                                  {selectedSavedJob.hasAccommodations && (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Accommodations Available
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Job Description */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Job Description</h3>
+                                <p className="text-gray-700 leading-relaxed">
+                                  {selectedSavedJob.description || "No job description available."}
+                                </p>
+                              </div>
+
+                              {/* Requirements */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Requirements</h3>
+                                <ul className="space-y-2">
+                                  {selectedSavedJob.requirements?.map((req: string, index: number) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                      <span>{req}</span>
+                                    </li>
+                                  )) || (
+                                    <li className="text-gray-500">No specific requirements listed.</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Benefits */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Benefits</h3>
+                                <ul className="space-y-2">
+                                  {selectedSavedJob.benefits?.map((benefit: string, index: number) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                      <span>{benefit}</span>
+                                    </li>
+                                  )) || (
+                                    <li className="text-gray-500">No benefits information available.</li>
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Company Information */}
+                              <div>
+                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Company Information</h3>
+                                <div className="space-y-2 text-sm text-gray-700">
+                                  <p><strong>Company Size:</strong> {selectedSavedJob.companySize || "Not specified"}</p>
+                                  <p><strong>Founded:</strong> {selectedSavedJob.founded || "Not specified"}</p>
+                                  <p><strong>Application Deadline:</strong> {selectedSavedJob.deadline || "Not specified"}</p>
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-3 pt-4 border-t">
+                                <Button 
+                                  variant="outline"
+                                  className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  onClick={() => {
+                                    setSavedJobs(prev => prev.filter(j => j.id !== selectedSavedJob.id));
+                                    const remainingSavedJobs = savedJobs.filter(j => j.id !== selectedSavedJob.id);
+                                    setSelectedSavedJob(remainingSavedJobs.length > 0 ? remainingSavedJobs[0] : null);
+                                  }}
+                                >
+                                  Remove from Saved
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
+                                  onClick={() => setShowMatchingScoreDialog(true)}
+                                >
+                                  Detailed Matching Score
+                                </Button>
+                                <Button 
+                                  className="flex-1 bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold cursor-pointer"
+                                  onClick={() => handleApplyForSavedJob(selectedSavedJob)}
+                                >
+                                  Apply Now
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <Card className="sticky top-4">
+                          <CardContent className="p-12 text-center">
+                            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                              Select a Saved Job
+                            </h3>
+                            <p className="text-gray-500">
+                              Click on a job from the list to view details
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center p-[100px] w-full justify-center">
+                    <span className="text-[#5748e5] font-bold text-lg">
+                      No saved jobs yet. Browse jobs and save them for later!
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "profile config" && (
               <div className="space-y-6">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1> */}
+                <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
                 <div className="grid gap-6">
                   <Card>
                     <CardHeader>
@@ -2179,7 +2026,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "education" && (
               <div className="space-y-6">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1> */}
+                <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1>
 
                 <div className="grid gap-6">
                   {educations.map((edu, index) => (
@@ -2302,7 +2149,7 @@ export default function CandidateDashboard() {
 
              {activeTab === "experience" && (
               <div className="space-y-6">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1> */}
+                <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
 
                 <div className="grid gap-6">
                   {experiences.map((exp, index) => (
@@ -2473,7 +2320,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "skills" && (
               <div className="space-y-6">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1> */}
+                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
 
                 <div className="grid gap-6">
                   {/* ---- Skill Types Card ---- */}
@@ -2787,7 +2634,7 @@ export default function CandidateDashboard() {
             {activeTab === "neuro_strength" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
-                  {/* <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1> */}
+                  <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1>
                   <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
                 </div>
 
@@ -2839,7 +2686,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "environment" && (
               <div className="space-y-6">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1> */}
+                <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1>
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
@@ -2964,6 +2811,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "mock interview" && (
               <>
+                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
                 {mockInterviewStep === "setup" && (
                   <MockInterviewSetupPage onNavigate={(target) => {
                     if (target === "interview") {
@@ -2991,8 +2839,8 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "Report" && (
-              <>
-                <ReportPage /></>
+              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
+                <ReportPage handleTabChangeProp={() => handleTabChange("mock interview")}/></>
             )}
 
             {activeTab === "Appointment" && (
@@ -3006,15 +2854,3 @@ export default function CandidateDashboard() {
     </div>
   );
 }
-
-function setSelectedSavedJob(arg0: { id: number; jobTitle: string; company: string; location: string; salary: string; type: string; score: number; description: string; requirements: string[]; benefits: string[]; companySize: string; founded: string; deadline: string; isInclusive: boolean; hasAccommodations: boolean; }) {
-  throw new Error("Function not implemented.");
-}
-function setExpandedSavedJobId(arg0: null) {
-  throw new Error("Function not implemented.");
-}
-
-function setIsApplyingFromSaved(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}
-

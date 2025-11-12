@@ -4,6 +4,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Header from "@/app/components/header";
 import Footer from "@/app/components/footer";
+import TextToSpeech from "@/app/components/TextToSpeech";
+import AccessibilitySettings from "@/app/components/AccessibilitySettings";
 
 export default function PageWrapper({ children }: { children: React.ReactNode }) {
   const [currentPage, setCurrentPage] = useState("home");
@@ -21,6 +23,10 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
       <main className="flex-1">{children}</main>
 
       {shouldShowFooter && <Footer setCurrentPage={setCurrentPage} />}
+      
+      {/* Global Accessibility Features */}
+      <TextToSpeech />
+      <AccessibilitySettings />
     </div>
   );
 }

@@ -26,7 +26,7 @@ import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
 import ReportPage from "./Report/page";
 import AppointmentPage from "./Appointment/page";
-import CandidateJobListing from "../JobListing/page";
+import { CandidateJobListingContent as CandidateJobListing } from "../JobListing/page";
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -137,6 +137,9 @@ export default function CandidateDashboard() {
   // State for applications and saved jobs
   const [applications, setApplications] = useState<any[]>([]);
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
+  const [expandedSavedJobId, setExpandedSavedJobId] = useState<number | null>(null);
+  const [isApplyingFromSaved, setIsApplyingFromSaved] = useState(false);
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     name: "Aminah",
@@ -334,10 +337,9 @@ export default function CandidateDashboard() {
   //   }
   // }, [status, session?.user?.email, candidateProfile.email]);
 
-  // Fetch profile data
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
+  // Function to fetch profile data (can be called on mount and after resume upload)
+  const fetchProfileData = async () => {
+    try {
       setIsLoading(true);
       if (status === "loading") {
         console.log("Session status: loading, returning.");
@@ -350,11 +352,10 @@ export default function CandidateDashboard() {
         return;
       }
 
-      console.log('Full session object:', session); // Add this
-      console.log('Session user email:', session?.user?.email); // Add this
+      console.log('Full session object:', session);
+      console.log('Session user email:', session?.user?.email);
 
       const sessionEmail = session?.user?.email || "";
-      // const candidate_email = sessionEmail
 
       if (!sessionEmail) {
         console.error('No email found in session.user.email. Cannot fetch profile.');
@@ -366,7 +367,7 @@ export default function CandidateDashboard() {
         const candidate_email = encodeURIComponent(sessionEmail);
         console.log('Using email for profile fetch:', emailToUse);
 
-        const response = await fetch(`http://127.0.0.1:8000/profiles/${candidate_email}`, {
+        const response = await fetch(`/api/profiles?email=${encodeURIComponent(candidate_email)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -530,26 +531,28 @@ export default function CandidateDashboard() {
           
           setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching profile data:', error);
-        
-        // If there's an error but we have email, at least populate the email field
-        const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        if (fallbackEmail) {
-          setCandidateProfile(prev => ({
-            ...prev,
-            email: fallbackEmail,
-            personalIdentifiers: {
-              ...prev.personalIdentifiers,
-              emailAddress: fallbackEmail
-            }
-          }));
-        }
-        
-        setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      
+      // If there's an error but we have email, at least populate the email field
+      const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
+      if (fallbackEmail) {
+        setCandidateProfile(prev => ({
+          ...prev,
+          email: fallbackEmail,
+          personalIdentifiers: {
+            ...prev.personalIdentifiers,
+            emailAddress: fallbackEmail
+          }
+        }));
       }
-    };
+      
+      setIsLoading(false);
+    }
+  };
 
+  // Fetch profile data on mount and when session changes
+  useEffect(() => {
     fetchProfileData();
   }, [status, session]);
 
@@ -563,7 +566,7 @@ export default function CandidateDashboard() {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/profiles/${session.user.email}`
+          `/api/profiles?email=${encodeURIComponent(session.user.email)}`
         );
 
         if (!response.ok) {
@@ -609,7 +612,7 @@ export default function CandidateDashboard() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/profiles/${session.user.email}`
+        `/api/profiles?email=${encodeURIComponent(session.user.email)}`
       );
 
       if (!response.ok) {
@@ -649,96 +652,75 @@ export default function CandidateDashboard() {
   fetchExperienceData();
 }, [session, status]);
 
-  // rerun when user logs in
-  // // Fetch applications data
-  // useEffect(() => {
-  //   const fetchApplicationsData = async () => {
-  //     try {
-  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        
-  //       // If no email in sessionStorage but we have session email, use it
-  //       if (!sessionEmail && session?.user?.email) {
-  //         sessionEmail = session.user.email;
-  //       }
-        
-  //       if (!sessionEmail) {
-  //         console.error('No email found for fetching applications');
-  //         return;
-  //       }
+  // Fetch applications data from new unified applications API
+  useEffect(() => {
+    const fetchApplicationsData = async () => {
+      try {
+        if (status !== 'authenticated') return;
+        const email = session?.user?.email;
+        if (!email) return;
+        const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Backend returns array of applications with snake_case; map to dashboard format
+          const mapped = data.map((app: any) => ({
+            id: app.id,
+            jobTitle: app.job_title,
+            company: app.company,
+            appliedDate: new Date(app.applied_date).toLocaleDateString(),
+            status: app.status,
+            accommodationsRequested: app.accommodations_requested,
+            score: app.score,
+            location: app.location,
+            salary: app.salary,
+            interviewDate: app.interview_date ? new Date(app.interview_date).toLocaleDateString() : null,
+          }));
+          setApplications(mapped);
+        } else {
+          console.error('Failed to fetch applications:', response.status);
+          setApplications([]);
+        }
+      } catch (err) {
+        console.error('Error fetching applications data:', err);
+        setApplications([]);
+      }
+    };
+    fetchApplicationsData();
+  }, [session, status]);
 
-  //       const emailToUse = encodeURIComponent(sessionEmail);
-  //       console.log('Fetching applications for email:', emailToUse);
-        
-  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/applications`, {
-  //         method: 'GET',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-        
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         console.log('Applications API Response:', data);
-  //         setApplications(data);
-  //       } else {
-  //         console.error('Failed to fetch applications:', response.status);
-  //         setApplications([]); // Set empty array if no applications found
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching applications data:', error);
-  //       setApplications([]); // Set empty array on error
-  //     }
-  //   };
-
-  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
-  //     fetchApplicationsData();
-  //   }
-  // }, [session]);
-
-  // // Fetch saved jobs data
-  // useEffect(() => {
-  //   const fetchSavedJobsData = async () => {
-  //     try {
-  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        
-  //       // If no email in sessionStorage but we have session email, use it
-  //       if (!sessionEmail && session?.user?.email) {
-  //         sessionEmail = session.user.email;
-  //       }
-        
-  //       if (!sessionEmail) {
-  //         console.error('No email found for fetching saved jobs');
-  //         return;
-  //       }
-
-  //       const emailToUse = encodeURIComponent(sessionEmail);
-  //       console.log('Fetching saved jobs for email:', emailToUse);
-        
-  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/saved-jobs`, {
-  //         method: 'GET',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-        
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         console.log('Saved Jobs API Response:', data);
-  //         setSavedJobs(data);
-  //       } else {
-  //         console.error('Failed to fetch saved jobs:', response.status);
-  //         setSavedJobs([]); // Set empty array if no saved jobs found
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching saved jobs data:', error);
-  //       setSavedJobs([]); // Set empty array on error
-  //     }
-  //   };
-
-  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
-  //     fetchSavedJobsData();
-  //   }
-  // }, [session]);
+  // Fetch saved jobs from new saved-jobs API
+  useEffect(() => {
+    const fetchSavedJobsData = async () => {
+      try {
+        if (status !== 'authenticated') return;
+        const email = session?.user?.email;
+        if (!email) return;
+        const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((job: any) => ({
+            id: job.id,
+            title: job.job_title,
+            company: job.company,
+            location: job.location,
+            type: job.job_type,
+            salary: job.salary,
+            isInclusive: job.is_inclusive,
+            hasAccommodations: job.has_accommodations,
+            createdAt: job.created_at,
+          }));
+          setSavedJobs(mapped);
+        } else {
+          console.error('Failed to fetch saved jobs:', response.status);
+          setSavedJobs([]);
+        }
+      } catch (err) {
+        console.error('Error fetching saved jobs data:', err);
+        setSavedJobs([]);
+      }
+    };
+    fetchSavedJobsData();
+  }, [session, status]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -808,6 +790,12 @@ export default function CandidateDashboard() {
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    // Lightweight re-fetch when user switches to Applications or Saved tabs for consistency
+    if (tabId === 'applications') {
+      refetchApplications();
+    } else if (tabId === 'saved') {
+      refetchSavedJobs();
+    }
   };
 
   // Update individual education record
@@ -857,6 +845,225 @@ export default function CandidateDashboard() {
   const currentYear = new Date().getFullYear();
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
+
+  // Remove a saved job
+  const handleRemoveSavedJob = async (savedJobId: number) => {
+    try {
+      const res = await fetch(`/api/saved-jobs?savedJobId=${savedJobId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavedJobs(prev => prev.filter((j: any) => j.id !== savedJobId));
+        // Emit unsaved event so other components could respond if needed
+        window.dispatchEvent(new CustomEvent('jobUnsaved', { detail: { id: savedJobId } }));
+        // Clear expansion if the removed job was expanded
+        if (expandedSavedJobId === savedJobId) {
+          setExpandedSavedJobId(null);
+        }
+      } else {
+        const data = await res.json();
+        console.error('Failed to remove saved job:', data);
+      }
+    } catch (e) {
+      console.error('Error removing saved job:', e);
+    }
+  };
+
+  // Apply to a saved job
+  const handleApplyToSavedJob = async (job: any) => {
+    try {
+      setIsApplyingFromSaved(true);
+      const userEmail = session?.user?.email;
+      if (!userEmail) {
+        alert('Please sign in before applying to jobs.');
+        return;
+      }
+
+      // Check if already applied
+      const alreadyApplied = applications.some(
+        app => app.jobTitle === job.title && app.company === job.company
+      );
+      
+      if (alreadyApplied) {
+        alert('You have already applied to this job.');
+        return;
+      }
+
+      const response = await fetch('/api/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          candidate_email: userEmail,
+          job_id: parseInt(job.id),
+          accommodations_requested: job.hasAccommodations || job.isInclusive
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert('Application submitted successfully!');
+        
+        // Add to applications list
+        const newApp = {
+          id: result.id || Date.now(),
+          jobTitle: job.title,
+          company: job.company,
+          appliedDate: new Date().toLocaleDateString(),
+          status: 'under_review',
+          accommodationsRequested: job.hasAccommodations || job.isInclusive,
+          score: 0,
+          location: job.location,
+          salary: job.salary,
+          interviewDate: null,
+        };
+        setApplications(prev => [...prev, newApp]);
+        
+        // Optionally remove from saved jobs after applying
+        // await handleRemoveSavedJob(job.id);
+      } else {
+        const errorData = await response.json();
+        console.error('Application failed:', errorData);
+        
+        if (response.status >= 500) {
+          alert('Service temporarily unavailable. Your application will be processed when the service is restored.');
+        } else {
+          const msg = errorData.error || 'Failed to apply to job';
+          if (msg.toLowerCase().includes('already applied')) {
+            alert('You have already applied to this job.');
+          } else {
+            alert(`Application failed: ${msg}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error applying to job:', err);
+      alert('An error occurred while applying to the job');
+    } finally {
+      setIsApplyingFromSaved(false);
+    }
+  };
+
+  // Refetch helpers for tab change
+  const refetchApplications = async () => {
+    try {
+      if (status !== 'authenticated') return;
+      const email = session?.user?.email;
+      if (!email) return;
+      const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        const mapped = data.map((app: any) => ({
+          id: app.id,
+          jobTitle: app.job_title,
+          company: app.company,
+          appliedDate: new Date(app.applied_date).toLocaleDateString(),
+          status: app.status,
+          accommodationsRequested: app.accommodations_requested,
+          score: app.score,
+          location: app.location,
+          salary: app.salary,
+          interviewDate: app.interview_date ? new Date(app.interview_date).toLocaleDateString() : null,
+        }));
+        setApplications(mapped);
+      }
+    } catch (err) {
+      console.error('Refetch applications failed:', err);
+    }
+  };
+
+  const refetchSavedJobs = async () => {
+    try {
+      if (status !== 'authenticated') return;
+      const email = session?.user?.email;
+      if (!email) return;
+      const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        const mapped = data.map((job: any) => ({
+          id: job.id,
+          title: job.job_title,
+          company: job.company,
+          location: job.location,
+          type: job.job_type,
+          salary: job.salary,
+          isInclusive: job.is_inclusive,
+          hasAccommodations: job.has_accommodations,
+          createdAt: job.created_at,
+        }));
+        setSavedJobs(mapped);
+      }
+    } catch (err) {
+      console.error('Refetch saved jobs failed:', err);
+    }
+  };
+
+  // Real-time event listeners for job actions (apply/save/unsave) originating from JobListing component
+  useEffect(() => {
+    const onJobApplied = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      setApplications(prev => {
+        // Prevent duplicates
+        if (prev.some(app => app.jobTitle === detail.jobTitle && app.company === detail.company)) return prev;
+        const newApp = {
+          id: detail.id,
+          jobTitle: detail.jobTitle,
+          company: detail.company,
+          appliedDate: new Date(detail.appliedDate).toLocaleDateString(),
+          status: detail.status || 'under_review',
+          accommodationsRequested: detail.accommodationsRequested,
+          score: detail.matchScore ?? 0,
+          location: detail.location,
+          salary: detail.salary,
+          interviewDate: null,
+        };
+        return [...prev, newApp];
+      });
+    };
+
+    const onJobSaved = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      setSavedJobs(prev => {
+        if (prev.some(job => job.title === detail.jobTitle && job.company === detail.company)) return prev;
+        const newJob = {
+          id: detail.id,
+          title: detail.jobTitle,
+          company: detail.company,
+          location: detail.location,
+          type: detail.jobType,
+          salary: detail.salary,
+          isInclusive: detail.isInclusive,
+          hasAccommodations: detail.isInclusive,
+          createdAt: new Date().toISOString(),
+        };
+        return [...prev, newJob];
+      });
+    };
+
+    const onJobUnsaved = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      setSavedJobs(prev => {
+        const filtered = prev.filter(job => job.id !== detail.id);
+        // Clear expansion if the unsaved job was expanded
+        if (expandedSavedJobId === detail.id) {
+          setExpandedSavedJobId(null);
+        }
+        return filtered;
+      });
+    };
+
+    window.addEventListener('jobApplied', onJobApplied);
+    window.addEventListener('jobSaved', onJobSaved);
+    window.addEventListener('jobUnsaved', onJobUnsaved);
+
+    return () => {
+      window.removeEventListener('jobApplied', onJobApplied);
+      window.removeEventListener('jobSaved', onJobSaved);
+      window.removeEventListener('jobUnsaved', onJobUnsaved);
+    };
+  }, [expandedSavedJobId]);
 
   if (isLoading) {
     return (
@@ -917,7 +1124,7 @@ export default function CandidateDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="page-wrap py-8">
-        <div className="grid lg:grid-cols-[260px_1fr] gap-8 py-8">
+        <div className="grid lg:grid-cols-[300px_1fr] gap-8 py-8">
           {/* Sidebar */}
           <div className="sticky top-[var(--app-header-height)] self-start">
             <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
@@ -1045,8 +1252,12 @@ export default function CandidateDashboard() {
                 <ResumeUploadButton
                   buttonText="Upload Resume"
                   buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  onResumeProcessed={(parsedInfo) => {
+                  onResumeProcessed={async (parsedInfo) => {
                     console.log("Resume processed:", parsedInfo);
+                    // Wait a moment for database to save, then refresh profile
+                    setTimeout(() => {
+                      fetchProfileData();
+                    }, 1500);
                   }}
                 />
               </div>
@@ -1179,45 +1390,39 @@ export default function CandidateDashboard() {
             {activeTab === "applications" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  {/* <Button
-                    asChild
-                    variant="outline"
-                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  >
-                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                  </Button> */}
+                  <p className="text-gray-600">{applications.length} {applications.length === 1 ? 'application' : 'applications'} submitted</p>
                 </div>
-                <div className="space-y-4">
-                  {applications.length > 0 ? applications.map((app) => (
-                    <Card key={app.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
-                            <p className="text-[#635bff] font-medium mb-2">{app.company}</p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {app.location}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4" />
-                                {app.salary}
-                              </span>
+                {applications.length > 0 ? (
+                  <div className="space-y-4">
+                    {applications.map((app) => (
+                      <Card key={app.id}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
+                              <p className="text-[#635bff] font-medium mb-2">{app.company}</p>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4" />
+                                  {app.location}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-4 w-4" />
+                                  {app.salary}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {getStatusBadge(app.status)}
+                              <p className="text-xs text-gray-500 mt-1">Applied {app.appliedDate}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Applied {app.appliedDate}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                          
+                          <div className="flex items-center gap-4 mb-4">
                             {app.accommodationsRequested && (
                               <Badge variant="secondary" className="bg-purple-100 text-purple-800">
                                 <Shield className="h-3 w-3 mr-1" />
-                                Accommodations Requested
+                                Accommodations
                               </Badge>
                             )}
                             {app.interviewDate && (
@@ -1226,43 +1431,121 @@ export default function CandidateDashboard() {
                               </Badge>
                             )}
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                            {app.status === "interview_scheduled" && (
-                              <Button
-                                size="sm"
-                                className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200 hover:cursor-pointer"
-                                onClick={() => router.push("/mock-interview/setup")}
-                              >
-                                Prepare for Interview
-                              </Button>
+
+                          {/* Expandable Details */}
+                          {expandedApplicationId === app.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="mt-4 pt-4 border-t border-[#e8e6f0] space-y-4"
+                            >
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-3">Application Status</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Applied Date:</span>
+                                    <span className="font-medium">{app.appliedDate}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Status:</span>
+                                    <span className="font-medium">{app.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</span>
+                                  </div>
+                                  {app.score && (
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-gray-600">Match Score:</span>
+                                      <span className="font-medium">{app.score}%</span>
+                                    </div>
+                                  )}
+                                  {app.interviewDate && (
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-gray-600">Interview Date:</span>
+                                      <span className="font-medium">{app.interviewDate}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {app.accommodationsRequested && (
+                                <div>
+                                  <h4 className="font-semibold text-[#3a4043] mb-3">Accommodations</h4>
+                                  <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    Accommodations Requested
+                                  </Badge>
+                                </div>
+                              )}
+
+                              {app.status === "interview_scheduled" && (
+                                <div className="pt-2">
+                                  <Button
+                                    className="w-full bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold"
+                                    onClick={() => router.push("/mock-interview/setup")}
+                                  >
+                                    Prepare for Interview
+                                  </Button>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+
+                          {/* Expand/Collapse Button */}
+                          <Button
+                            variant="outline"
+                            className="w-full mt-4"
+                            onClick={() => setExpandedApplicationId(
+                              expandedApplicationId === app.id ? null : app.id
                             )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )) : <div className="flex items-center p-[100px] w-full justify-center">
-                    <span className="text-[#5748e5] font-bold text-lg">
-                      No applied applications. Apply for jobs in "Browse More Jobs" to see them here!
-                    </span>
-                  </div>}
-                </div>
+                          >
+                            {expandedApplicationId === app.id ? (
+                              <>
+                                <X className="h-4 w-4 mr-2" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center p-[100px] w-full justify-center">
+                    <div className="text-center">
+                      <Briefcase className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
+                      <span className="text-[#5748e5] font-bold text-lg block mb-2">
+                        No applications yet
+                      </span>
+                      <p className="text-gray-600 mb-4">
+                        Apply for jobs in &quot;Browse Jobs&quot; to see them here!
+                      </p>
+                      <Button
+                        onClick={() => handleTabChange("browse jobs")}
+                        className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                      >
+                        Browse Jobs
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "saved" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
-                  <p className="text-gray-600">{savedJobs.length} jobs saved</p>
+                  <p className="text-gray-600">{savedJobs.length} {savedJobs.length === 1 ? 'job' : 'jobs'} saved</p>
                 </div>
-                <div className="grid gap-6">
-                  {savedJobs.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
+                {savedJobs.length > 0 ? (
+                  <div className="space-y-4">
+                    {savedJobs.map((job: any) => (
+                      <Card key={job.id}>
+                        <CardContent className="p-6">
                           <div>
                             <h3 className="text-lg font-semibold text-[#635bff] mb-1">{job.title}</h3>
                             <p className="text-[#635bff] font-medium mb-2">{job.company}</p>
@@ -1295,25 +1578,123 @@ export default function CandidateDashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Remove
-                            </Button>
-                            <Button size="sm" className="bg-[#635bff] hover:bg-[#827CFF] text-white">
-                              <Link href={`/jobs/${job.id}`}>Apply Now</Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+
+                          {/* Expandable Details */}
+                          {expandedSavedJobId === job.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="mt-4 pt-4 border-t border-[#e8e6f0] space-y-4"
+                            >
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-3">Job Features</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {job.isInclusive && (
+                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
+                                      <Heart className="h-3 w-3 mr-1" />
+                                      Inclusive Workplace
+                                    </Badge>
+                                  )}
+                                  {job.hasAccommodations && (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Accommodations Available
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-3">Saved Information</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Saved Date:</span>
+                                    <span className="font-medium">
+                                      {job.createdAt 
+                                        ? new Date(job.createdAt).toLocaleDateString()
+                                        : 'Recently'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Job Type:</span>
+                                    <span className="font-medium">{job.type}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-3 pt-2">
+                                <Button
+                                  className="w-full bg-[#635bff] hover:bg-[#5748e5] text-white"
+                                  disabled={isApplyingFromSaved}
+                                  onClick={() => handleApplyToSavedJob(job)}
+                                >
+                                  <Briefcase className="w-4 h-4 mr-2" />
+                                  {isApplyingFromSaved ? 'Applying...' : 'Apply Now'}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                                  onClick={() => {
+                                    handleRemoveSavedJob(job.id);
+                                  }}
+                                >
+                                  Remove from Saved
+                                </Button>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Expand/Collapse Button */}
+                          <Button
+                            variant="outline"
+                            className="w-full mt-4"
+                            onClick={() => setExpandedSavedJobId(
+                              expandedSavedJobId === job.id ? null : job.id
+                            )}
+                          >
+                            {expandedSavedJobId === job.id ? (
+                              <>
+                                <X className="h-4 w-4 mr-2" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center p-[100px] w-full justify-center">
+                    <div className="text-center">
+                      <Heart className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
+                      <span className="text-[#5748e5] font-bold text-lg block mb-2">
+                        No saved jobs yet
+                      </span>
+                      <p className="text-gray-600 mb-4">
+                        Save jobs from &quot;Browse Jobs&quot; to access them quickly later!
+                      </p>
+                      <Button
+                        onClick={() => handleTabChange("browse jobs")}
+                        className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                      >
+                        Browse Jobs
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "profile config" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
+                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1> */}
                 <div className="grid gap-6">
                   <Card>
                     <CardHeader>
@@ -1444,7 +1825,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "education" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1>
+                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1> */}
 
                 <div className="grid gap-6">
                   {educations.map((edu, index) => (
@@ -1567,7 +1948,7 @@ export default function CandidateDashboard() {
 
              {activeTab === "experience" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
+                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1> */}
 
                 <div className="grid gap-6">
                   {experiences.map((exp, index) => (
@@ -1738,7 +2119,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "skills" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
+                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1> */}
 
                 <div className="grid gap-6">
                   {/* ---- Skill Types Card ---- */}
@@ -2052,7 +2433,7 @@ export default function CandidateDashboard() {
             {activeTab === "neuro_strength" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1>
+                  {/* <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1> */}
                   <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
                 </div>
 
@@ -2104,7 +2485,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "environment" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1>
+                {/* <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1> */}
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
@@ -2229,7 +2610,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "mock interview" && (
               <>
-                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
                 {mockInterviewStep === "setup" && (
                   <MockInterviewSetupPage onNavigate={(target) => {
                     if (target === "interview") {
@@ -2257,7 +2637,7 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "Report" && (
-              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
+              <>
                 <ReportPage /></>
             )}
 

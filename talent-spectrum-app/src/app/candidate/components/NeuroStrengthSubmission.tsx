@@ -23,13 +23,15 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
         throw new Error('No user email found in session');
       }
 
+      const encodedEmail = encodeURIComponent(userEmail);
+
       const strengthsData = {
         neurodivergent_strengths: selectedStrengths,
       };
 
       console.log('Saving neurodivergent strengths:', strengthsData);
 
-      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/neurodivergent_strengths`, {
+      const response = await fetch(`/api/profiles?email=${encodedEmail}&type=neurodivergent_strengths`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

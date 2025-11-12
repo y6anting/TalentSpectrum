@@ -30,12 +30,12 @@ export function EducationSubmission({ educations, onSave }: EducationSubmissionP
         throw new Error('No user email found in session');
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/education`, {
+      const response = await fetch(`/api/profiles?email=${encodeURIComponent(userEmail)}&type=education`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ education: educations }),
+        body: JSON.stringify({ educations: educations }),
       });
 
       if (response.ok) {

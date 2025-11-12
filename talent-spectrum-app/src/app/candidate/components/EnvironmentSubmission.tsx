@@ -40,10 +40,12 @@ export function EnvironmentSubmission({ environment, onSave }: EnvironmentSubmis
         throw new Error('No user email found in session');
       }
 
+      const encodedEmail = encodeURIComponent(userEmail);
+
       const requestData = { environment };
       console.log('Saving environment:', requestData);
 
-      const response = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/environment`, {
+      const response = await fetch(`/api/profiles?email=${encodedEmail}&type=environment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

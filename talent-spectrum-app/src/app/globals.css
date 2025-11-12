@@ -85,7 +85,8 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
+.dark,
+.dark-mode {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -98,6 +99,10 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
@@ -122,6 +127,23 @@
 :root {
   /* Adjust if your fixed header height differs */
   --app-header-height: 81px;
+  
+  /* Accessibility Settings - Default Values */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --theme-color: #635BFF;
+  --theme-color-hover: #524BCC;
+  --base-font-size: 16px;
+}
+
+/* Dark Mode Support */
+.dark-mode {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
 }
 
 @layer base {
@@ -140,4 +162,185 @@
   margin-right: auto;
   padding-left: clamp(12px, 3vw, 28px);
   padding-right: clamp(12px, 3vw, 28px);
+}
+
+/* ============================================
+   TEXT-TO-SPEECH ACCESSIBILITY
+   Ensures ALL text content is selectable for TTS
+   ============================================ */
+
+/* Make ALL text content selectable by default */
+* {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Explicitly ensure common text elements are selectable */
+p, span, div, section, article, main, aside, nav, footer, header,
+h1, h2, h3, h4, h5, h6,
+li, ul, ol, dl, dt, dd,
+td, th, table, tr, tbody, thead, tfoot,
+label, legend, figcaption,
+a, strong, em, b, i, u, mark, small, del, ins, sub, sup,
+code, pre, kbd, samp, var,
+blockquote, q, cite,
+address, time,
+details, summary {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Ensure text in cards and containers is selectable */
+[class*="card"],
+[class*="Card"],
+[class*="container"],
+[class*="Container"],
+[class*="box"],
+[class*="Box"] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Exceptions: Keep these elements with normal selection behavior */
+input,
+textarea,
+select,
+[contenteditable="true"],
+[contenteditable="plaintext-only"] {
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
+  user-select: auto !important;
+}
+
+/* Keep purely visual elements non-selectable */
+img,
+video,
+canvas,
+svg:not(:has(text)),
+[role="img"],
+.icon,
+[class*="icon" i]:not(:has(span)):not(:has(p)),
+button > svg,
+button > img {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* But allow text INSIDE those elements to be selectable */
+svg text,
+svg tspan {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Ensure button and link TEXT is selectable */
+button,
+[role="button"],
+a {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Override any component library styles that prevent selection */
+[class*="MuiButton"] *,
+[class*="chakra"] *,
+[class*="ant"] *,
+.btn *,
+.button * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Enhanced Dark Mode Support */
+html.dark-mode,
+body.dark-mode {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode for cards and containers */
+.dark-mode .bg-white,
+.dark-mode [class*="bg-white"] {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+.dark-mode .bg-gray-50,
+.dark-mode [class*="bg-gray-50"] {
+  background-color: #252525 !important;
+  color: #ffffff !important;
+}
+
+.dark-mode .bg-gray-100,
+.dark-mode [class*="bg-gray-100"] {
+  background-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode for text colors */
+.dark-mode .text-gray-900,
+.dark-mode [class*="text-gray-900"],
+.dark-mode .text-gray-800,
+.dark-mode [class*="text-gray-800"],
+.dark-mode .text-gray-700,
+.dark-mode [class*="text-gray-700"],
+.dark-mode .text-gray-600,
+.dark-mode [class*="text-gray-600"] {
+  color: #e0e0e0 !important;
+}
+
+.dark-mode .text-black {
+  color: #ffffff !important;
+}
+
+/* Dark mode for inputs */
+.dark-mode input:not([type="submit"]):not([type="button"]),
+.dark-mode textarea,
+.dark-mode select {
+  background-color: #333333 !important;
+  color: #ffffff !important;
+  border-color: #555555 !important;
+}
+
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+  color: #999999 !important;
+}
+
+/* Dark mode for borders */
+.dark-mode * {
+  border-color: #404040;
+}
+
+/* Preserve accent colors in dark mode */
+.dark-mode .text-purple-600,
+.dark-mode .text-purple-700,
+.dark-mode [class*="text-purple"] {
+  color: #a78bfa !important;
+}
+
+.dark-mode .bg-purple-600,
+.dark-mode .bg-purple-700,
+.dark-mode [class*="bg-purple"]:not([class*="bg-purple-100"]) {
+  background-color: #7c3aed !important;
+}
+
+/* Dark mode for gradients */
+.dark-mode .bg-gradient-to-b {
+  background: linear-gradient(to bottom, #1a1a1a, #0a0a0a) !important;
 }

@@ -30,8 +30,11 @@ import {
   Play,
   Pause,
   RotateCcw,
-  ArrowUpWideNarrow 
+  ArrowUpWideNarrow,
+  Save,
+  Download 
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type InterviewType = "general" | "technical" | "behavioral";
 
@@ -58,10 +61,78 @@ interface EmbeddedNavProps { onNavigate?: (target: EmbeddedNavTarget) => void }
 
 const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   const router = useRouter();
+  const { data: authSession } = useSession();
   
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  const saveToHistory = async () => {
+    if (!session || !authSession?.user?.email) {
+      alert("Please sign in to save your interview history");
+      return;
+    }
+
+    if (!parsed) {
+      alert("Feedback not yet generated");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const duration = session.startTime && session.endTime
+        ? Math.round((session.endTime.getTime() - session.startTime.getTime()) / 1000)
+        : 0;
+
+      const reportData = {
+        candidate_email: authSession.user.email,
+        position_title: session.selectedPosition?.title || "Unknown Position",
+        position_level: session.positionLevel || session.selectedPosition?.level || "entry",
+        interview_type: session.interviewType,
+        total_questions: session.totalQuestions,
+        start_time: session.startTime?.toISOString() || new Date().toISOString(),
+        end_time: session.endTime?.toISOString() || new Date().toISOString(),
+        duration_seconds: duration,
+        overall_score: parsed.overall_score || 0,
+        clarity_score: 0,
+        relevance_score: 0,
+        completeness_score: 0,
+        overall_feedback: parsed.overall || "",
+        strengths: parsed.strengths || [],
+        improvements: parsed.areas_for_improvement || [],
+        questions_data: session.answers.map((ans, idx) => ({
+          question: ans.question,
+          answer: ans.answer,
+          type: session.questions[idx]?.type || "general",
+          feedback: null,
+          score: null
+        }))
+      };
+
+      const response = await fetch("/api/mock-interview/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reportData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({} as any));
+        throw new Error((err as any).error || `Failed to save interview report (${response.status})`);
+      }
+
+      setIsSaved(true);
+      alert("Interview report saved to history successfully!");
+    } catch (error: any) {
+      console.error("Error saving interview report:", error);
+      alert(error?.message || "Failed to save interview report. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Parse feedback into structured sections when available
   type ParsedFeedback = {
@@ -485,6 +556,36 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
                   Back to Dashboard
                 </Button>
               </Link> */}
+              <Button
+                onClick={saveToHistory}
+                disabled={isSaving || isSaved}
+                className="w-fit px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-b-2 border-white rounded-full mr-2 inline-block" />
+                    Saving...
+                  </>
+                ) : isSaved ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2 inline-block" />
+                    Saved to History
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2 inline-block" />
+                    Save to History
+                  </>
+                )}
+              </Button>
+              <Link href="/candidate/candidate-dashboard/mock-interview/history">
+                <Button
+                  variant="outline"
+                  className="w-fit px-6 py-2 rounded-md border border-[#635BFF] text-[#635BFF] font-semibold hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                >
+                  View All History
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 className="w-fit px-4 py-2 rounded-md 

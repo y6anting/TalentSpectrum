@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
 import {
   Card,
@@ -95,7 +96,7 @@ interface DisplayJob {
   logo?: string;
 }
 
-function CandidateJobListingContent() {
+export function CandidateJobListingContent() {
   const { success, error: showError, warning, info } = useToastHelpers();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLocation, setFilterLocation] = useState("all");
@@ -202,19 +203,13 @@ function CandidateJobListingContent() {
     fetchJobs();
   }, []);
 
-  // Load applied and saved jobs status
+  // Load applied and saved jobs status using authenticated session email
+  const { data: session } = useSession();
   useEffect(() => {
     const loadJobStatus = async () => {
       try {
-        let userEmail = localStorage.getItem('userEmail');
-        
-        // For testing purposes, set a default email if none exists
-        if (!userEmail) {
-          userEmail = 'test@example.com';
-          localStorage.setItem('userEmail', userEmail);
-          console.log('Set default test email:', userEmail);
-        }
-        
+        const userEmail = session?.user?.email;
+        if (!userEmail) return;
         console.log('Loading job status for:', userEmail);
 
         // Fetch applications
@@ -241,9 +236,8 @@ function CandidateJobListingContent() {
         console.error('Error loading job status:', error);
       }
     };
-
     loadJobStatus();
-  }, []);
+  }, [session]);
 
   // Handle apply to job
   const handleApplyToJob = async (job: DisplayJob) => {
@@ -255,13 +249,10 @@ function CandidateJobListingContent() {
         return;
       }
       setIsApplying(true);
-      let userEmail = localStorage.getItem('userEmail');
-      
-      // For testing purposes, set a default email if none exists
+      const userEmail = session?.user?.email;
       if (!userEmail) {
-        userEmail = 'test@example.com';
-        localStorage.setItem('userEmail', userEmail);
-        console.log('Set default test email for apply:', userEmail);
+        showError('Not Authenticated', 'Please sign in before applying to jobs.');
+        return;
       }
 
       const response = await fetch('/api/applications', {
@@ -282,6 +273,20 @@ function CandidateJobListingContent() {
         
         // Update applied jobs state
         setAppliedJobs(prev => new Set([...prev, jobKey]));
+        // Emit event so dashboard can update Applications list immediately
+        window.dispatchEvent(new CustomEvent('jobApplied', {
+          detail: {
+            id: parseInt(job.id),
+            jobTitle: job.title,
+            company: job.company,
+            appliedDate: new Date().toISOString(),
+            status: 'under_review',
+            accommodationsRequested: job.accommodationsFriendly,
+            location: job.location,
+            salary: job.salary,
+            matchScore: job.matchScore
+          }
+        }));
       } else {
         const errorData = await response.json();
         console.error('Application failed:', errorData);
@@ -291,6 +296,19 @@ function CandidateJobListingContent() {
           warning('Service Temporarily Unavailable', 'Your application will be processed when the service is restored.');
           const jobKey = `${job.title}-${job.company}`;
           setAppliedJobs(prev => new Set([...prev, jobKey]));
+          window.dispatchEvent(new CustomEvent('jobApplied', {
+            detail: {
+              id: parseInt(job.id),
+              jobTitle: job.title,
+              company: job.company,
+              appliedDate: new Date().toISOString(),
+              status: 'under_review',
+              accommodationsRequested: job.accommodationsFriendly,
+              location: job.location,
+              salary: job.salary,
+              matchScore: job.matchScore
+            }
+          }));
         } else {
           const msg = errorData.error || 'Failed to apply to job';
           if (msg.toLowerCase().includes('already applied')) {
@@ -308,6 +326,19 @@ function CandidateJobListingContent() {
         warning('Network Error', 'Your application will be processed when connection is restored.');
         const jobKey = `${job.title}-${job.company}`;
         setAppliedJobs(prev => new Set([...prev, jobKey]));
+        window.dispatchEvent(new CustomEvent('jobApplied', {
+          detail: {
+            id: parseInt(job.id),
+            jobTitle: job.title,
+            company: job.company,
+            appliedDate: new Date().toISOString(),
+            status: 'under_review',
+            accommodationsRequested: job.accommodationsFriendly,
+            location: job.location,
+            salary: job.salary,
+            matchScore: job.matchScore
+          }
+        }));
       } else {
         showError('Application Error', 'An error occurred while applying to the job');
       }
@@ -321,13 +352,10 @@ function CandidateJobListingContent() {
     console.log('Save button clicked for job:', job.title);
     try {
       setIsSaving(true);
-      let userEmail = localStorage.getItem('userEmail');
-      
-      // For testing purposes, set a default email if none exists
+      const userEmail = session?.user?.email;
       if (!userEmail) {
-        userEmail = 'test@example.com';
-        localStorage.setItem('userEmail', userEmail);
-        console.log('Set default test email for save:', userEmail);
+        showError('Not Authenticated', 'Please sign in before saving jobs.');
+        return;
       }
 
       const jobKey = `${job.title}-${job.company}`;
@@ -355,6 +383,13 @@ function CandidateJobListingContent() {
               newMap.delete(jobKey);
               return newMap;
             });
+            window.dispatchEvent(new CustomEvent('jobUnsaved', {
+              detail: {
+                id: savedJobId,
+                jobTitle: job.title,
+                company: job.company
+              }
+            }));
           } else {
             const errorData = await response.json();
             console.error('Unsave job failed:', errorData);
@@ -372,6 +407,13 @@ function CandidateJobListingContent() {
                 newMap.delete(jobKey);
                 return newMap;
               });
+              window.dispatchEvent(new CustomEvent('jobUnsaved', {
+                detail: {
+                  id: savedJobId,
+                  jobTitle: job.title,
+                  company: job.company
+                }
+              }));
             } else {
               showError('Unsave Failed', errorData.error || 'Failed to unsave job');
             }
@@ -395,12 +437,23 @@ function CandidateJobListingContent() {
       if (response.ok) {
         const result = await response.json();
         success('Job Saved!', 'Job has been saved to your saved jobs.');
-        
-        // Update saved jobs state
+        // Use real ID from backend response
+        const savedId = result?.saved_job?.id;
         setSavedJobs(prev => new Set([...prev, jobKey]));
-        // Note: We don't have the saved job ID from the response, so we'll fetch it on next load
-        // For now, we'll use a placeholder ID
-        setSavedJobIds(prev => new Map([...prev, [jobKey, Date.now()]]));
+        if (savedId) {
+          setSavedJobIds(prev => new Map([...prev, [jobKey, savedId]]));
+        }
+        window.dispatchEvent(new CustomEvent('jobSaved', {
+          detail: {
+            id: savedId || parseInt(job.id),
+            jobTitle: job.title,
+            company: job.company,
+            location: job.location,
+            jobType: job.type,
+            salary: job.salary,
+            isInclusive: job.accommodationsFriendly
+          }
+        }));
       } else {
         const errorData = await response.json();
         console.error('Save job failed:', errorData);
@@ -410,6 +463,17 @@ function CandidateJobListingContent() {
           warning('Service Temporarily Unavailable', 'Job will be saved when service is restored.');
           setSavedJobs(prev => new Set([...prev, jobKey]));
           setSavedJobIds(prev => new Map([...prev, [jobKey, Date.now()]]));
+          window.dispatchEvent(new CustomEvent('jobSaved', {
+            detail: {
+              id: Date.now(),
+              jobTitle: job.title,
+              company: job.company,
+              location: job.location,
+              jobType: job.type,
+              salary: job.salary,
+              isInclusive: job.accommodationsFriendly
+            }
+          }));
         } else {
           showError('Save Failed', errorData.error || 'Failed to save job');
         }
@@ -423,6 +487,17 @@ function CandidateJobListingContent() {
         const jobKey = `${job.title}-${job.company}`;
         setSavedJobs(prev => new Set([...prev, jobKey]));
         setSavedJobIds(prev => new Map([...prev, [jobKey, Date.now()]]));
+        window.dispatchEvent(new CustomEvent('jobSaved', {
+          detail: {
+            id: Date.now(),
+            jobTitle: job.title,
+            company: job.company,
+            location: job.location,
+            jobType: job.type,
+            salary: job.salary,
+            isInclusive: job.accommodationsFriendly
+          }
+        }));
       } else {
         showError('Save Error', 'An error occurred while saving the job');
       }
@@ -459,7 +534,7 @@ function CandidateJobListingContent() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background flex items-center justify-center">
+      <div className="w-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
           <p className="text-[#6f7a80]">Loading job opportunities...</p>
@@ -471,7 +546,7 @@ function CandidateJobListingContent() {
   // Error state
   if (fetchError) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background flex items-center justify-center">
+      <div className="w-full flex items-center justify-center">
         <div className="text-center">
           {/* <div className="text-red-500 text-6xl mb-4">⚠️</div> */}
           <h2 className="text-2xl font-bold text-[#3a4043] mb-2">Error Loading Jobs</h2>
@@ -488,21 +563,13 @@ function CandidateJobListingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-        {/* Header */}
-        {/* <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#3a4043] mb-2">Job Opportunities</h1>
-          <p className="text-[#6f7a80]">
-            Discover jobs that match your skills and neurodivergent strengths
-          </p>
-        </div> */}
-
+    <div className="w-full px-4">
         {/* Search and Filters - Sticky at Top */}
-        <Card className="mb-3 sticky top-20 z-10">
-          <CardContent className="p-6">
+        <Card className="mb-3 sticky top-22 z-10">
+          <CardContent className="p-4">
             <div className="flex flex-col lg:flex-row gap-4 w-full">
               {/* Search */}
-              <div className="flex-1">
+              <div className="flex w-4/9">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
                   <Input
@@ -523,12 +590,13 @@ function CandidateJobListingContent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
-                    <SelectItem value="San Francisco">San Francisco</SelectItem>
-                    <SelectItem value="Seattle">Seattle</SelectItem>
-                    <SelectItem value="Austin">Austin</SelectItem>
+                    <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
+                    <SelectItem value="Petaling Jaya">Petaling Jaya</SelectItem>
+                    <SelectItem value="George Town">George Town</SelectItem>
+                    <SelectItem value="Johor Bahru">Johor Bahru</SelectItem>
                     <SelectItem value="Remote">Remote</SelectItem>
                     <SelectItem value="Hybrid">Hybrid</SelectItem>
-                    <SelectItem value="Singapore">Singapore</SelectItem>
+                    <SelectItem value="Malaysia">Malaysia</SelectItem>
                   </SelectContent>
                 </Select>
 

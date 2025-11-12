@@ -12,7 +12,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useSession } from 'next-auth/react'; // <--- Import useSession
+import { useSession } from 'next-auth/react';
+import { toast } from 'react-hot-toast';
 
 interface ResumeUploadButtonProps {
   buttonText?: string;

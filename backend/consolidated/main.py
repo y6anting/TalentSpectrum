@@ -17,7 +17,8 @@ from routers import (
     tts,
     mock_interview,
     trainerbook,
-    company
+    company,
+    bookedAppointments
 )
 
 # Initialize FastAPI app
@@ -82,7 +83,8 @@ def read_root():
             "resume-extractor",
             "text-to-speech",
             "mock-interview",
-            "trainerbook"
+            "trainerbook",
+            "appointment"
         ]
     }
 
@@ -106,6 +108,7 @@ app.include_router(resume_extractor.router, prefix="/resume-extractor", tags=["R
 app.include_router(tts.router, prefix="/tts", tags=["Text-to-Speech"])
 app.include_router(mock_interview.router, prefix="/mock-interview", tags=["Mock Interview"])
 app.include_router(trainerbook.router, prefix="/trainerbook", tags=["TrainerBook"])
+app.include_router(bookedAppointments.router, prefix="/appointment", tags=["Appointment"])
 
 if __name__ == "__main__":
     import uvicorn

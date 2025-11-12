@@ -19,7 +19,8 @@ from routers import (
     trainerbook,
     company,
     ai_matching,
-    match_result_route
+    match_result_route,
+    bookedAppointments
 )
 
 # Import models so they register with SQLAlchemy
@@ -102,7 +103,9 @@ def read_root():
             "redoc": "/redoc",
             "ai_matching_trigger": "/ai-matching/run_matching",
             "ai_matching_status": "/ai-matching/status"
+            "appointment"
         }
+            
     }
 
 # @app.get("/health")
@@ -127,6 +130,7 @@ app.include_router(mock_interview.router, prefix="/mock-interview", tags=["Mock 
 app.include_router(trainerbook.router, prefix="/trainerbook", tags=["TrainerBook"])
 # app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
 # app.include_router(match_result_route.router, prefix="/match_results", tags=["Match Results"])
+app.include_router(bookedAppointments.router, prefix="/appointment", tags=["Appointment"])
 
 if __name__ == "__main__":
     import uvicorn

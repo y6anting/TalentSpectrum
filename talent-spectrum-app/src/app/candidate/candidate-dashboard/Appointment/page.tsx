@@ -2,14 +2,16 @@
 
 import React, { useState } from "react";
 import { Card } from "@/app/components/card";
-import { Calendar, Video, User, Clock } from "lucide-react"
+import { Calendar, Video, User, Clock, Search } from "lucide-react"
 
-type BookingInfo = {
-  coach?: string;
-  date?: Date;
-  time?: string;
-  applierName?: string;
+type Appointment = {
+  id: number;
+  jobCoach: string;
+  candidate: string | null;
+  dateTime: Date;
 };
+
+const BASE_URL = "http://localhost:8000/appointment";
 
 export default function AppointmentPage() {
   const [jobCoachSearch, setJobCoachSearch] = useState('');
@@ -17,44 +19,108 @@ export default function AppointmentPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
   const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-  const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null);
-  const [appointmentBookedSessions, setAppointmentBookedSessions] = useState<BookingInfo[]>([]);
-  const jobCoachTemporary = [
-    { name: "one", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "two", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "three", appointments: [{ time: 1762639400 }, { time: 1763639400 }, { time: 1764639400 }] },
-    { name: "four", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "five", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "six", appointments: [{ time: 1562639400 }, { time: 1767676700 }, { time: 1762006700 }] },
-    { name: "seven", appointments: [{ time: 1762153200 }, { time: 1762185600 }, { time: 1762207200 }] },
-    { name: "eight", appointments: [{ time: 1765421400 }, { time: 1764421400 }, { time: 1763641400 }] },
-    { name: "nine", appointments: [{ time: 1762639400 }, { time: 1763639400 }, { time: 1764639400 }] },
-  ];
-  const handleConfirmBooking = () => {
-    if (!bookingInfo?.coach || !bookingInfo?.date || !bookingInfo?.time) {
-      alert("Please select a coach, date, and time before confirming.");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const candidateNameTemp = "Proxy Candidate";
+  const meetUrl = "https://chatgpt.com" // change this url to google meet. make sure it has https
+  const fetchAppointments = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/all`)
+      if (!res.ok) throw new Error("Failed to fetch appointments");
+      const data: Appointment[] = await res.json();
+      const converted = data.map(a => ({ ...a, dateTime: new Date(a.dateTime) }));
+      setAppointments(converted);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchAppointments(); // call it once on mount
+  }, []);
+
+  const selectedAppointment = appointments.find(
+    (a) => a.id === selectedAppointmentId
+  );
+
+  const jobCoaches = Array.from(
+    new Set(
+      appointments
+        .filter(a => a.candidate === null)
+        .map(a => a.jobCoach)
+    )
+  ).map(name => ({ name }));
+
+  console.log(jobCoaches);
+
+  const formatDate = (d: Date) => d.toISOString().slice(0, 10)
+
+  const handleConfirmBooking = async () => {
+    if (selectedAppointmentId === null) {
+      alert("No appointment selected.");
       return;
     }
 
-    // Add the booking to the list
-    setAppointmentBookedSessions((prev) => [...prev, bookingInfo]);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/book?id=${selectedAppointmentId}&candidate=${encodeURIComponent(candidateNameTemp)}`,
+        {
+          method: "PUT",
+        }
+      );
 
-    // Optionally clear the temp booking info
-    setBookingInfo(null);
+      if (!res.ok) throw new Error("Failed to book appointment");
 
-    // Close popup
-    handleClosePopup();
+      // Update frontend state
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === selectedAppointmentId ? { ...a, candidate: candidateNameTemp } : a
+        )
+      );
 
-    // Confirmation feedback
-    // alert("Booking confirmed!"); Note: need to use standardized alert message of the site (see JobListing for example)
+      setSelectedAppointmentId(null);
+      setSelectedDate(null);
+
+      // Deselect coach if no remaining slots
+      if (selectedCoach) {
+        const hasAvailable = appointments.some(
+          a => a.jobCoach === selectedCoach && a.candidate === null
+        );
+        if (!hasAvailable) setSelectedCoach(null);
+      }
+
+      setShowPopup(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to book appointment.");
+    }
   };
 
-  const handleRemove = (index: number) => {
-    setAppointmentBookedSessions((prev) => prev.filter((_, i) => i !== index));
+  const handleRemove = async (id: number) => {
+    try {
+      const res = await fetch(`${BASE_URL}/unbook?id=${id}`, {
+        method: "PUT",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to unbook appointment");
+      }
+
+      // Update frontend state
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === id ? { ...a, candidate: null } : a
+        )
+      );
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to unbook appointment.");
+    }
   };
 
-  const filteredJobCoachSearch = jobCoachTemporary.filter((c) =>
+  const filteredJobCoachSearch = jobCoaches.filter((c) =>
     c.name.toLowerCase().includes(jobCoachSearch.toLowerCase())
   );
 
@@ -63,11 +129,13 @@ export default function AppointmentPage() {
     setSelectedDate(null);
   };
 
-  const selectedCoachData = jobCoachTemporary.find((c) => c.name === selectedCoach);
+  const availableDays = React.useMemo(() => {
+    if (!selectedCoach) return [];
+    return appointments
+      .filter(a => a.jobCoach === selectedCoach && a.candidate === null)
+      .map(a => a.dateTime);
+  }, [appointments, selectedCoach]);
 
-  const availableDays = selectedCoachData
-    ? selectedCoachData.appointments.map((a) => new Date(a.time * 1000))
-    : [];
 
   const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
   const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
@@ -75,12 +143,16 @@ export default function AppointmentPage() {
     i < firstDay ? null : i - firstDay + 1
   );
 
-  const selectedDayAppointments =
-    selectedCoachData && selectedDate
-      ? selectedCoachData.appointments.filter(
-        (a) => new Date(a.time * 1000).toDateString() === selectedDate.toDateString()
-      )
-      : [];
+  const selectedDayAppointments = React.useMemo(() => {
+    if (!selectedCoach || !selectedDate) return [];
+    return appointments.filter(
+      (a) =>
+        a.jobCoach === selectedCoach &&
+        formatDate(a.dateTime) === formatDate(selectedDate) &&
+        a.candidate === null
+    );
+  }, [appointments, selectedCoach, selectedDate]);
+
 
   const handlePrevMonth = () => {
     if (appointmentMonth === 0) {
@@ -103,9 +175,7 @@ export default function AppointmentPage() {
   };
 
   const isDateAvailable = (d: Date) =>
-    availableDays.some(
-      (a) => a.getDate() === d.getDate() && a.getMonth() === d.getMonth() && a.getFullYear() === d.getFullYear()
-    );
+    availableDays.some((a) => formatDate(a) === formatDate(d));
 
   const monthNames = [
     "January",
@@ -122,16 +192,14 @@ export default function AppointmentPage() {
     "December",
   ];
 
-  const handleBookClick = (coachName: string, appointment: any) => {
-    const date = new Date(appointment.time * 1000);
-    const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setBookingInfo({ coach: coachName, date, time: formattedTime });
+  const handleBookClick = (appointment: any) => {
+    setSelectedAppointmentId(appointment.id);
     setShowPopup(true);
   };
 
   const handleClosePopup = () => {
     setShowPopup(false);
-    setBookingInfo(null);
+    setSelectedAppointmentId(null);
   };
 
   return (
@@ -146,6 +214,7 @@ export default function AppointmentPage() {
                 placeholder="Find and select a job coach:"
                 onChange={(e) => setJobCoachSearch(e.target.value)}
               />
+              <Search className="text-gray-400 w-5 h-5" />
             </div>
             <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
               {filteredJobCoachSearch.length > 0 ? (
@@ -224,9 +293,7 @@ export default function AppointmentPage() {
                     return (
                       <div
                         key={i}
-                        onClick={() => {
-                          setSelectedDate(date);
-                        }}
+                        onClick={() => setSelectedDate(date)}
                         className={`p-2 rounded-lg cursor-pointer transition ${isSelected
                           ? "bg-[#635bff] text-white font-bold"
                           : available
@@ -240,7 +307,7 @@ export default function AppointmentPage() {
                   })}
                 </div>
 
-                {/* Appointments */}
+                {/* appointments */}
                 {selectedDayAppointments.length > 0 ? (
                   <div className="mt-5">
                     <div className="flex items-center gap-2 mb-2">
@@ -292,14 +359,14 @@ export default function AppointmentPage() {
                               />
                             </svg>
                             <span className="font-medium">
-                              {new Date(a.time * 1000).toLocaleTimeString([], {
+                              {a.dateTime.toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
                             </span>
                           </div>
 
-                          <button onClick={() => handleBookClick(selectedCoach!, a)}
+                          <button onClick={() => handleBookClick(a)}
                             className="cursor-pointer bg-transparent hover:bg-[#635bff] text-[#635bff] hover:text-white text-sm px-4 py-1.5 rounded-md font-medium border border-[#635bff] transition"
                           >
                             Book
@@ -321,35 +388,42 @@ export default function AppointmentPage() {
             )}
           </div>
         </Card>
-        {showPopup && bookingInfo && (
+        {showPopup && selectedAppointmentId && (
           <div
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
             onClick={handleClosePopup}
           >
             <div
               className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-sm text-center space-y-4 transform animate-scaleIn"
+              onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
             >
               <h2 className="text-lg font-semibold text-gray-800">
                 Confirm Your Booking
               </h2>
 
-              <div className="text-gray-600 space-y-1">
-                <p>
-                  <span className="font-medium">Coach:</span> {bookingInfo.coach}
-                </p>
-                <p>
-                  <span className="font-medium">Date:</span>{" "}
-                  {bookingInfo.date?.toLocaleDateString(undefined, {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-                <p>
-                  <span className="font-medium">Time:</span> {bookingInfo.time}
-                </p>
-              </div>
+              {selectedAppointment && (
+                <div className="text-gray-600 space-y-1">
+                  <p>
+                    <span className="font-medium">Coach:</span> {selectedAppointment.jobCoach}
+                  </p>
+                  <p>
+                    <span className="font-medium">Date:</span>{" "}
+                    {selectedAppointment.dateTime.toLocaleDateString(undefined, {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                  <p>
+                    <span className="font-medium">Time:</span>{" "}
+                    {selectedAppointment.dateTime.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-center gap-3 pt-3">
                 <button
@@ -369,28 +443,28 @@ export default function AppointmentPage() {
 
             <style>
               {`
-                        @keyframes fadeIn {
-                          from { opacity: 0; }
-                          to { opacity: 1; }
-                        }
-                        @keyframes scaleIn {
-                          from {
-                            opacity: 0;
-                            transform: scale(0.95);
-                          }
-                          to {
-                            opacity: 1;
-                            transform: scale(1);
-                          }
-                        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
 
-                        .animate-fadeIn {
-                          animation: fadeIn 0.25s ease-out forwards;
-                        }
-                        .animate-scaleIn {
-                          animation: scaleIn 0.25s ease-out forwards;
-                        }
-                      `}
+        .animate-fadeIn {
+          animation: fadeIn 0.25s ease-out forwards;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.25s ease-out forwards;
+        }
+      `}
             </style>
           </div>
         )}
@@ -407,75 +481,86 @@ export default function AppointmentPage() {
 
           {/* Session cards */}
           <div className="flex flex-wrap gap-4">
-            {appointmentBookedSessions.map((b, i) => (
-              <div
-                key={i}
-                className="relative flex flex-col gap-2 p-4 border rounded-xl shadow-sm bg-white w-64"
-              >
-                {/* Close button */}
-                <button
-                  onClick={() => handleRemove(i)}
-                  className="cursor-pointer absolute top-3 right-3 text-red-500 hover:text-red-600 text-sm"
+            {appointments
+              .filter(a => ((a.candidate != null) && (a.candidate == candidateNameTemp)))
+              .map((a, i) => (
+                <div
+                  key={i}
+                  className="relative flex flex-col gap-2 p-4 border rounded-xl shadow-sm bg-white w-64"
                 >
-                  ✕
-                </button>
+                  {/* Close button */}
+                  <button
+                    onClick={() => handleRemove(a.id)}
+                    className="cursor-pointer absolute top-3 right-3 text-black-500 hover:text-red-600 text-sm"
+                  >
+                    ✕
+                  </button>
 
-                {/* Status badge */}
-                <span className="bg-[#00ff00]/25 text-[#009900] text-xs font-medium px-3 py-1 rounded-md w-fit">
-                  Booked
-                </span>
-
-                {/* Date */}
-                <div className="flex items-center gap-2 text-sm text-gray-700 mt-2">
-                  <Calendar size={16} className="text-gray-500" />
-                  <span className="truncate overflow-hidden text-ellipsis block max-w-[100%]">
-                    {b.date
-                      ? b.date.toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })
-                      : "No date"}
+                  {/* Status badge */}
+                  <span className="bg-[#00ff00]/25 text-[#009900] text-xs font-medium px-3 py-1 rounded-md w-fit">
+                    Booked
                   </span>
-                </div>
 
-                {/* Time */}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <Clock size={16} className="text-gray-500" />
-                  <span>{b.time || "No time"}</span>
-                </div>
+                  {/* Date */}
+                  <div className="flex items-center gap-2 text-sm text-gray-700 mt-2">
+                    <Calendar size={16} className="text-gray-500" />
+                    <span className="truncate overflow-hidden text-ellipsis block max-w-[100%]">
+                      {a.dateTime
+                        ? a.dateTime.toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })
+                        : "No date"}
+                    </span>
+                  </div>
 
-                {/* Coach */}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <User size={16} className="text-gray-500" />
-                  <span>{b.coach || "Unknown coach"}</span>
-                </div>
+                  {/* Time */}
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Clock size={16} className="text-gray-500" />
+                    <span>
+                      {a.dateTime
+                        ? a.dateTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+                        : "No time"}
+                    </span>
+                  </div>
 
-                {/* Applier name */}
-                {b.applierName && (
+                  {/* Coach */}
                   <div className="flex items-center gap-2 text-sm text-gray-700">
                     <User size={16} className="text-gray-500" />
-                    <span className="italic">{b.applierName}</span>
+                    <span>{a.jobCoach || "Unknown coach"}</span>
                   </div>
-                )}
 
-                {/* Join meeting link */}
-                <button
-                  className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap"
-                >
-                  <Video size={14} />
-                  Join Meeting
-                </button>
-              </div>
-            ))}
+                  {/* Applier name */}
+                  {a.candidate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <User size={16} className="text-gray-500" />
+                      <span className="italic">{a.candidate}</span>
+                    </div>
+                  )}
+
+                  {/* Join meeting link */}
+                  <button
+                    onClick={() => {
+                      const url = meetUrl || "https://example.com";
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="cursor-pointer inline-flex items-center justify-center gap-1 text-[#635bff] text-sm font-medium border border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap">
+
+                    <Video size={14} />
+                    Join Meeting
+                  </button>
+                </div>
+              ))}
 
             {/* Empty state */}
-            {appointmentBookedSessions.length === 0 && (
+            {appointments.filter(a => a.candidate != null).length === 0 && (
               <p className="text-gray-500 text-sm mt-4">No booked sessions yet.</p>
             )}
           </div>
         </div>
       </Card>
+
     </>
   );
 }

@@ -70,7 +70,11 @@ const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
   );
 };
 
-const ReportPage: React.FC = () => {
+interface ReportPageProp {
+  handleTabChangeProp?: () => void;
+}
+
+const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
   const router = useRouter();
   const { data: authSession } = useSession();
   const [reportData, setReportData] = useState<ReportData | null>(null);

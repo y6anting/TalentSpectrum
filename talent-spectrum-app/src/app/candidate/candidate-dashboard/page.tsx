@@ -1214,7 +1214,7 @@ export default function CandidateDashboard() {
       <div className="page-wrap py-8">
         <div className="grid lg:grid-cols-[260px_1fr] gap-8 py-8">
           {/* Sidebar */}
-          <div className="sticky top-[var(--app-header-height)] self-start">
+          <div className="lg:sticky top-[var(--app-header-height)] self-start">
             <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
               <Card>
                 <CardContent className="p-6">
@@ -3094,7 +3094,7 @@ export default function CandidateDashboard() {
 
             {activeTab === "Report" && (
               <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
-                <ReportPage /></>
+                <ReportPage handleTabChangeProp={() => handleTabChange("mock interview")}/></>
             )}
 
             {activeTab === "Appointment" && (

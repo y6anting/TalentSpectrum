@@ -36,7 +36,7 @@ import {
   XCircle,
   Calendar,
   Search,
-  User,
+  ArrowUpDown,
   SquarePen, // Added SquarePen icon, 
   BotMessageSquare
 } from "lucide-react";
@@ -215,6 +215,10 @@ export default function EmployerDashboard() {
 
   // Calculator
   const [baseSalary, setBaseSalary] = useState<number>(10000);
+
+  const [selectedSort, setSelectedSort] = useState("Newest");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const result = calculateEmployerCosts(baseSalary || 0);
 
   const getStatusBadge = (status: string) => {
@@ -310,7 +314,7 @@ export default function EmployerDashboard() {
     setIsEditModalOpen(true);
   };
 
-const handleSaveEditJob = async () => {
+  const handleSaveEditJob = async () => {
     if (!editJobData || !editJobData.id) {
       setErrors({ general: "No job selected" });
       return;
@@ -343,23 +347,7 @@ const handleSaveEditJob = async () => {
 
       // Refresh job postings from server for immediate consistency
       if (currentEmployerEmail) {
-        try {
-          const jobsRes = await fetch(
-            `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
-          );
-          if (jobsRes.ok) {
-            const jobsData = await jobsRes.json();
-            setJobPostings(jobsData);
-          } else {
-            setJobPostings((prev) =>
-              prev.map((j) => (j.id === updated.id ? updated : j))
-            );
-          }
-        } catch {
-          setJobPostings((prev) =>
-            prev.map((j) => (j.id === updated.id ? updated : j))
-          );
-        }
+        fetchEmployerJobs(currentEmployerEmail)
       } else {
         setJobPostings((prev) =>
           prev.map((j) => (j.id === updated.id ? updated : j))
@@ -376,73 +364,73 @@ const handleSaveEditJob = async () => {
     }
   };
 
-// Function to handle logo upload
-const handleLogoUpload = async (file: File) => {
-  if (!currentEmployerEmail) {
-    alert("Please log in as an employer to upload a logo.");
-    return;
-  }
-  // Add this check if companyProfile.name is needed by backend for filename
-  // and companyProfile might not be loaded yet.
-  if (!companyProfile || !companyProfile.name) {
-    alert("Company profile not loaded. Cannot upload logo.");
-    return;
-  }
-
-  // Optional: Set a loading state here (e.g., setIsUploading(true))
-  // to provide user feedback.
-
-  const formData = new FormData();
-  formData.append("file", file);
-  try {
-    const response = await fetch(
-      `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}/upload-company-logo`,
-      {
-        method: "POST",
-        body: formData,
-        // Do NOT set Content-Type header for FormData, browser does it automatically
-      }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      const newLogoUrl = data.logo_url; // Get the new logo URL from the backend response
-
-      setCompanyLogo(newLogoUrl); // Update the logo displayed in the UI
-
-      // Update the companyProfile state with the new logo_url for consistency
-      setCompanyProfile(prevProfile => {
-        if (prevProfile) {
-          return { ...prevProfile, logo_url: newLogoUrl };
-        }
-        return null;
-      });
-
-      alert("Company logo uploaded successfully!");
-
-      // REMOVED: await handleSaveCompanySettings(data.logo_url);
-      // The backend's /upload-company-logo endpoint already updates the DB.
-      // This call is no longer needed for the logo_url itself.
-
-    } else {
-      const errorText = await response.text();
-      console.error("Error uploading logo:", errorText);
-      alert(`Failed to upload logo: ${errorText}`); // Display the backend's error message
+  // Function to handle logo upload
+  const handleLogoUpload = async (file: File) => {
+    if (!currentEmployerEmail) {
+      alert("Please log in as an employer to upload a logo.");
+      return;
     }
-  } catch (error) {
-    console.error("Network error during logo upload:", error);
-    alert("An error occurred during logo upload.");
-  } finally {
-    // Optional: Reset loading state here (e.g., setIsUploading(false))
-  }
-};
+    // Add this check if companyProfile.name is needed by backend for filename
+    // and companyProfile might not be loaded yet.
+    if (!companyProfile || !companyProfile.name) {
+      alert("Company profile not loaded. Cannot upload logo.");
+      return;
+    }
 
-// Handler for when a file is selected
-const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-  if (event.target.files && event.target.files[0]) {
-    handleLogoUpload(event.target.files[0]);
-  }
-};
+    // Optional: Set a loading state here (e.g., setIsUploading(true))
+    // to provide user feedback.
+
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}/upload-company-logo`,
+        {
+          method: "POST",
+          body: formData,
+          // Do NOT set Content-Type header for FormData, browser does it automatically
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newLogoUrl = data.logo_url; // Get the new logo URL from the backend response
+
+        setCompanyLogo(newLogoUrl); // Update the logo displayed in the UI
+
+        // Update the companyProfile state with the new logo_url for consistency
+        setCompanyProfile(prevProfile => {
+          if (prevProfile) {
+            return { ...prevProfile, logo_url: newLogoUrl };
+          }
+          return null;
+        });
+
+        alert("Company logo uploaded successfully!");
+
+        // REMOVED: await handleSaveCompanySettings(data.logo_url);
+        // The backend's /upload-company-logo endpoint already updates the DB.
+        // This call is no longer needed for the logo_url itself.
+
+      } else {
+        const errorText = await response.text();
+        console.error("Error uploading logo:", errorText);
+        alert(`Failed to upload logo: ${errorText}`); // Display the backend's error message
+      }
+    } catch (error) {
+      console.error("Network error during logo upload:", error);
+      alert("An error occurred during logo upload.");
+    } finally {
+      // Optional: Reset loading state here (e.g., setIsUploading(false))
+    }
+  };
+
+  // Handler for when a file is selected
+  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      handleLogoUpload(event.target.files[0]);
+    }
+  };
 
   // Handle company settings save (now accepts an optional logoUrl to update)
   const handleSaveCompanySettings = async (newLogoUrl: string | null = null) => {
@@ -481,7 +469,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
       if (response.ok) {
         // Only show alert if it's not part of a logo upload chain
         if (newLogoUrl === null) {
-            alert("Company settings saved successfully!");
+          alert("Company settings saved successfully!");
         }
         // Refresh the company profile data
         const updatedResponse = await fetch(
@@ -582,7 +570,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         setCompanyIndustry(companyData.industry);
         setCompanyLocation(companyData.location);
         setCompanySize(companyData.size);
-        setCompanyLogo(companyData.logo_url || null); // Initialize logo from fetched data
+        setCompanyLogo(companyData.logo_url || null);
 
         const jobsResponse = await fetch(
           `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
@@ -597,7 +585,53 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     fetchData();
   }, [session, status, router]);
 
-  
+  const fetchEmployerJobs = async (email: string) => {
+    try {
+      const jobsResponse = await fetch(
+        `http://127.0.0.1:8000/jobs/employer/${email}`
+      );
+      if (jobsResponse.ok) {
+        const jobsData = await jobsResponse.json();
+        console.log("Fetched jobs:", jobsData);
+        setJobPostings(jobsData);
+      } else {
+        console.error("Failed to fetch employer jobs");
+      }
+    } catch (error) {
+      console.error("Error fetching employer jobs:", error);
+    }
+  };
+
+  const jobPostingsSortModes = [
+    "Newest",
+    "Oldest",
+    "A-Z",
+    "Work Mode",
+    "Job Type",
+    "Experience Level",
+    "Salary"
+  ]
+
+  const sortedJobPostings = [...jobPostings].sort((a, b) => {
+    switch (selectedSort) {
+      case "Newest":
+        return b.id - a.id; // higher ID = newer
+      case "Oldest":
+        return a.id - b.id; // lower ID = older
+      case "A-Z":
+        return a.job_title.localeCompare(b.job_title);
+      case "Work Mode":
+        return a.work_mode.localeCompare(b.work_mode);
+      case "Job Type":
+        return a.job_type.localeCompare(b.job_type);
+      case "Experience Level":
+        return a.experience_level.localeCompare(b.experience_level);
+      case "Salary":
+        return b.salary_range - a.salary_range;
+      default:
+        return 0;
+    }
+  });
 
   const renderInputField = (
     label: string,
@@ -695,7 +729,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                     { id: "overview", label: "Overview", icon: BarChart3 },
 
                     { id: "post-job", label: "Post New Job", icon: SquarePen },
-                    { id: "jobs", label: "Job Posted", icon: FileText },
+                    { id: "jobs", label: "Job Postings", icon: FileText },
                     {
                       id: "search-candidates",
                       label: "Search Applicants",
@@ -723,11 +757,10 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                       <button
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors hover:cursor-pointer ${
-                          activeTab === item.id
-                            ? "bg-[#635bff] text-white"
-                            : "text-[#3a4043] hover:bg-gray-100"
-                        }`}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-colors hover:cursor-pointer ${activeTab === item.id
+                          ? "bg-[#635bff] text-white"
+                          : "text-[#3a4043] hover:bg-gray-100"
+                          }`}
                       >
                         <Icon className="h-4 w-4" />
                         {item.label}
@@ -856,7 +889,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {companyProfile?.certifications &&
-                      JSON.parse(companyProfile.certifications).length > 0 ? (
+                        JSON.parse(companyProfile.certifications).length > 0 ? (
                         JSON.parse(companyProfile.certifications).map(
                           (cert: string) => (
                             <Badge
@@ -884,10 +917,43 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
               <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left Side - Job Postings List */}
                 <div className="lg:col-span-1 space-y-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043]">
-                    Job Postings ({jobPostings.length})
-                  </h2>
-                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+                  <div className="flex flex-wrap items-center justify-between mb-2">
+                    {/* Title */}
+                    <h2 className="text-2xl font-bold text-[#3a4043] mr-4 flex-shrink-0">
+                      Job Postings (5)
+                    </h2>
+                    {/* Sort button */}
+                    <div className="relative mt-2 sm:mt-0 flex-shrink-0">
+                      <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="cursor-pointer inline-flex items-center justify-center gap-1 text-black/60 text-sm font-medium border border-[#635bff] hover:border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                        <span>{selectedSort}</span>
+                      </button>
+
+                      {isDropdownOpen && (
+                        <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                          {jobPostingsSortModes.map((mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => {
+                                setSelectedSort(mode);
+                                setIsDropdownOpen(false);
+                                // handle sorting here
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-violet-50 hover:text-[#635bff] ${selectedSort === mode ? "bg-violet-50 text-[#635bff]" : ""
+                                }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-visible pr-5">
                     {isLoading ? (
                       <Card>
                         <CardContent className="p-4 text-center">
@@ -910,51 +976,51 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                         </CardContent>
                       </Card>
                     ) : (
-                      jobPostings.map((job) => (
-                        <motion.div
-                          key={job.id}
-                          whileHover={{ x: 4 }}
-                          transition={{ type: "spring", stiffness: 300 }}
-                        >
+                      sortedJobPostings.map((job) => (
+                        <motion.div key={job.id} whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300 }}>
                           <Card
-                            className={`cursor-pointer transition-all ${
-                              selectedJobForApplicants?.id === job.id
-                                ? "border-2 border-[#635bff] bg-violet-50"
-                                : "hover:border-[#635bff]/50"
-                            }`}
+                            className={`cursor-pointer transition-all ${selectedJobForApplicants?.id === job.id
+                              ? "border-2 border-[#635bff] bg-violet-50"
+                              : "hover:border-[#635bff]/50"
+                              }`}
                             onClick={() => setSelectedJobForApplicants(job)}
                           >
                             <CardContent className="p-4">
-                              <h3 className="font-semibold text-[#3a4043] mb-1 line-clamp-1">
+                              <h3 className="font-semibold text-[#3a4043] mb-1 truncate">
                                 {job.job_title}
                               </h3>
-                              <p className="text-sm text-[#635bff] mb-2">
+
+                              <p className="text-sm text-[#635bff] mb-2 truncate">
                                 {job.job_type}
                               </p>
-                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  {job.location}
+
+                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 overflow-hidden whitespace-nowrap">
+                                <span className="flex items-center gap-1 truncate">
+                                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">{job.location}</span>
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <DollarSign className="h-3 w-3" />
-                                  {SALARY_RANGES[job.salary_range] ??
-                                    job.salary_range}
+
+                              <div className="flex items-center gap-2 text-xs text-gray-600 overflow-hidden whitespace-nowrap">
+                                <span className="flex items-center gap-1 truncate">
+                                  <DollarSign className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">
+                                    {SALARY_RANGES[job.salary_range] ?? job.salary_range}
+                                  </span>
                                 </span>
                               </div>
+
                               {(job.flexible_work_hour ||
                                 job.sensory_friendly_environment ||
                                 job.mental_health_support) && (
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-purple-100 text-purple-800 mt-2 text-xs"
-                                >
-                                  <Shield className="h-3 w-3 mr-1" />
-                                  Inclusive
-                                </Badge>
-                              )}
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-purple-100 text-purple-800 mt-2 text-xs"
+                                  >
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    Inclusive
+                                  </Badge>
+                                )}
                             </CardContent>
                           </Card>
                         </motion.div>
@@ -1130,11 +1196,10 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <Star
                                     key={star}
-                                    className={`h-4 w-4 ${
-                                      star <= Math.floor(app.score / 20)
-                                        ? "text-yellow-400 fill-current"
-                                        : "text-gray-300"
-                                    }`}
+                                    className={`h-4 w-4 ${star <= Math.floor(app.score / 20)
+                                      ? "text-yellow-400 fill-current"
+                                      : "text-gray-300"
+                                      }`}
                                   />
                                 ))}
                               </div>
@@ -1489,12 +1554,11 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                         ].map((row) => (
                           <tr
                             key={row.category}
-                            className={`border-t ${
-                              row.category ===
+                            className={`border-t ${row.category ===
                               "Net Effective Annual Employer Cost"
-                                ? "font-semibold bg-[#f7f6ff]"
-                                : ""
-                            }`}
+                              ? "font-semibold bg-[#f7f6ff]"
+                              : ""
+                              }`}
                           >
                             <td className="p-2 min-h-[120px]">
                               {row.category}
@@ -1532,7 +1596,14 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
 
             {activeTab === "post-job" && (
               <PostJob
-                onJobPosted={() => setActiveTab("jobs")}
+                onJobPosted={async () => {
+                  if (currentEmployerEmail) {
+                    await fetchEmployerJobs(currentEmployerEmail);
+                  }
+                  setActiveTab("jobs");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  setSelectedSort("Newest")
+                }}
                 onCancel={() => setActiveTab("overview")}
               />
             )}
@@ -1544,7 +1615,7 @@ const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
                 </Card>
               </>
             )}
-          {/* // View Job Modal */}
+            {/* // View Job Modal */}
             <ViewJobModal
               isOpen={isViewModalOpen}
               job={selectedJob}

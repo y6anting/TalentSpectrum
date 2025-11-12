@@ -315,10 +315,9 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-black">Post a New Job</h1>
-            <p className="text-gray-600 mt-1">
-              Create an inclusive job posting that attracts neurodivergent
-              talent.
+            <h1 className="text-2xl font-bold text-[#3a4043]">Post a New Job</h1>
+            <p className="text-gray-600 mt-1 italic">
+              Post an inclusive job for neurodivergent talent!
             </p>
           </div>
 

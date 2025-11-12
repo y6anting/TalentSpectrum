@@ -660,96 +660,96 @@ export default function CandidateDashboard() {
   fetchExperienceData();
 }, [session, status]);
 
-  // rerun when user logs in
-  // // Fetch applications data
-  // useEffect(() => {
-  //   const fetchApplicationsData = async () => {
-  //     try {
-  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        
-  //       // If no email in sessionStorage but we have session email, use it
-  //       if (!sessionEmail && session?.user?.email) {
-  //         sessionEmail = session.user.email;
-  //       }
-        
-  //       if (!sessionEmail) {
-  //         console.error('No email found for fetching applications');
-  //         return;
-  //       }
+  // Fetch applications data from database via Next.js API route
+  useEffect(() => {
+    const fetchApplicationsData = async (email: string) => {
+      try {
+        const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-  //       const emailToUse = encodeURIComponent(sessionEmail);
-  //       console.log('Fetching applications for email:', emailToUse);
-        
-  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/applications`, {
-  //         method: 'GET',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-        
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         console.log('Applications API Response:', data);
-  //         setApplications(data);
-  //       } else {
-  //         console.error('Failed to fetch applications:', response.status);
-  //         setApplications([]); // Set empty array if no applications found
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching applications data:', error);
-  //       setApplications([]); // Set empty array on error
-  //     }
-  //   };
+        if (!response.ok) {
+          console.error('Failed to fetch applications:', response.status);
+          setApplications([]);
+          return;
+        }
 
-  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
-  //     fetchApplicationsData();
-  //   }
-  // }, [session]);
+        const data = await response.json();
+        const mapped = Array.isArray(data)
+          ? data.map((app: any) => ({
+              id: app.id ?? app.application_id ?? undefined,
+              jobTitle: app.jobTitle ?? app.job_title ?? '',
+              company: app.company ?? app.employer ?? '',
+              appliedDate: app.appliedDate ?? app.applied_date ?? '',
+              status: app.status ?? 'under_review',
+              location: app.location ?? '',
+              salary: app.salary ?? '',
+              accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
+              score: app.score ?? undefined,
+            }))
+          : [];
 
-  // // Fetch saved jobs data
-  // useEffect(() => {
-  //   const fetchSavedJobsData = async () => {
-  //     try {
-  //       let sessionEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        
-  //       // If no email in sessionStorage but we have session email, use it
-  //       if (!sessionEmail && session?.user?.email) {
-  //         sessionEmail = session.user.email;
-  //       }
-        
-  //       if (!sessionEmail) {
-  //         console.error('No email found for fetching saved jobs');
-  //         return;
-  //       }
+        setApplications(mapped);
+        if (mapped.length > 0 && !selectedApplication) {
+          setSelectedApplication(mapped[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching applications data:', error);
+        setApplications([]);
+      }
+    };
 
-  //       const emailToUse = encodeURIComponent(sessionEmail);
-  //       console.log('Fetching saved jobs for email:', emailToUse);
-        
-  //       const response = await fetch(`http://127.0.0.1:8000/profiles/${emailToUse}/saved-jobs`, {
-  //         method: 'GET',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-        
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         console.log('Saved Jobs API Response:', data);
-  //         setSavedJobs(data);
-  //       } else {
-  //         console.error('Failed to fetch saved jobs:', response.status);
-  //         setSavedJobs([]); // Set empty array if no saved jobs found
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching saved jobs data:', error);
-  //       setSavedJobs([]); // Set empty array on error
-  //     }
-  //   };
+    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+    if (sessionEmail) {
+      fetchApplicationsData(sessionEmail);
+    }
+  }, [session]);
 
-  //   if (session?.user?.email || (typeof window !== 'undefined' && sessionStorage.getItem('userEmail'))) {
-  //     fetchSavedJobsData();
-  //   }
-  // }, [session]);
+  // Fetch saved jobs data from database via Next.js API route
+  useEffect(() => {
+    const fetchSavedJobsData = async (email: string) => {
+      try {
+        const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          console.error('Failed to fetch saved jobs:', response.status);
+          setSavedJobs([]);
+          return;
+        }
+
+        const data = await response.json();
+        const mapped = Array.isArray(data)
+          ? data.map((job: any) => ({
+              id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
+              jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
+              company: job.company ?? job.employer ?? '',
+              location: job.location ?? '',
+              salary: job.salary ?? '',
+              type: job.type ?? job.job_type ?? '',
+              isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
+              hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
+            }))
+          : [];
+
+        setSavedJobs(mapped);
+        if (mapped.length > 0 && !selectedSavedJob) {
+          setSelectedSavedJob(mapped[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching saved jobs data:', error);
+        setSavedJobs([]);
+      }
+    };
+
+    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+    if (sessionEmail) {
+      fetchSavedJobsData(sessionEmail);
+    }
+  }, [session]);
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -815,261 +815,7 @@ export default function CandidateDashboard() {
     console.log('Education state changed:', educations);
   }, [educations]);
 
-  // Load sample applications data (for demonstration)
-  useEffect(() => {
-    // Sample applications data
-    const sampleApplications = [
-      {
-        id: 1,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7500 - RM 10,000 / month",
-        status: "under_review",
-        appliedDate: "2025-01-17",
-        score: 90,
-        accommodationsRequested: true,
-        description: "We are seeking a creative and strategic Marketing Director to lead our marketing team and drive brand awareness across multiple channels. The ideal candidate will have a proven track record in developing and executing comprehensive marketing strategies.",
-        requirements: [
-          "Bachelor's degree in Marketing, Business, or related field",
-          "7+ years of experience in marketing, with 3+ years in a leadership role",
-          "Strong analytical and project management skills",
-          "Excellent communication and presentation abilities",
-          "Experience with digital marketing platforms and analytics tools"
-        ],
-        benefits: [
-          "Competitive salary package",
-          "Health and dental insurance",
-          "Flexible working hours",
-          "Professional development opportunities",
-          "Annual performance bonus"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-28"
-      },
-      {
-        id: 2,
-        jobTitle: "Senior Manager",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 6500 - RM 9000 / month",
-        status: "interview_scheduled",
-        appliedDate: "2025-01-15",
-        interviewDate: "2025-01-25 at 10:00 AM",
-        score: 85,
-        accommodationsRequested: true,
-        description: "Join our dynamic team as a Senior Manager where you'll oversee daily operations, lead a team of professionals, and contribute to strategic planning initiatives.",
-        requirements: [
-          "Bachelor's degree in Business Administration or related field",
-          "5+ years of management experience",
-          "Strong leadership and team building skills",
-          "Excellent problem-solving abilities",
-          "Proficiency in project management tools"
-        ],
-        benefits: [
-          "Comprehensive health coverage",
-          "Retirement savings plan",
-          "Paid time off and holidays",
-          "Team building activities",
-          "Career advancement opportunities"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-15"
-      },
-      {
-        id: 3,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Remote",
-        salary: "RM 8000 - RM 12,000 / month",
-        status: "under_review",
-        appliedDate: "2025-01-12",
-        score: 88,
-        accommodationsRequested: false,
-        description: "Remote opportunity for an experienced Marketing Director to develop and implement marketing strategies that align with business objectives and drive growth.",
-        requirements: [
-          "Master's degree preferred, Bachelor's required",
-          "8+ years in marketing with leadership experience",
-          "Strong digital marketing expertise",
-          "Data-driven decision making skills",
-          "Experience managing remote teams"
-        ],
-        benefits: [
-          "Fully remote position",
-          "Flexible schedule",
-          "Generous PTO policy",
-          "Home office stipend",
-          "Professional development budget"
-        ],
-        companySize: "200-500 employees",
-        founded: "2012",
-        deadline: "2025-03-01"
-      },
-      {
-        id: 4,
-        jobTitle: "Senior Manager",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7000 - RM 9500 / month",
-        status: "under_review",
-        appliedDate: "2025-01-10",
-        score: 92,
-        accommodationsRequested: true,
-        description: "We're looking for a Senior Manager to join our operations team and help streamline processes while maintaining our high standards of quality and customer satisfaction.",
-        requirements: [
-          "Relevant degree in Business or Operations Management",
-          "6+ years of progressive management experience",
-          "Strong analytical and strategic thinking",
-          "Excellent interpersonal skills",
-          "Proven track record of process improvement"
-        ],
-        benefits: [
-          "Competitive compensation package",
-          "Medical and wellness benefits",
-          "Performance-based bonuses",
-          "Learning and development programs",
-          "Work-life balance initiatives"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-20"
-      },
-      {
-        id: 5,
-        jobTitle: "Marketing Director",
-        company: "Olive Club",
-        location: "Kuala Lumpur",
-        salary: "RM 7500 - RM 10,500 / month",
-        status: "under_review",
-        appliedDate: "2025-01-08",
-        score: 87,
-        accommodationsRequested: false,
-        description: "Lead our marketing efforts and shape brand strategy for one of the fastest-growing companies in the region. This role offers the opportunity to make a significant impact.",
-        requirements: [
-          "Bachelor's or Master's in Marketing",
-          "7+ years of marketing experience",
-          "Experience in brand development",
-          "Strong creativity and innovation skills",
-          "Budget management experience"
-        ],
-        benefits: [
-          "Attractive salary and benefits",
-          "Stock options",
-          "Health and wellness programs",
-          "Collaborative work environment",
-          "Career growth opportunities"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-02-25"
-      }
-    ];
-
-    setApplications(sampleApplications);
-    // Automatically select the first application
-    if (sampleApplications.length > 0) {
-      setSelectedApplication(sampleApplications[0]);
-    }
-
-    // Sample saved jobs data
-    const sampleSavedJobs = [
-      {
-        id: 101,
-        jobTitle: "Software Engineer",
-        company: "TechCorp Solutions",
-        location: "Kuala Lumpur",
-        salary: "RM 6000 - RM 9000 / month",
-        type: "Full-time",
-        score: 88,
-        description: "Join our innovative team as a Software Engineer where you'll develop cutting-edge applications and work with the latest technologies.",
-        requirements: [
-          "Bachelor's degree in Computer Science or related field",
-          "3+ years of software development experience",
-          "Proficiency in JavaScript, React, and Node.js",
-          "Strong problem-solving skills",
-          "Experience with agile methodologies"
-        ],
-        benefits: [
-          "Competitive salary and bonuses",
-          "Health insurance coverage",
-          "Flexible working hours",
-          "Professional development budget",
-          "Modern office environment"
-        ],
-        companySize: "100-500 employees",
-        founded: "2010",
-        deadline: "2025-03-15",
-        isInclusive: true,
-        hasAccommodations: true
-      },
-      {
-        id: 102,
-        jobTitle: "UX Designer",
-        company: "Creative Studio",
-        location: "Remote",
-        salary: "RM 5500 - RM 8000 / month",
-        type: "Full-time",
-        score: 92,
-        description: "We're looking for a talented UX Designer to create intuitive and beautiful user experiences for our diverse range of clients.",
-        requirements: [
-          "Portfolio demonstrating UX design expertise",
-          "4+ years of UX/UI design experience",
-          "Proficiency in Figma, Sketch, or Adobe XD",
-          "Understanding of user-centered design principles",
-          "Experience conducting user research"
-        ],
-        benefits: [
-          "Remote work flexibility",
-          "Generous PTO policy",
-          "Creative freedom",
-          "Latest design tools and software",
-          "Collaborative team culture"
-        ],
-        companySize: "20-50 employees",
-        founded: "2018",
-        deadline: "2025-03-20",
-        isInclusive: true,
-        hasAccommodations: true
-      },
-      {
-        id: 103,
-        jobTitle: "Data Analyst",
-        company: "Analytics Inc",
-        location: "Penang",
-        salary: "RM 5000 - RM 7500 / month",
-        type: "Full-time",
-        score: 85,
-        description: "Seeking a detail-oriented Data Analyst to help us make data-driven decisions and provide insights that drive business growth.",
-        requirements: [
-          "Bachelor's degree in Statistics, Mathematics, or related field",
-          "2+ years of data analysis experience",
-          "Strong SQL and Excel skills",
-          "Experience with data visualization tools (Tableau, Power BI)",
-          "Analytical and critical thinking abilities"
-        ],
-        benefits: [
-          "Competitive compensation",
-          "Health and wellness programs",
-          "Training and development opportunities",
-          "Work-life balance initiatives",
-          "Collaborative work environment"
-        ],
-        companySize: "50-200 employees",
-        founded: "2015",
-        deadline: "2025-03-10",
-        isInclusive: false,
-        hasAccommodations: true
-      }
-    ];
-
-    setSavedJobs(sampleSavedJobs);
-    // Automatically select the first saved job
-    if (sampleSavedJobs.length > 0) {
-      setSelectedSavedJob(sampleSavedJobs[0]);
-    }
-  }, []);
+  // Demo data removed; applications and saved jobs now fetched from database via API
 
   // Handle tab switching
   const handleTabChange = (tabId: string) => {

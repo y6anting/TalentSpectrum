@@ -49,7 +49,7 @@ export function SkillsSubmission({
       const skillsData = { exp_skill };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/profiles/${userEmail}/skills`,
+        `/api/profiles?email=${encodeURIComponent(userEmail)}&type=exp_skill`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -81,13 +81,13 @@ useEffect(() => {
       setError(null);
 
       const payload = {
-        languageProficiencies: languageProficiencies.map(({ id, ...rest }) => rest),
+        language_proficiencies: languageProficiencies.map(({ id, ...rest }) => rest),
       };
 
       console.log("Payload being sent:", payload);
 
       const res = await fetch(
-        `http://127.0.0.1:8000/profiles/${userEmail}/language`,
+        `/api/profiles?email=${encodeURIComponent(userEmail)}&type=language_proficiencies`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

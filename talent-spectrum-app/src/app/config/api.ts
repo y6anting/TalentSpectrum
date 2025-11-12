@@ -2,6 +2,7 @@
 // Consolidated backend running on port 8000
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+console.log("🔌 Connected to API Base URL:", API_BASE_URL);
 
 // API Endpoints
 export const API_ENDPOINTS = {

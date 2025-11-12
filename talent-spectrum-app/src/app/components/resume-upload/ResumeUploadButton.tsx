@@ -12,7 +12,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useSession } from 'next-auth/react'; // <--- Import useSession
+import { useSession } from 'next-auth/react';
+import { toast } from 'react-hot-toast';
 
 interface ResumeUploadButtonProps {
   buttonText?: string;
@@ -106,7 +107,7 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
             const result = await response.json();
             console.log("✅ Resume data successfully updated in DB:", result);
           } catch (error: unknown) {
-            console.error("❌ Error updating resume data:", error);
+            // console.error("❌ Error updating resume data:", error);
             let errorMessage = "An unknown error occurred.";
             if (error instanceof Error) {
               errorMessage = error.message;
@@ -115,7 +116,7 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
             } else if (typeof error === 'object' && error !== null && 'detail' in error && typeof (error as any).detail === 'string') {
                 errorMessage = (error as any).detail;
             }
-            alert(`Error updating resume data in database: ${errorMessage}`);
+            // alert(`Error updating resume data in database: ${errorMessage}`);
           }
         } else {
           console.warn("API call skipped. Reason: 'userEmail' or 'dataToSet' is falsy.");

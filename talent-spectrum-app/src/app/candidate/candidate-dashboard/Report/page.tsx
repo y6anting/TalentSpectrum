@@ -13,10 +13,12 @@ import {
   Award,
   TrendingUp,
   Download,
-  ArrowLeft
+  Clock
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { API_ENDPOINTS } from "@/app/config/api";
+import { useSession } from "next-auth/react";
+import { handleDownloadReport } from "./downloadReport";
 
 interface ReportData {
   resume_feedback: {
@@ -24,12 +26,6 @@ interface ReportData {
     summary: string;
     strengths: string[];
     areas_for_improvement: string[];
-    recommendations: {
-      what_to_add: string[];
-      what_to_remove: string[];
-      formatting_tips: string[];
-      tone_and_language: string[];
-    };
   };
   career_guidance: {
     suitable_job_roles: Array<{
@@ -52,14 +48,23 @@ interface PriorityBadgeProps {
 }
 
 const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
-  const colors = {
-    High: "bg-red-100 text-red-800 border-red-200",
-    Medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    Low: "bg-blue-100 text-blue-800 border-blue-200"
+  const styles = {
+    High: { bg: "rgb(254, 226, 226)", text: "rgb(153, 27, 27)", border: "rgb(252, 165, 165)" },
+    Medium: { bg: "rgb(254, 240, 138)", text: "rgb(133, 77, 14)", border: "rgb(253, 224, 71)" },
+    Low: { bg: "rgb(219, 234, 254)", text: "rgb(30, 64, 175)", border: "rgb(147, 197, 253)" },
   };
 
+  const s = styles[priority];
+
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${colors[priority]}`}>
+    <span
+      className="px-2 py-1 rounded-full text-xs font-medium border"
+      style={{
+        backgroundColor: s.bg,
+        color: s.text,
+        borderColor: s.border,
+      }}
+    >
       {priority}
     </span>
   );
@@ -71,31 +76,84 @@ interface ReportPageProp {
 
 const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
   const router = useRouter();
+  const { data: authSession } = useSession();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [mockInterviewFeedback, setMockInterviewFeedback] = useState<any>(null);
   const [mockInterviewDetails, setMockInterviewDetails] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+
+  // Color constants (safe RGB)
+  const PRIMARY = "rgb(99, 91, 255)";
+  const PRIMARY_HOVER = "rgb(86, 72, 232)";
+  const PRIMARY_10 = "rgba(99, 91, 255, 0.1)";
+  const PRIMARY_5 = "rgba(99, 91, 255, 0.05)";
+  const BORDER_20 = "rgba(99, 91, 255, 0.2)";
 
   useEffect(() => {
     const loadReportData = async () => {
       try {
-        // Load mock interview feedback from sessionStorage
-        const mockSession = sessionStorage.getItem('mockInterviewSession');
-        if (mockSession) {
-          const session = JSON.parse(mockSession);
-          if (session.feedback) {
-            setMockInterviewFeedback(parseMockInterviewFeedback(session.feedback));
-            setMockInterviewDetails({
-              position: session.selectedPosition?.title || 'N/A',
-              interviewType: session.interviewType || 'N/A',
-              positionLevel: session.selectedPosition?.level || 'N/A',
-              questionCount: session.answers?.length || 0
-            });
+        // Load profile data and mock interview feedback using email from session
+        if (authSession?.user?.email) {
+          const userEmail = authSession.user.email;
+          
+          // Fetch candidate profile data
+          try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+            const profileResponse = await fetch(`${backendUrl}/profiles/${encodeURIComponent(userEmail)}`);
+            if (profileResponse.ok) {
+              const profile = await profileResponse.json();
+              setProfileData(profile);
+              console.log('Profile data loaded for report:', profile);
+            }
+          } catch (err) {
+            console.error("Failed to fetch profile data:", err);
+          }
+          
+          // Fetch mock interview feedback
+          try {
+            const response = await fetch(`/api/mock-interview/reports/latest?email=${encodeURIComponent(userEmail)}`);
+            if (response.ok) {
+              const latestReport = await response.json();
+              if (latestReport) {
+                setMockInterviewFeedback({
+                  overall_score: latestReport.overall_score || 0,
+                  strengths: latestReport.strengths || [],
+                  areas_for_improvement: latestReport.improvements || []
+                });
+                setMockInterviewDetails({
+                  position: latestReport.position_title,
+                  interviewType: latestReport.interview_type,
+                  positionLevel: latestReport.position_level,
+                  questionCount: latestReport.total_questions,
+                  date: new Date(latestReport.created_at).toLocaleDateString(),
+                  duration: Math.round(latestReport.duration_seconds / 60)
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Failed to fetch mock interview report:", err);
           }
         }
 
-        // First check sessionStorage for resume report
+        // Fallback: sessionStorage
+        if (!mockInterviewFeedback) {
+          const mockSession = sessionStorage.getItem('mockInterviewSession');
+          if (mockSession) {
+            const session = JSON.parse(mockSession);
+            if (session.feedback) {
+              setMockInterviewFeedback(parseMockInterviewFeedback(session.feedback));
+              setMockInterviewDetails({
+                position: session.selectedPosition?.title || 'N/A',
+                interviewType: session.interviewType || 'N/A',
+                positionLevel: session.selectedPosition?.level || 'N/A',
+                questionCount: session.answers?.length || 0
+              });
+            }
+          }
+        }
+
+        // Resume report
         const storedReport = sessionStorage.getItem("resumeReport");
         if (storedReport) {
           const parsedReport = JSON.parse(storedReport);
@@ -104,7 +162,6 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
           return;
         }
 
-        // Try to fetch from consolidated backend
         try {
           const resumeFile = await getResumeFile();
           if (resumeFile) {
@@ -136,15 +193,12 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
         setLoading(false);
       } catch (error) {
         console.error("Error loading report:", error);
-        setError("Failed to load report. Using sample data.");
-        // Use mock data as fallback
         setReportData(getMockReportData());
         setLoading(false);
       }
     };
-
     loadReportData();
-  }, []);
+  }, [authSession]);
 
   const parseMockInterviewFeedback = (feedbackData: any) => {
     if (typeof feedbackData === 'object' && feedbackData !== null) {
@@ -177,7 +231,6 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
     } catch (err) {
       console.error("Could not load resume PDF:", err);
     }
-    
     return null;
   };
 
@@ -190,18 +243,9 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch resume feedback");
-    }
-
+    if (!response.ok) throw new Error("Failed to fetch resume feedback");
     const data = await response.json();
-    
-    // Parse the feedback if it's a string
-    if (typeof data.feedback === "string") {
-      return JSON.parse(data.feedback);
-    }
-    
-    return data.feedback || data;
+    return typeof data.feedback === "string" ? JSON.parse(data.feedback) : data.feedback || data;
   };
 
   const fetchResumeSummary = async (file: File) => {
@@ -213,10 +257,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch resume summary");
-    }
-
+    if (!response.ok) throw new Error("Failed to fetch resume summary");
     const data = await response.json();
     return data.summary;
   };
@@ -237,12 +278,12 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
         "Time management under pressure - Use time-blocking techniques and set clear priorities",
         "Adapting to sudden changes - Work with supervisor to establish change notification protocols"
       ],
-      recommendations: {
-        what_to_add: ["Quantifiable achievements", "Leadership examples", "Technical certifications"],
-        what_to_remove: ["Outdated technologies", "Irrelevant work experience"],
-        formatting_tips: ["Use consistent bullet points", "Add more white space", "Highlight key metrics"],
-        tone_and_language: ["Use active voice", "Be more specific", "Show confidence"]
-      }
+      // recommendations: {
+      //   what_to_add: ["Quantifiable achievements", "Leadership examples", "Technical certifications"],
+      //   what_to_remove: ["Outdated technologies", "Irrelevant work experience"],
+      //   formatting_tips: ["Use consistent bullet points", "Add more white space", "Highlight key metrics"],
+      //   tone_and_language: ["Use active voice", "Be more specific", "Show confidence"]
+      // }
     },
     career_guidance: {
       suitable_job_roles: [
@@ -265,18 +306,15 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
     }
   });
 
-  const handleDownloadReport = () => {
-    // Implement PDF download functionality
-    console.log("Downloading report...");
-    alert("Report download feature coming soon!");
-  };
-
   if (loading || !reportData) {
     return (
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bFF] mx-auto mb-4"></div>
+            <div 
+              className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+              style={{ borderColor: PRIMARY, borderBottomColor: "transparent" }}
+            />
             <p className="text-gray-600">Loading your report...</p>
           </CardContent>
         </Card>
@@ -286,430 +324,375 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
 
   return (
     <Card className="overflow-hidden">
-       <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.back()}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button> */}
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Feedback Report</h1>
-              <p className="text-gray-600 mt-1">Comprehensive analysis of your profile and interview performance</p>
-            </div>
-          </div>
+      <div className="p-6">
+        {/* Download Button - Hidden in PDF */}
+        <div className="max-w-7xl mx-auto mb-4 flex justify-end no-print">
           <Button
-            onClick={handleDownloadReport}
-            className="bg-[#635BFF] hover:bg-[#5648E8] hover:cursor-pointer text-white flex items-center gap-2"
+            onClick={() => handleDownloadReport()}
+            style={{
+              backgroundColor: PRIMARY,
+              color: 'white',
+            }}
+            className="hover:opacity-90 flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download Report
           </Button>
         </div>
 
-        {/* Strengths & Needs Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Strengths */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Star className="w-5 h-5 text-[#635BFF]" />
-                <h3 className="text-xl font-bold text-gray-800">Strength</h3>
-              </div>
-              <div className="space-y-3">
-                {reportData.resume_feedback.strengths.map((strength, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <span className="text-[#635BFF] mt-1">•</span>
-                    <p className="text-gray-700">{strength}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Needs */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="w-5 h-5 text-[#635BFF]" />
-                <h3 className="text-xl font-bold text-gray-800">Needs</h3>
-              </div>
-              <div className="space-y-3">
-                {reportData.resume_feedback.recommendations.what_to_add.map((need, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <span className="text-[#635BFF] mt-1">•</span>
-                    <p className="text-gray-700">{need}</p>
-                  </div>
-                ))}
-                {reportData.resume_feedback.recommendations.formatting_tips.slice(0, 2).map((tip, index) => (
-                  <div key={`tip-${index}`} className="flex items-start gap-2">
-                    <span className="text-[#635BFF] mt-1">•</span>
-                    <p className="text-gray-700">{tip}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Resume Summary (Left) and Areas for Improvement (Right) Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Left: Resume Summary */}
-          {reportData.resume_summary && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <FileText className="w-5 h-5 text-[#635BFF]" />
-                  <h3 className="text-xl font-bold text-gray-800">Resume Summary</h3>
+        <div id="report-content" className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {/* <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.back()}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button> */}
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-800">Feedback Report</h1>
+                  <p className="text-gray-600 mt-1">Comprehensive analysis of your profile and interview performance</p>
                 </div>
-
-                <div className="space-y-6">
-                  {/* Experience */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Briefcase className="w-4 h-4 text-[#635BFF]" />
-                      <h4 className="font-semibold text-gray-800">Experience</h4>
-                    </div>
-                    <p className="text-gray-700 text-sm">{reportData.resume_summary.experience}</p>
-                  </div>
-
-                  {/* Education */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <GraduationCap className="w-4 h-4 text-[#635BFF]" />
-                      <h4 className="font-semibold text-gray-800">Education</h4>
-                    </div>
-                    <p className="text-gray-700 text-sm">{reportData.resume_summary.education}</p>
-                  </div>
-
-                  {/* Skills */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Code className="w-4 h-4 text-[#635BFF]" />
-                      <h4 className="font-semibold text-gray-800">Skills</h4>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {reportData.resume_summary.skills.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-[#635BFF]/10 text-[#635BFF] rounded-full text-xs font-medium"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Key Achievements */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Award className="w-4 h-4 text-[#635BFF]" />
-                      <h4 className="font-semibold text-gray-800">Key Achievements</h4>
-                    </div>
-                    <ul className="space-y-2">
-                      {reportData.resume_summary.key_achievements.map((achievement, index) => (
-                        <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                          <span className="text-[#635BFF] mt-1">•</span>
-                          <span>{achievement}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Right: Resume Areas for Improvement with Overall Score */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <TrendingUp className="w-5 h-5 text-red-600" />
-                <h3 className="text-xl font-bold text-gray-800">Resume Areas for Improvement</h3>
               </div>
+              <Button
+                onClick={handleDownloadReport}
+                className="bg-[rgb(99,91,255)] hover:bg-[rgb(86, 72, 232)] text-white flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Report
+              </Button>
+            </div>
 
-              {/* Overall Resume Score */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-[#635BFF]/10 to-purple-100/30 rounded-lg">
-                <div className="flex items-center justify-between">
-                    <div className="flex-1 pr-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-1">Overall Resume Score</h4>
-                    <p className="text-gray-600 text-sm">{reportData.resume_feedback.summary}</p>
+            {/* Strengths & Needs */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Star className="w-5 h-5" style={{ color: PRIMARY }} />
+                    <h3 className="text-xl font-bold text-gray-800">Strength</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {reportData.resume_feedback.strengths.map((strength, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="mt-1" style={{ color: PRIMARY }}>•</span>
+                        <p className="text-gray-700">{strength}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="w-5 h-5" style={{ color: PRIMARY }} />
+                    <h3 className="text-xl font-bold text-gray-800">Needs</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {reportData.resume_feedback.areas_for_improvement.slice(0, 3).map((need, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="mt-1" style={{ color: PRIMARY }}>•</span>
+                        <p className="text-gray-700">{need}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Resume Summary + Areas for Improvement */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Resume Summary */}
+              {reportData.resume_summary && (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <FileText className="w-5 h-5" style={{ color: PRIMARY }} />
+                      <h3 className="text-xl font-bold text-gray-800">Resume Summary</h3>
                     </div>
 
-                    {/* Larger score circle */}
-                    <div className="relative w-28 h-28 flex-shrink-0">
-                    <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                        background: `conic-gradient(#635BFF ${reportData.resume_feedback.overall_resume_score * 3.6}deg, #e5e7eb 0deg)`
-                        }}
-                    />
-                    <div className="absolute inset-3 bg-white rounded-full flex items-center justify-center">
-                        <span className="text-2xl font-bold text-[#635BFF]">
-                        {reportData.resume_feedback.overall_resume_score}
-                        </span>
-                    </div>
-                    </div>
-                </div>
-                </div>
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Briefcase className="w-4 h-4" style={{ color: PRIMARY }} />
+                          <h4 className="font-semibold text-gray-800">Experience</h4>
+                        </div>
+                        <p className="text-gray-700 text-sm">{reportData.resume_summary.experience}</p>
+                      </div>
 
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <GraduationCap className="w-4 h-4" style={{ color: PRIMARY }} />
+                          <h4 className="font-semibold text-gray-800">Education</h4>
+                        </div>
+                        <p className="text-gray-700 text-sm">{reportData.resume_summary.education}</p>
+                      </div>
 
-              {/* Areas for Improvement List */}
-              <div className="space-y-3">
-                {reportData.resume_feedback.areas_for_improvement.map((area, index) => {
-                  // Determine priority based on content (simple heuristic)
-                  const priority: "High" | "Medium" | "Low" = 
-                    index === 0 ? "High" : index === 1 ? "Medium" : "Low";
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Code className="w-4 h-4" style={{ color: PRIMARY }} />
+                          <h4 className="font-semibold text-gray-800">Skills</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {reportData.resume_summary.skills.map((skill, index) => (
+                            <span
+                              key={index}
+                              className="px-3 py-1 rounded-full text-xs font-medium"
+                              style={{
+                                backgroundColor: PRIMARY_10,
+                                color: PRIMARY,
+                              }}
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
 
-                  return (
-                    <div
-                      key={index}
-                      className="p-3 border-l-4 border-red-600 bg-gradient-to-r from-red-50 to-white rounded-lg"
-                    >
-                      <div className="flex items-start justify-between">
-                        <p className="text-gray-700 text-sm flex-1 pr-2">{area}</p>
-                        <PriorityBadge priority={priority} />
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Award className="w-4 h-4" style={{ color: PRIMARY }} />
+                          <h4 className="font-semibold text-gray-800">Key Achievements</h4>
+                        </div>
+                        <ul className="space-y-2">
+                          {reportData.resume_summary.key_achievements.map((achievement, index) => (
+                            <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
+                              <span className="mt-1" style={{ color: PRIMARY }}>•</span>
+                              <span>{achievement}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Suitable Job Roles Section */}
-        {reportData.career_guidance?.suitable_job_roles && reportData.career_guidance.suitable_job_roles.length > 0 && (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Briefcase className="w-5 h-5 text-[#635BFF]" />
-                <h3 className="text-xl font-bold text-gray-800">You Are Suitable to Work As</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {reportData.career_guidance.suitable_job_roles.map((job, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-[#635BFF]/20 bg-gradient-to-br from-[#635BFF]/5 to-white rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <h4 className="font-semibold text-[#635BFF] mb-2">{job.role}</h4>
-                    <p className="text-gray-600 text-sm">{job.reason}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Recommendations */}
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-6">Recommendations</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* What to Add */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  What to Add
-                </h4>
-                <ul className="space-y-2">
-                  {reportData.resume_feedback.recommendations.what_to_add.map((item, index) => (
-                    <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                      <span className="text-green-500 mt-1">✓</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* What to Remove */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                  What to Remove
-                </h4>
-                <ul className="space-y-2">
-                  {reportData.resume_feedback.recommendations.what_to_remove.map((item, index) => (
-                    <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                      <span className="text-red-500 mt-1">✗</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Formatting Tips */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                  Formatting Tips
-                </h4>
-                <ul className="space-y-2">
-                  {reportData.resume_feedback.recommendations.formatting_tips.map((tip, index) => (
-                    <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">→</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Tone & Language */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Tone & Language
-                </h4>
-                <ul className="space-y-2">
-                  {reportData.resume_feedback.recommendations.tone_and_language.map((item, index) => (
-                    <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                      <span className="text-purple-500 mt-1">💬</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Mock Interview Performance Section */}
-        <Card className="my-6">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-[#635BFF]" />
-                <h3 className="text-xl font-bold text-gray-800">Mock Interview Performance</h3>
-              </div>
-              {mockInterviewFeedback?.overall_score > 0 && (
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-[#635BFF]">{mockInterviewFeedback.overall_score}/100</div>
-                  <div className="text-xs text-gray-600">Interview Score</div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
+
+              {/* Areas for Improvement + Score */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <TrendingUp className="w-5 h-5 text-red-600" />
+                    <h3 className="text-xl font-bold text-gray-800">Resume Areas for Improvement</h3>
+                  </div>
+
+                  {/* Score Circle - SVG (PDF-safe) */}
+                  <div 
+                    className="mb-6 p-4 rounded-lg"
+                    data-pdf-bg="#f8f5ff"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 pr-6">
+                        <h4 className="text-lg font-semibold text-gray-800 mb-1">Overall Resume Score</h4>
+                        <p className="text-gray-600 text-sm">{reportData.resume_feedback.summary}</p>
+                      </div>
+
+                      <div className="relative w-28 h-28 flex-shrink-0">
+                        <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="10" />
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="45"
+                            fill="none"
+                            stroke={PRIMARY}
+                            strokeWidth="10"
+                            strokeDasharray={`${(reportData.resume_feedback.overall_resume_score / 100) * 283} 283`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-2xl font-bold transform rotate-90" style={{ color: PRIMARY }}>
+                            {reportData.resume_feedback.overall_resume_score}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Areas List */}
+                  <div className="space-y-3">
+                    {reportData.resume_feedback.areas_for_improvement.map((area, index) => {
+                      const priority: "High" | "Medium" | "Low" = 
+                        index === 0 ? "High" : index === 1 ? "Medium" : "Low";
+
+                      return (
+                        <div
+                          key={index}
+                          className="p-3 border-l-4 border-red-600 bg-gradient-to-r from-red-50 to-white rounded-lg"
+                          data-pdf-bg="#fff5f5"
+                        >
+                          <div className="flex items-start justify-between">
+                            <p className="text-gray-700 text-sm flex-1 pr-2">{area}</p>
+                            <PriorityBadge priority={priority} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {mockInterviewFeedback ? (
-              <>
-                {/* Interview Details */}
-                {mockInterviewDetails && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Position</div>
-                      <div className="font-semibold text-gray-800">{mockInterviewDetails.position}</div>
+            {/* Suitable Job Roles */}
+            {reportData.career_guidance?.suitable_job_roles && reportData.career_guidance.suitable_job_roles.length > 0 && (
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Briefcase className="w-5 h-5" style={{ color: PRIMARY }} />
+                    <h3 className="text-xl font-bold text-gray-800">You Are Suitable to Work As</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {reportData.career_guidance.suitable_job_roles.map((job, index) => (
+                      <div
+                        key={index}
+                        className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                        style={{
+                          borderColor: BORDER_20,
+                          backgroundColor: PRIMARY_5,
+                        }}
+                        data-pdf-bg="#f8f9ff"
+                      >
+                        <h4 className="font-semibold mb-2" style={{ color: PRIMARY }}>{job.role}</h4>
+                        <p className="text-gray-600 text-sm">{job.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Mock Interview Performance */}
+            <Card className="my-6">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5" style={{ color: PRIMARY }} />
+                    <h3 className="text-xl font-bold text-gray-800">Mock Interview Performance</h3>
+                  </div>
+                  {mockInterviewFeedback?.overall_score > 0 && (
+                    <div className="text-center">
+                      <div className="text-3xl font-bold" style={{ color: PRIMARY }}>{mockInterviewFeedback.overall_score}/100</div>
+                      <div className="text-xs text-gray-600">Interview Score</div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Interview Type</div>
-                      <div className="font-semibold text-gray-800 capitalize">{mockInterviewDetails.interviewType}</div>
+                  )}
+                </div>
+
+                {mockInterviewFeedback ? (
+                  <>
+                    {mockInterviewDetails && (
+                      <div 
+                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"
+                        data-pdf-bg="#f8f9ff"
+                      >
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1">Position</div>
+                          <div className="font-semibold text-gray-800">{mockInterviewDetails.position}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1">Interview Type</div>
+                          <div className="font-semibold text-gray-800 capitalize">{mockInterviewDetails.interviewType}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1">Position Level</div>
+                          <div className="font-semibold text-gray-800 capitalize">{mockInterviewDetails.positionLevel}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1">Questions Answered</div>
+                          <div className="font-semibold text-gray-800">{mockInterviewDetails.questionCount}</div>
+                        </div>
+                        {mockInterviewDetails.date && (
+                          <div>
+                            <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Completed On
+                            </div>
+                            <div className="font-semibold text-gray-800">{mockInterviewDetails.date}</div>
+                            {mockInterviewDetails.duration && (
+                              <div className="text-xs text-gray-500 mt-0.5">{mockInterviewDetails.duration} min</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          Key Strengths
+                        </h4>
+                        <div className="space-y-3">
+                          {mockInterviewFeedback.strengths?.length > 0 ? (
+                            mockInterviewFeedback.strengths.map((strength: string, index: number) => (
+                              <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-gray-700 text-sm flex items-start gap-2">
+                                  <span className="text-green-600 mt-0.5">Checkmark</span>
+                                  <span>{strength}</span>
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">No strengths data available</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          Areas to Improve
+                        </h4>
+                        <div className="space-y-3">
+                          {mockInterviewFeedback.areas_for_improvement?.length > 0 ? (
+                            mockInterviewFeedback.areas_for_improvement.map((area: string, index: number) => (
+                              <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <p className="text-gray-700 text-sm flex items-start gap-2">
+                                  <span className="text-orange-600 mt-0.5">Right Arrow</span>
+                                  <span>{area}</span>
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">No improvement areas identified</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Position Level</div>
-                      <div className="font-semibold text-gray-800 capitalize">{mockInterviewDetails.positionLevel}</div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="mb-4">
+                      <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                      <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mock Interview Completed Yet</h4>
+                      <p className="text-gray-600 mb-6">
+                        Complete a mock interview to get personalized feedback.
+                      </p>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Questions Answered</div>
-                      <div className="font-semibold text-gray-800">{mockInterviewDetails.questionCount}</div>
-                    </div>
+                    <Button
+                      onClick={() => router.push('/candidate/candidate-dashboard')}
+                      style={{
+                        backgroundColor: PRIMARY,
+                        color: 'white',
+                      }}
+                      className="hover:opacity-90"
+                    >
+                      Start Mock Interview
+                    </Button>
                   </div>
                 )}
-
-                {/* Strengths and Areas for Improvement */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Interview Strengths */}
-                  <div>
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      Key Strengths
-                    </h4>
-                    <div className="space-y-3">
-                      {mockInterviewFeedback.strengths && mockInterviewFeedback.strengths.length > 0 ? (
-                        mockInterviewFeedback.strengths.map((strength: string, index: number) => (
-                          <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <p className="text-gray-700 text-sm flex items-start gap-2">
-                              <span className="text-green-600 mt-0.5">✓</span>
-                              <span>{strength}</span>
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 text-sm italic">No strengths data available</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Interview Areas for Improvement */}
-                  <div>
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                      Areas to Improve
-                    </h4>
-                    <div className="space-y-3">
-                      {mockInterviewFeedback.areas_for_improvement && mockInterviewFeedback.areas_for_improvement.length > 0 ? (
-                        mockInterviewFeedback.areas_for_improvement.map((area: string, index: number) => (
-                          <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                            <p className="text-gray-700 text-sm flex items-start gap-2">
-                              <span className="text-orange-600 mt-0.5">→</span>
-                              <span>{area}</span>
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 text-sm italic">No improvement areas identified</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="mb-4">
-                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                    <h4 className="text-lg font-semibold text-gray-700 mb-2">No Mock Interview Completed Yet</h4>
-                    <p className="text-gray-600 mb-6">
-                      Complete a mock interview to get personalized feedback on your interview performance.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      if (handleTabChangeProp) handleTabChangeProp();
-                    }}
-                    className="bg-[#635BFF] hover:bg-[#5648E8] text-white hover:cursor-pointer"
-                  >
-                    Start Mock Interview
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Next Steps */}
-        {/* <Card className="mt-6 border-0 shadow-lg bg-gradient-to-r from-[#635BFF]/10 to-purple-100/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Next Steps</h3>
-            <div className="space-y-3">
-              {reportData.career_guidance.next_steps.map((step, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#635BFF] text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                    {index + 1}
-                  </div>
-                  <p className="text-gray-700 pt-0.5">{step}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card> */}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
-    </div>
-     </Card>
+    </Card>
   );
 };
 

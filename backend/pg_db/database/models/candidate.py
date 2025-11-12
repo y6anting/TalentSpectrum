@@ -48,7 +48,8 @@ class Education(Base):
     __tablename__ = "educations"
 
     id = Column(Integer, primary_key=True, index=True)
-    candidate_email = Column(String, unique=True, index=True)
+    # Remove unique to allow multiple education records per candidate
+    candidate_email = Column(String, index=True)
     level = Column(String)
     field_of_study = Column(String)
     institution = Column(String)
@@ -64,7 +65,7 @@ class Experience(Base):
     __tablename__ = "experiences"
 
     id = Column(Integer, primary_key=True, index=True)
-    candidate_email = Column(String, unique=True, index=True)
+    candidate_email = Column(String, index=True)
     employer = Column(String)
     title = Column(String)  # Added title field
     industry = Column(String)
@@ -83,7 +84,7 @@ class JobApplication(Base):
     __tablename__ = "job_applications"
 
     id = Column(Integer, primary_key=True, index=True)
-    candidate_email = Column(String, unique=True, index=True)
+    candidate_email = Column(String, index=True)
     job_title = Column(String)
     company = Column(String)
     applied_date = Column(DateTime, default=datetime.utcnow)
@@ -101,7 +102,7 @@ class SavedJob(Base):
     __tablename__ = "saved_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    candidate_email = Column(String, unique=True, index=True)
+    candidate_email = Column(String, index=True)
     job_title = Column(String)
     company = Column(String)
     location = Column(String)

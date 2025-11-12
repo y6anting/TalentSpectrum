@@ -5,6 +5,7 @@ from database.models.candidate import (
 from database.models.employer import Post_Job, Company
 from database.models.users import LoginUser, UserRole
 from database.models.chatbot import Message
+from database.models.match_result import MatchResult
 
 __all__ = [
     "User",
@@ -17,6 +18,7 @@ __all__ = [
     "Company",
     "LoginUser",
     "UserRole",
-    "Message"
+    "Message",
+    "MatchResult"
 ]
 

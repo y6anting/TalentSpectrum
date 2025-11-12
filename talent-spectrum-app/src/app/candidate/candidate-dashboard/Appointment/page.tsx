@@ -204,7 +204,7 @@ export default function AppointmentPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Book an Appointment</h1>
+      {/* <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Book an Appointment</h1> */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-5">
         <Card>
           <div className="p-5 space-y-3">

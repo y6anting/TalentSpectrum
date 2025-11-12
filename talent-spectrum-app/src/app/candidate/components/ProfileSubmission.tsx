@@ -56,7 +56,7 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
       console.log("Saving personal information:", requestData);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/profiles/${userEmail}/personal_identifiers`,
+        `/api/profiles?email=${encodeURIComponent(userEmail)}&type=personal_identifiers`,
         {
           method: "PATCH",
           headers: {

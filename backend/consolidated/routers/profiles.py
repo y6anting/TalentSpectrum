@@ -213,8 +213,27 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
 @router.patch("/{email}/education")
 async def update_education(email: str, education_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills={},
+            environment={},
+            language_proficiencies=[],
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
     
     # Clear existing education records
     db.query(Education).filter(Education.candidate_email == email).delete()
@@ -239,8 +258,27 @@ async def update_education(email: str, education_data: dict, db: DbDep):
 @router.patch("/{email}/experience")
 async def update_experience(email: str, experience_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills={},
+            environment={},
+            language_proficiencies=[],
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
     
     # Clear existing experience records
     db.query(Experience).filter(Experience.candidate_email == email).delete()
@@ -268,9 +306,29 @@ async def update_experience(email: str, experience_data: dict, db: DbDep):
 @router.patch("/{email}/personal_identifiers")
 async def update_personal_identifiers(email: str, profile_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
     
+    # Auto-create profile if it doesn't exist
+    if not profile:
+        profile = CandidateProfile(
+            candidate_email=email,
+            name=profile_data.get("name", ""),
+            location=profile_data.get("location", ""),
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers=profile_data.get("personal_identifiers", {}),
+            education={},
+            experience={},
+            skills={},
+            environment={},
+            language_proficiencies=[],
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    
+    # Update the profile fields
     if "personal_identifiers" in profile_data:
         profile.personal_identifiers = profile_data["personal_identifiers"]
     if "name" in profile_data:
@@ -285,8 +343,27 @@ async def update_personal_identifiers(email: str, profile_data: dict, db: DbDep)
 @router.patch("/{email}/environment")
 async def update_environment(email: str, env_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills={},
+            environment=env_data.get("environment", {}),
+            language_proficiencies=[],
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
     
     if "environment" in env_data:
         profile.environment = env_data["environment"]
@@ -294,12 +371,64 @@ async def update_environment(email: str, env_data: dict, db: DbDep):
     db.commit()
     return {"message": "Environment & preferences updated successfully"}
 
+# Skills endpoint
+@router.patch("/{email}/exp_skill")
+async def update_exp_skill(email: str, skills_data: dict, db: DbDep):
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
+    if not profile:
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills=skills_data.get("exp_skill", {}),
+            environment={},
+            language_proficiencies=[],
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    
+    if "exp_skill" in skills_data:
+        # Update the skills field in the profile
+        profile.skills = skills_data["exp_skill"]
+    
+    db.commit()
+    return {"message": "Skills updated successfully"}
+
 # Language proficiencies endpoint
 @router.patch("/{email}/language_proficiencies")
 async def update_language_proficiencies(email: str, lang_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills={},
+            environment={},
+            language_proficiencies=lang_data.get("language_proficiencies", []),
+            neurodivergent_strengths=[]
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
     
     if "language_proficiencies" in lang_data:
         profile.language_proficiencies = lang_data["language_proficiencies"]
@@ -311,8 +440,27 @@ async def update_language_proficiencies(email: str, lang_data: dict, db: DbDep):
 @router.patch("/{email}/neurodivergent_strengths")
 async def update_neurodivergent_strengths(email: str, strengths_data: dict, db: DbDep):
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    
+    # Auto-create profile if it doesn't exist
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = CandidateProfile(
+            candidate_email=email,
+            name="",
+            location="",
+            profile_completion=0,
+            accommodations=[],
+            preferences={},
+            personal_identifiers={},
+            education={},
+            experience={},
+            skills={},
+            environment={},
+            language_proficiencies=[],
+            neurodivergent_strengths=strengths_data.get("neurodivergent_strengths", [])
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
     
     if "neurodivergent_strengths" in strengths_data:
         profile.neurodivergent_strengths = strengths_data["neurodivergent_strengths"]

@@ -35,7 +35,7 @@ interface InterviewSession {
   answers: Array<{
     question: string;
     answer: string;
-    audioBlob?: Blob;
+    audioBlob?: Blob | null;
     timestamp: Date;
   }>;
   selectedPosition?: JobPosition;
@@ -100,6 +100,9 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
   const [isAnswering, setIsAnswering] = useState(false);
   const [showAnswerTimer, setShowAnswerTimer] = useState(true);
   const [cameraOn, setCameraOn] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [isPermissionWarning, setIsPermissionWarning] = useState(false);
 
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -134,6 +137,102 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
   }, [router]);
 
   // ====================== CAMERA ======================
+  const requestPermissions = async () => {
+    try {
+      setPermissionError(null);
+      
+      // Check if mediaDevices is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Your browser doesn't support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.");
+      }
+
+      // First, check if devices are available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasVideoInput = devices.some(device => device.kind === 'videoinput');
+      const hasAudioInput = devices.some(device => device.kind === 'audioinput');
+
+      if (!hasVideoInput && !hasAudioInput) {
+        throw new Error("No camera or microphone found. Please connect a camera and microphone to continue.");
+      }
+
+      // Try to request both camera and microphone
+      let stream: MediaStream | null = null;
+      
+      if (hasVideoInput && hasAudioInput) {
+        // Try both
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: true 
+          });
+        } catch (err: any) {
+          // If both fail, try individually
+          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            throw new Error("Camera or microphone not found. Please ensure they are connected and not being used by another application.");
+          }
+          throw err;
+        }
+      } else if (hasVideoInput) {
+        // Only camera available
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: false 
+        });
+        setIsPermissionWarning(true);
+        setPermissionError("⚠️ Microphone not detected. You can continue, but audio recording won't be available.");
+      } else if (hasAudioInput) {
+        // Only microphone available
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: false, 
+          audio: true 
+        });
+        setIsPermissionWarning(true);
+        setPermissionError("⚠️ Camera not detected. You can continue, but video recording won't be available.");
+      }
+
+      if (stream) {
+        // Store the stream for camera
+        cameraStreamRef.current = stream;
+        const hasVideo = stream.getVideoTracks().length > 0;
+        
+        if (hasVideo) {
+          setCameraOn(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        }
+        
+        setPermissionsGranted(true);
+        return true;
+      }
+      
+      return false;
+    } catch (err: any) {
+      console.error("Permission error:", err);
+      
+      let errorMessage = "Unable to access camera and microphone. ";
+      
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMessage = "No camera or microphone found. Please ensure your devices are connected and not being used by another application.";
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMessage = "Permission denied. Please allow camera and microphone access in your browser settings and refresh the page.";
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMessage = "Camera or microphone is already in use by another application. Please close other applications and try again.";
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = "Camera or microphone constraints not supported. Please check your device settings.";
+      } else if (err.name === 'TypeError') {
+        errorMessage = "Browser doesn't support camera/microphone access. Please use Chrome, Firefox, or Edge.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setPermissionError(errorMessage);
+      setPermissionsGranted(false);
+      setIsPermissionWarning(false);
+      return false;
+    }
+  };
+
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -154,6 +253,42 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     cameraStreamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
+  };
+
+  const cleanupMediaDevices = () => {
+    // Stop camera
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraOn(false);
+
+    // Stop recording if active
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      setIsRecording(false);
+    }
+
+    // Stop speech recognition if active
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
+    // Clear timers
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+    if (answerTimerRef.current) {
+      clearInterval(answerTimerRef.current);
+    }
+
+    // Stop TTS
+    stopTTS();
   };
 
   // Ensure the stream is attached once the video element is mounted (after cameraOn becomes true)
@@ -235,20 +370,61 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
+
+      // Automatically start live transcription when recording starts
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+        } catch (err) {
+          console.warn("Speech recognition start failed:", err);
+        }
+      }
     } catch (error) {
       console.error("Recording error:", error);
       alert("Microphone access denied.");
     }
   };
 
+  const transcribeAndInsert = async (blob: Blob) => {
+  setIsTranscribing(true);
+  try {
+    const text = await transcribeVoiceToText(blob);
+    setCurrentAnswer(prev => prev ? `${prev} ${text}` : text);
+  } catch (e) {
+    console.error(e);
+    alert('Transcription failed – you can still type.');
+  } finally {
+    setIsTranscribing(false);
+  }
+};
+
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
-      setIsRecording(false);
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+  if (mediaRecorderRef.current && isRecording) {
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+    setIsRecording(false);
+    clearInterval(recordingTimerRef.current!);
+
+    // Stop live transcription when recording stops
+    if (recognitionRef.current && isListening) {
+      try {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      } catch (err) {
+        console.warn("Speech recognition stop failed:", err);
+      }
     }
-  };
+
+    // Save the audio blob for the feedback page
+    if (audioChunksRef.current.length) {
+      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      // Store blob reference for current answer (will be saved with handleNextQuestion)
+      // Note: We're using live transcription now, so manual transcription is backup only
+    }
+  }
+};
 
   const startListening = () => {
     if (recognitionRef.current) {
@@ -503,33 +679,47 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     }
   }, [interviewStarted, session?.currentQuestion]);
 
+  // Cleanup media devices on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupMediaDevices();
+    };
+  }, []);
+
   // ====================== NAVIGATION ======================
   const handleNextQuestion = async () => {
     if (!session) return;
     stopTTS();
 
     let finalAnswer = currentAnswer;
-    if (audioChunksRef.current.length > 0 && !currentAnswer.trim()) {
-      setIsTranscribing(true);
-      try {
-        const blob = audioChunksRef.current[0];
-        const text = await transcribeVoiceToText(blob);
-        if (text.trim()) {
-          finalAnswer = text;
-          setCurrentAnswer(text);
+    let audioBlob = null;
+    
+    // Create audio blob from recorded chunks if available
+    if (audioChunksRef.current.length > 0) {
+      audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      // If no text answer yet, try to transcribe
+      if (!currentAnswer.trim()) {
+        setIsTranscribing(true);
+        try {
+          const text = await transcribeVoiceToText(audioBlob);
+          if (text.trim()) {
+            finalAnswer = text;
+            setCurrentAnswer(text);
+          }
+        } catch (error) {
+          console.error("Transcription failed:", error);
+          alert("Auto-transcription failed.");
+        } finally {
+          setIsTranscribing(false);
         }
-      } catch (error) {
-        console.error("Transcription failed:", error);
-        alert("Auto-transcription failed.");
-      } finally {
-        setIsTranscribing(false);
       }
     }
 
     const newAnswer = {
       question: session.questions[session.currentQuestion].question,
       answer: finalAnswer,
-      audioBlob: audioChunksRef.current[0],
+      audioBlob: audioBlob, // Save the blob for feedback page
       timestamp: new Date(),
     };
 
@@ -539,6 +729,16 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     };
 
     if (session.currentQuestion < session.totalQuestions - 1) {
+      // Stop any active transcription before moving to next question
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop();
+          setIsListening(false);
+        } catch (err) {
+          console.warn("Speech recognition stop failed:", err);
+        }
+      }
+
       setSession({ ...updated, currentQuestion: session.currentQuestion + 1 });
       setCurrentAnswer("");
       setQuestionSpoken(false);
@@ -546,7 +746,16 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       setHasRecording(false);
       stopAnswerTimer();
       setIsAnswering(false);
+      // Ensure recording state fully reset so button text reverts to 'Record & Transcribe'
+      if (isRecording) {
+        stopRecording();
+      }
+      setIsTranscribing(false);
+      setIsRecording(false);
     } else {
+      // Interview finished - cleanup all media devices
+      cleanupMediaDevices();
+      
       const final = { ...updated, endTime: new Date().toISOString() };
       sessionStorage.setItem("mockInterviewSession", JSON.stringify(final));
       onNavigate ? onNavigate("feedback") : router.push("/candidate/candidate-dashboard/mock-interview/feedback");
@@ -554,6 +763,9 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
   };
 
   const endEarly = () => {
+    // Cleanup all media devices before ending
+    cleanupMediaDevices();
+    
     const final = { ...session, endTime: new Date().toISOString() };
     sessionStorage.setItem("mockInterviewSession", JSON.stringify(final));
     onNavigate ? onNavigate("feedback") : router.push("/candidate/candidate-dashboard/mock-interview/feedback");
@@ -586,13 +798,17 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
             {session.selectedPosition?.title} ({session.selectedPosition?.level})
           </div>
           {!interviewStarted && (
-            // <div className="p-3 border border-gray-200 rounded-xl bg-[#635BFF]/5">
               <div className="flex items-center justify-start gap-4">
                 <div>
                   <div className="text-base font-semibold text-gray-700">Ready to start?</div>
                 </div>
                 <Button
-                  onClick={() => setInterviewStarted(true)}
+                  onClick={async () => {
+                    const granted = await requestPermissions();
+                    if (granted) {
+                      setInterviewStarted(true);
+                    }
+                  }}
                   className="w-fit px-4 bg-white py-2 rounded-md 
                 border border-[#635BFF] text-[#635BFF] font-semibold 
                 hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] 
@@ -602,11 +818,41 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   <Play className="w-4 h-4 mr-2" /> Start Interview
                 </Button>
               </div>
-            // </div>
           )}
           
         </div>
          
+          {/* Permission Error */}
+          {permissionError && (
+            <div className={`${isPermissionWarning ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'} border rounded-xl p-4`}>
+              <div className="flex items-start gap-3">
+                <div className={`${isPermissionWarning ? 'text-yellow-600' : 'text-red-600'} mt-0.5`}>
+                  {isPermissionWarning ? '⚠️' : '❌'}
+                </div>
+                <div className="flex-1">
+                  <p className={`${isPermissionWarning ? 'text-yellow-800' : 'text-red-800'} font-semibold mb-1`}>
+                    {isPermissionWarning ? 'Warning' : 'Permission Required'}
+                  </p>
+                  <p className={`${isPermissionWarning ? 'text-yellow-700' : 'text-red-700'} text-sm`}>
+                    {permissionError}
+                  </p>
+                  {!isPermissionWarning && (
+                    <Button
+                      onClick={async () => {
+                        const granted = await requestPermissions();
+                        if (granted) {
+                          setInterviewStarted(true);
+                        }
+                      }}
+                      className="mt-3 bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Try Again
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Avatar + Camera */}
           <div className="grid lg:grid-cols-2 gap-6">
@@ -657,7 +903,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
           {!interviewStarted && (
             <div className="bg-gradient-to-r from-blue-50 to-gray-50 border border-blue-200 rounded-xl p-4">
               <p className="text-gray-700 text-center">
-                <span className="font-semibold">Take a moment to prepare:</span> Check your camera, microphone, and ensure you're in a quiet space before you start.
+                <span className="font-semibold">Take a moment to prepare:</span> You'll be asked to grant camera and microphone permissions. Ensure you're in a quiet space before you start.
               </p>
             </div>
           )}
@@ -807,51 +1053,13 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   className="w-fit px-4 py-2 rounded-md 
                 border border-[#635BFF] text-[#635BFF] font-semibold 
                 hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
->
+                >
                   {isRecording ? (
-                    <> <MicOff className="w-4 h-4 mr-2" /> Stop </>
+                    <> <MicOff className="w-4 h-4 mr-2" /> Stop Recording </>
                   ) : (
-                    <> <Mic className="w-4 h-4 mr-2" /> Record </>
+                    <> <Mic className="w-4 h-4 mr-2" /> Transcribe & Record Again </>
                   )}
                 </Button>
-
-                <Button variant="outline" onClick={isListening ? stopListening : startListening}
-                className="w-fit px-4 py-2 rounded-md 
-                border border-[#635BFF] text-[#635BFF] font-semibold 
-                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] 
-                cursor-pointer"
-   >
-                  {isListening ? (
-                    <> <Pause className="w-4 h-4 mr-2" /> Stop </>
-                  ) : (
-                    <> <Play className="w-4 h-4 mr-2" /> Live Transcribe </>
-                  )}
-                </Button>
-
-                {hasRecording && (
-                  <Button
-                    variant="outline"
-                    disabled={isTranscribing}
-                    onClick={async () => {
-                      setIsTranscribing(true);
-                      try {
-                        const text = await transcribeVoiceToText(audioChunksRef.current[0]);
-                        setCurrentAnswer((prev) => prev + (prev ? " " : "") + text);
-                      } catch {
-                        alert("Transcription failed.");
-                      } finally {
-                        setIsTranscribing(false);
-                      }
-                    }}
-                    className="border-blue-300 text-blue-500 hover:bg-blue-50 hover:cursor-pointer hover:text-blue-600"
-                  >
-                    {isTranscribing ? (
-                      <> <div className="animate-spin h-4 w-4 border-b-2 border-green-600 rounded-full mr-2" /> Transcribing... </>
-                    ) : (
-                      <> <Volume2 className="w-4 h-4 mr-2" /> Transcribe </>
-                    )}
-                  </Button>
-                )}
               </div>
             </div>
           )}

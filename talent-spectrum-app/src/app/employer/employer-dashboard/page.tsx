@@ -221,6 +221,11 @@ export default function EmployerDashboard() {
 
   const result = calculateEmployerCosts(baseSalary || 0);
 
+  // Ensure latest jobs appear on top (descending by id as proxy for recency)
+  const sortJobsByLatest = (jobs: JobPosting[]) => {
+    return [...jobs].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+  };
+
   const getStatusBadge = (status: string) => {
     const badgeStyles: { [key: string]: string } = {
       active: "bg-green-100 text-green-800",
@@ -314,7 +319,29 @@ export default function EmployerDashboard() {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEditJob = async () => {
+  // Refresh the employer's job postings from the backend
+  const refreshJobsForEmployer = async () => {
+    if (!currentEmployerEmail) return;
+    try {
+      const jobsRes = await fetch(
+        `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
+      );
+      if (jobsRes.ok) {
+        const jobsData = await jobsRes.json();
+        setJobPostings(sortJobsByLatest(jobsData));
+      }
+    } catch (error) {
+      console.error("Error refreshing job postings:", error);
+    }
+  };
+
+  // After a successful post, refresh jobs and switch to Jobs tab
+  const handleJobPosted = async () => {
+    await refreshJobsForEmployer();
+    // setActiveTab("jobs");
+  };
+
+const handleSaveEditJob = async () => {
     if (!editJobData || !editJobData.id) {
       setErrors({ general: "No job selected" });
       return;
@@ -575,7 +602,10 @@ export default function EmployerDashboard() {
         const jobsResponse = await fetch(
           `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
         );
-        if (jobsResponse.ok) setJobPostings(await jobsResponse.json());
+        if (jobsResponse.ok) {
+          const jobsData = await jobsResponse.json();
+          setJobPostings(sortJobsByLatest(jobsData));
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -585,6 +615,14 @@ export default function EmployerDashboard() {
     fetchData();
   }, [session, status, router]);
 
+  // Auto-select the top job whenever opening the Jobs tab or when list updates
+  // useEffect(() => {
+  //   if (activeTab === "jobs" && jobPostings.length > 0) {
+  //     setSelectedJobForApplicants(jobPostings[0]);
+  //   }
+  // }, [activeTab, jobPostings]);
+
+  
   const fetchEmployerJobs = async (email: string) => {
     try {
       const jobsResponse = await fetch(
@@ -677,12 +715,12 @@ export default function EmployerDashboard() {
       <div className="page-wrap py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="mb-4 sm:mb-0">
-            <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
+            {/* <h1 className="text-3xl font-bold text-[#3a4043] mb-1">
               Welcome back, {companyProfile?.name || "Company"}!
             </h1>
             <p className="text-gray-600 mb-4 sm:mb-0">
               Manage your job postings and find the best neurodivergent talent.
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -1256,9 +1294,9 @@ export default function EmployerDashboard() {
 
             {activeTab === "settings" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
+                {/* <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
                   Company Settings
-                </h1>
+                </h1> */}
 
                 {/* Changed to full width (md:grid-cols-1) */}
                 <div className="grid md:grid-cols-1 gap-6">
@@ -1596,6 +1634,7 @@ export default function EmployerDashboard() {
 
             {activeTab === "post-job" && (
               <PostJob
+                // onJobPosted={handleJobPosted}
                 onJobPosted={async () => {
                   if (currentEmployerEmail) {
                     await fetchEmployerJobs(currentEmployerEmail);
@@ -1641,4 +1680,8 @@ export default function EmployerDashboard() {
       </div>
     </div>
   );
+}
+
+function fetchEmployerJobs(currentEmployerEmail: string) {
+  throw new Error("Function not implemented.");
 }

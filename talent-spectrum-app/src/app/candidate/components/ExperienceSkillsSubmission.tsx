@@ -32,12 +32,12 @@ export function ExperienceSkillsSubmission({ experiences, onSave }: ExperienceSk
       }
 
       // Save experiences
-      const experienceResponse = await fetch(`http://127.0.0.1:8000/profiles/${userEmail}/experience`, {
+      const experienceResponse = await fetch(`/api/profiles?email=${encodeURIComponent(userEmail)}&type=experience`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ experience: experiences }),
+        body: JSON.stringify({ experiences: experiences }),
       });
 
       if (experienceResponse.ok) {

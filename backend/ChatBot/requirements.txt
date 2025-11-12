@@ -1,9 +1,0 @@
-sqlalchemy
-
-psycopg2
-
-fastapi
-
-uvicorn
-
-python-dotenv

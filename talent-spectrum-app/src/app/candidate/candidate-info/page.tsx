@@ -391,7 +391,7 @@ export default function CandidateInfoPage() {
       };
       
       // Send data to API
-      const response = await fetch('http://127.0.0.1:8000/profiles/', {
+      const response = await fetch('/api/profiles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

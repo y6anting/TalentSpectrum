@@ -36,7 +36,7 @@ import {
   XCircle,
   Calendar,
   Search,
-  User,
+  ArrowUpDown,
   SquarePen, // Added SquarePen icon, 
   BotMessageSquare
 } from "lucide-react";
@@ -215,6 +215,10 @@ export default function EmployerDashboard() {
 
   // Calculator
   const [baseSalary, setBaseSalary] = useState<number>(10000);
+
+  const [selectedSort, setSelectedSort] = useState("Newest");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const result = calculateEmployerCosts(baseSalary || 0);
 
   const getStatusBadge = (status: string) => {
@@ -598,6 +602,37 @@ export default function EmployerDashboard() {
     }
   };
 
+  const jobPostingsSortModes = [
+    "Newest",
+    "Oldest",
+    "A-Z",
+    "Work Mode",
+    "Job Type",
+    "Experience Level",
+    "Salary"
+  ]
+
+  const sortedJobPostings = [...jobPostings].sort((a, b) => {
+    switch (selectedSort) {
+      case "Newest":
+        return b.id - a.id; // higher ID = newer
+      case "Oldest":
+        return a.id - b.id; // lower ID = older
+      case "A-Z":
+        return a.job_title.localeCompare(b.job_title);
+      case "Work Mode":
+        return a.work_mode.localeCompare(b.work_mode);
+      case "Job Type":
+        return a.job_type.localeCompare(b.job_type);
+      case "Experience Level":
+        return a.experience_level.localeCompare(b.experience_level);
+      case "Salary":
+        return b.salary_range - a.salary_range;
+      default:
+        return 0;
+    }
+  });
+
   const renderInputField = (
     label: string,
     field: string,
@@ -694,7 +729,7 @@ export default function EmployerDashboard() {
                     { id: "overview", label: "Overview", icon: BarChart3 },
 
                     { id: "post-job", label: "Post New Job", icon: SquarePen },
-                    { id: "jobs", label: "Job Posted", icon: FileText },
+                    { id: "jobs", label: "Job Postings", icon: FileText },
                     {
                       id: "search-candidates",
                       label: "Search Applicants",
@@ -882,10 +917,43 @@ export default function EmployerDashboard() {
               <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left Side - Job Postings List */}
                 <div className="lg:col-span-1 space-y-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043]">
-                    Job Postings ({jobPostings.length})
-                  </h2>
-                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-5">
+                  <div className="flex flex-wrap items-center justify-between mb-2">
+                    {/* Title */}
+                    <h2 className="text-2xl font-bold text-[#3a4043] mr-4 flex-shrink-0">
+                      Job Postings (5)
+                    </h2>
+                    {/* Sort button */}
+                    <div className="relative mt-2 sm:mt-0 flex-shrink-0">
+                      <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="cursor-pointer inline-flex items-center justify-center gap-1 text-black/60 text-sm font-medium border border-[#635bff] hover:border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                        <span>{selectedSort}</span>
+                      </button>
+
+                      {isDropdownOpen && (
+                        <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                          {jobPostingsSortModes.map((mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => {
+                                setSelectedSort(mode);
+                                setIsDropdownOpen(false);
+                                // handle sorting here
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-violet-50 hover:text-[#635bff] ${selectedSort === mode ? "bg-violet-50 text-[#635bff]" : ""
+                                }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-visible pr-5">
                     {isLoading ? (
                       <Card>
                         <CardContent className="p-4 text-center">
@@ -908,12 +976,8 @@ export default function EmployerDashboard() {
                         </CardContent>
                       </Card>
                     ) : (
-                      jobPostings.map((job) => (
-                        <motion.div
-                          key={job.id}
-                          whileHover={{ x: 4 }}
-                          transition={{ type: "spring", stiffness: 300 }}
-                        >
+                      sortedJobPostings.map((job) => (
+                        <motion.div key={job.id} whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300 }}>
                           <Card
                             className={`cursor-pointer transition-all ${selectedJobForApplicants?.id === job.id
                               ? "border-2 border-[#635bff] bg-violet-50"
@@ -922,25 +986,30 @@ export default function EmployerDashboard() {
                             onClick={() => setSelectedJobForApplicants(job)}
                           >
                             <CardContent className="p-4">
-                              <h3 className="font-semibold text-[#3a4043] mb-1 line-clamp-1">
+                              <h3 className="font-semibold text-[#3a4043] mb-1 truncate">
                                 {job.job_title}
                               </h3>
-                              <p className="text-sm text-[#635bff] mb-2">
+
+                              <p className="text-sm text-[#635bff] mb-2 truncate">
                                 {job.job_type}
                               </p>
-                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  {job.location}
+
+                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 overflow-hidden whitespace-nowrap">
+                                <span className="flex items-center gap-1 truncate">
+                                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">{job.location}</span>
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <DollarSign className="h-3 w-3" />
-                                  {SALARY_RANGES[job.salary_range] ??
-                                    job.salary_range}
+
+                              <div className="flex items-center gap-2 text-xs text-gray-600 overflow-hidden whitespace-nowrap">
+                                <span className="flex items-center gap-1 truncate">
+                                  <DollarSign className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">
+                                    {SALARY_RANGES[job.salary_range] ?? job.salary_range}
+                                  </span>
                                 </span>
                               </div>
+
                               {(job.flexible_work_hour ||
                                 job.sensory_friendly_environment ||
                                 job.mental_health_support) && (
@@ -1533,6 +1602,7 @@ export default function EmployerDashboard() {
                   }
                   setActiveTab("jobs");
                   window.scrollTo({ top: 0, behavior: "smooth" });
+                  setSelectedSort("Newest")
                 }}
                 onCancel={() => setActiveTab("overview")}
               />

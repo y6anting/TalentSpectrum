@@ -1,6 +1,6 @@
 export default function UserMessage({ text }: { text: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="w-full flex justify-end">
       <div
         className="
           bg-[#eaeaea] 

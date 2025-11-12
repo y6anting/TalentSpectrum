@@ -1,5 +1,5 @@
 # Routers package
-from routers import users, profiles, jobs, applications, chatbot, resume_feedback, resume_summary, resume_extractor, tts, mock_interview, trainerbook, company
+from routers import users, profiles, jobs, applications, chatbot, resume_feedback, resume_summary, resume_extractor, tts, mock_interview, trainerbook, company, ai_matching, match_result_route
 
 __all__ = [
     "users",
@@ -13,6 +13,8 @@ __all__ = [
     "resume_extractor",
     "tts",
     "mock_interview",
-    "trainerbook"
+    "trainerbook",
+    "ai_matching",
+    "match_result_route"
 ]
 

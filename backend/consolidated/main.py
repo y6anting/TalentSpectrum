@@ -19,8 +19,16 @@ from routers import (
     trainerbook,
     company,
     ai_matching,
-    match_results
+    match_result_route
 )
+
+# Import models so they register with SQLAlchemy
+from database.models import users as users_model
+from database.models import candidate
+from database.models import employer
+from database.models import chatbot as chatbot_model
+from database.models import mock_interview as mock_interview_model
+from database.models import match_result
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -88,7 +96,13 @@ def read_root():
             "trainerbook",
             "ai-matching",
             "match-results"
-        ]
+        ],
+        "endpoints": {
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "ai_matching_trigger": "/ai-matching/run_matching",
+            "ai_matching_status": "/ai-matching/status"
+        }
     }
 
 # @app.get("/health")
@@ -111,8 +125,8 @@ app.include_router(resume_extractor.router, prefix="/resume-extractor", tags=["R
 app.include_router(tts.router, prefix="/tts", tags=["Text-to-Speech"])
 app.include_router(mock_interview.router, prefix="/mock-interview", tags=["Mock Interview"])
 app.include_router(trainerbook.router, prefix="/trainerbook", tags=["TrainerBook"])
-app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
-app.include_router(match_results.router, prefix="/match_results", tags=["Match Results"])
+# app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
+# app.include_router(match_result_route.router, prefix="/match_results", tags=["Match Results"])
 
 if __name__ == "__main__":
     import uvicorn

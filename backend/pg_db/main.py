@@ -9,6 +9,7 @@ from database.connection import create_tables, engine, Base
 from database.models import users
 from database.models import candidate
 from database.models import match_result # <--- NEW: Import the match_result model
+from database.models import mock_interview # <--- Import the mock_interview model
 
 # Import routers
 from routers.users import router as users_router
@@ -17,6 +18,7 @@ from routers.company import router as company_router
 from routers.jobs import router as jobs_router
 from routers.applications import router as applications_router
 from routers.match_result_route import router as match_results_router # <--- NEW: Import the match_results router
+from routers.mock_interview import router as mock_interview_router # <--- Import the mock_interview router
 
 # --- Database Initialization ---
 # Ensure this call is made *after* all models (like match_result) are imported
@@ -57,3 +59,4 @@ app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])
 app.include_router(company_router, prefix="/company", tags=["company"])
 app.include_router(match_results_router, prefix="/match_results", tags=["match_results"])
+app.include_router(mock_interview_router, tags=["mock-interview"])

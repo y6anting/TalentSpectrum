@@ -1,57 +1,78 @@
-from database.connection import Base
-from sqlalchemy import Column, Integer, String, Float, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy.orm import relationship
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from typing import List, Optional
 
-# SQLAlchemy models
+# Assuming Base is imported from database.connection or a similar file in your project
+from database.connection import Base # Placeholder import for context
+
+# ===============================================
+# SQLAlchemy Model (Database Structure)
+# ===============================================
+
 class MatchResult(Base):
+    """
+    Stores the result of a single AI-driven candidate-to-job match,
+    including candidate profile summary, job summary, and AI analysis.
+    """
     __tablename__ = "match_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(String, index=True)  # String to support various ID formats
-    candidate_name = Column(String)
-    candidate_email = Column(String, index=True)
-    
-    job_id = Column(Integer, index=True)
+
+    # --- Candidate Summary Fields (from candidate_summary) ---
+    candidate_name = Column(String, index=True, nullable=False)
+    candidate_email = Column(String, index=True, nullable=False)
+    location = Column(String)
+    work_type_preference = Column(String)
+    skills = Column(Text) # Stored as a long string/text
+    accommodations = Column(Text) # Stored as a long string/text
+    communication_preference = Column(String)
+
+    # --- Job/Company Fields (from match data) ---
+    job_id = Column(Integer, index=True, nullable=False) # Indexing this for quick lookups
     job_title = Column(String)
-    company_name = Column(String)
+    company_name = Column(String, index=True)
+    company_email = Column(String)
     company_id = Column(Integer, index=True)
-    employer_email = Column(String)
-    
-    # Scores
-    primary_score = Column(Integer)  # 0-100
-    secondary_score = Column(Integer)  # 0-100
-    tertiary_score = Column(Integer)  # 0-100
-    total_score = Column(Float)  # Weighted average
-    
-    # Analysis (stored as JSON)
-    primary_analysis = Column(JSON)  # {matched, consider, ai_recommendation}
-    secondary_analysis = Column(JSON)
-    tertiary_analysis = Column(JSON)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # --- Score Fields ---
+    primary_score = Column(Integer, nullable=False)
+    secondary_score = Column(Integer, nullable=False)
+    tertiary_score = Column(Integer, nullable=False)
+    total_score = Column(Float, nullable=False) # Use Float for precision
 
-# Pydantic schemas for API requests and responses
+    # --- Primary Analysis Fields ---
+    primary_matched = Column(Text)
+    primary_consider = Column(Text)
+    primary_ai_recommendation = Column(Text)
+
+    # --- Secondary Analysis Fields ---
+    secondary_matched = Column(Text)
+    secondary_consider = Column(Text)
+    secondary_ai_recommendation = Column(Text)
+
+    # --- Tertiary Analysis Fields ---
+    tertiary_matched = Column(Text)
+    tertiary_consider = Column(Text)
+    tertiary_ai_recommendation = Column(Text)
+
+# ===============================================
+# Pydantic Schemas (Data Validation)
+# ===============================================
+
 class MatchAnalysisSchema(BaseModel):
     """Schema for the qualitative analysis of a single match layer."""
     matched: str
     consider: str
     ai_recommendation: str
 
-    class Config:
-        from_attributes = True
-
-
-class JobMatchData(BaseModel):
-    """Schema for a single job match within a candidate's results."""
+class MatchDataSchema(BaseModel):
+    """Schema for the results of a single candidate-job match."""
     job_id: int
     job_title: str
     company_name: str
     company_id: int
-    employer_email: EmailStr
+    employer_email: EmailStr # Note: Using EmailStr for validation
     primary_score: int
     secondary_score: int
     tertiary_score: int
@@ -63,9 +84,8 @@ class JobMatchData(BaseModel):
     class Config:
         from_attributes = True
 
-
-class CandidateSummary(BaseModel):
-    """Schema for candidate summary information."""
+class CandidateSummarySchema(BaseModel):
+    """Schema for the candidate summary data included in the match payload."""
     name: str
     email: EmailStr
     location: str
@@ -77,47 +97,63 @@ class CandidateSummary(BaseModel):
     class Config:
         from_attributes = True
 
-
 class CandidateMatchResultCreate(BaseModel):
-    """Schema for creating match results for a single candidate."""
+    """
+    The full request payload structure, containing one candidate's details
+    and a list of all their matches against jobs.
+    """
     candidate_id: str
     candidate_name: str
-    candidate_summary: CandidateSummary
-    matches: List[JobMatchData]
+    candidate_summary: CandidateSummarySchema
+    matches: List[MatchDataSchema]
 
     class Config:
         from_attributes = True
 
-
 class MatchResultResponse(BaseModel):
-    """Schema for returning a single match result."""
+    """Schema for returning a single stored match result (summarized)."""
     id: int
-    candidate_id: str
     candidate_name: str
-    candidate_email: str
-    job_id: int
     job_title: str
     company_name: str
-    company_id: int
-    employer_email: str
+    total_score: float
+
+    class Config:
+        from_attributes = True
+
+# NEW: Schema for returning a single stored match result with ALL data
+class MatchResultFullResponse(BaseModel):
+    id: int
+    candidate_name: str
+    candidate_email: EmailStr
+    location: Optional[str] = None
+    work_type_preference: Optional[str] = None
+    skills: Optional[str] = None
+    accommodations: Optional[str] = None
+    communication_preference: Optional[str] = None
+
+    job_id: int
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    company_email: Optional[EmailStr] = None
+    company_id: Optional[int] = None
+
     primary_score: int
     secondary_score: int
     tertiary_score: int
     total_score: float
-    primary_analysis: Dict[str, Any]
-    secondary_analysis: Dict[str, Any]
-    tertiary_analysis: Dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    primary_matched: Optional[str] = None
+    primary_consider: Optional[str] = None
+    primary_ai_recommendation: Optional[str] = None
 
+    secondary_matched: Optional[str] = None
+    secondary_consider: Optional[str] = None
+    secondary_ai_recommendation: Optional[str] = None
 
-class MatchResultListResponse(BaseModel):
-    """Schema for listing match results."""
-    results: List[MatchResultResponse]
-    total_count: int
+    tertiary_matched: Optional[str] = None
+    tertiary_consider: Optional[str] = None
+    tertiary_ai_recommendation: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -47,7 +47,11 @@ pypdf
 pymongo
 langchain-mongodb
 tiktoken
-
+llama-index-core
+llama-index-llms-google-genai
+llama-index-embeddings-google-genai
+llama-index-readers-file
+pymupdf
 
 # Edge-tts
 fastapi

@@ -1,43 +1,32 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from typing import Annotated
-from database.connection import get_db
-from database.models.chatbot import Message, MessageIn, MessageOut
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import traceback
+
+from rag.pdf_chat import ask_combined
 
 router = APIRouter()
 
-DbDep = Annotated[Session, Depends(get_db)]
 
-@router.post("/", response_model=MessageOut)
-def handle_message(message: MessageIn, db: DbDep):
-    # Save user message
-    user_msg = Message(sender=message.sender, text=message.text)
-    db.add(user_msg)
-    db.commit()
-    db.refresh(user_msg)
+class RAGChatRequest(BaseModel):
+    message: str
 
-    # Simple AI logic (can be replaced with OpenAI/Gemini integration)
-    if "hello" in message.text.lower():
-        ai_text = "Hi there! How can I help you today?"
-    else:
-        ai_text = f"You said: {message.text}"
 
-    # Save AI response
-    ai_msg = Message(sender="ai", text=ai_text)
-    db.add(ai_msg)
-    db.commit()
-    db.refresh(ai_msg)
+class RAGChatResponse(BaseModel):
+    answer: str
+    source: str
 
-    return ai_msg
 
-@router.delete("/clear_all")
-def clear_all_messages(db: DbDep):
-    db.query(Message).delete()
-    db.commit()
-    return {"message": "All chat messages have been cleared."}
-
-@router.get("/history", response_model=list[MessageOut])
-def get_history(db: DbDep):
-    messages = db.query(Message).order_by(Message.id).all()
-    return messages
-
+@router.post("/rag", response_model=RAGChatResponse)
+async def rag_chat(request: RAGChatRequest):
+    try:
+        result = await ask_combined(request.message)
+        return RAGChatResponse(**result)
+    except FileNotFoundError as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error while processing RAG request: {str(e)}",
+        )

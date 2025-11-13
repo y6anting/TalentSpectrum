@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from "@/app/components/button";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface EducationSubmissionProps {
   educations: Array<{
@@ -20,6 +21,7 @@ export function EducationSubmission({ educations, onSave }: EducationSubmissionP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
+  const { success, error: showError } = useToastHelpers();
 
   const handleSubmitEducation = async () => {
     setIsSubmitting(true);
@@ -39,16 +41,16 @@ export function EducationSubmission({ educations, onSave }: EducationSubmissionP
       });
 
       if (response.ok) {
-        alert('Education saved successfully!');
+        success('Education Saved', 'Education information saved successfully!');
         if (onSave) onSave();
       } else {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
-        throw new Error('Failed to save education.');
+        showError('Save Failed', 'Failed to save education.');
       }
     } catch (error: any) {
       console.error('Error saving education:', error);
-      setError(error.message || 'An error occurred while saving your education.');
+      showError('Error', error.message || 'An error occurred while saving your education.');
     } finally {
       setIsSubmitting(false);
     }

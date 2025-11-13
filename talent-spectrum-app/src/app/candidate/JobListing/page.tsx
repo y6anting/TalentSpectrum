@@ -112,6 +112,30 @@ export function CandidateJobListingContent() {
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Map<string, number>>(new Map());
 
+  // Check if user has a profile/resume
+  const checkUserProfile = async (userEmail: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/profiles?email=${encodeURIComponent(userEmail)}`);
+      if (!response.ok) {
+        return false;
+      }
+      const data = await response.json();
+      // Check if profile exists and has meaningful data (not just auto-created empty profile)
+      // A profile is considered valid if it has personal identifiers or education or experience
+      const hasValidProfile = data && (
+        (data.personal_identifiers && Object.keys(data.personal_identifiers).length > 0) ||
+        (data.educations && data.educations.length > 0) ||
+        (data.experiences && data.experiences.length > 0) ||
+        (data.education && Object.keys(data.education).length > 0) ||
+        (data.experience && Object.keys(data.experience).length > 0)
+      );
+      return hasValidProfile;
+    } catch (error) {
+      console.error('Error checking user profile:', error);
+      return false;
+    }
+  };
+
   // Transform database job to display job
   const transformJob = (job: Job): DisplayJob => {
     // Calculate accommodations friendly based on multiple factors
@@ -255,6 +279,14 @@ export function CandidateJobListingContent() {
         return;
       }
 
+      // Check if user has a valid profile before allowing application
+      const hasProfile = await checkUserProfile(userEmail);
+      if (!hasProfile) {
+        showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before applying to jobs. You need to have at least some basic information in your profile.');
+        setIsApplying(false);
+        return;
+      }
+
       const response = await fetch('/api/applications', {
         method: 'POST',
         headers: {
@@ -310,9 +342,11 @@ export function CandidateJobListingContent() {
             }
           }));
         } else {
-          const msg = errorData.error || 'Failed to apply to job';
+          const msg = errorData.error || errorData.detail || 'Failed to apply to job';
           if (msg.toLowerCase().includes('already applied')) {
             info('Already Applied', 'You have already applied to this job.');
+          } else if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+            showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before applying to jobs.');
           } else {
             showError('Application Failed', msg);
           }
@@ -360,7 +394,7 @@ export function CandidateJobListingContent() {
 
       const jobKey = `${job.title}-${job.company}`;
       
-      // Check if already saved - if so, unsave it
+      // Check if already saved - if so, unsave it (allow unsaving without profile check)
       if (savedJobs.has(jobKey)) {
         const savedJobId = savedJobIds.get(jobKey);
         if (savedJobId) {
@@ -422,6 +456,14 @@ export function CandidateJobListingContent() {
         return;
       }
 
+      // Check if user has a valid profile before allowing save
+      const hasProfile = await checkUserProfile(userEmail);
+      if (!hasProfile) {
+        showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before saving jobs. You need to have at least some basic information in your profile.');
+        setIsSaving(false);
+        return;
+      }
+
       // Save the job
       const response = await fetch('/api/saved-jobs', {
         method: 'POST',
@@ -475,7 +517,12 @@ export function CandidateJobListingContent() {
             }
           }));
         } else {
-          showError('Save Failed', errorData.error || 'Failed to save job');
+          const msg = errorData.error || errorData.detail || 'Failed to save job';
+          if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+            showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before saving jobs.');
+          } else {
+            showError('Save Failed', msg);
+          }
         }
       }
     } catch (err) {

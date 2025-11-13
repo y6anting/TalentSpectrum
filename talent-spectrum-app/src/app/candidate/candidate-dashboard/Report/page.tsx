@@ -308,16 +308,11 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
 
   if (loading || !reportData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <div 
-              className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
-              style={{ borderColor: PRIMARY, borderBottomColor: "transparent" }}
-            />
-            <p className="text-gray-600">Loading your report...</p>
-          </CardContent>
-        </Card>
+      <div className="w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+          <p className="text-[#6f7a80]">Loading your report...</p>
+        </div>
       </div>
     );
   }
@@ -359,13 +354,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                   <p className="text-gray-600 mt-1">Comprehensive analysis of your profile and interview performance</p>
                 </div>
               </div>
-              <Button
-                onClick={handleDownloadReport}
-                className="bg-[rgb(99,91,255)] hover:bg-[rgb(86, 72, 232)] text-white flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download Report
-              </Button>
+              {/* Consolidated: removed duplicate download button to keep single top button */}
             </div>
 
             {/* Strengths & Needs */}

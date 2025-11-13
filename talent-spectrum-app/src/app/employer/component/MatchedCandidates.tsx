@@ -411,6 +411,9 @@ export default function MatchedCandidates({
   jobTitle,
   onShortlist,
 }: MatchedCandidatesProps) {
+  // API base URL from environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
   // Initialize with mock data as a fallback
   const [allMatchedCandidates, setAllMatchedCandidates] = useState<
     MatchedCandidate[]
@@ -428,7 +431,7 @@ export default function MatchedCandidates({
 
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/match_results/all_results"
+          `${API_BASE}/match_results/all_results`
         );
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

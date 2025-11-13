@@ -40,6 +40,9 @@ import { motion } from "motion/react";
 import { useEffect } from "react";
 
 export default function CandidateList() {
+  // API base URL from environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
@@ -55,7 +58,7 @@ export default function CandidateList() {
       try {
         setIsLoading(true);
         setError(null);
-        const res = await fetch("http://127.0.0.1:8000/profiles/");
+        const res = await fetch(`${API_BASE}/profiles/`);
         if (!res.ok) throw new Error(`Failed to fetch profiles: ${res.status}`);
         const data = await res.json();
         const mapped = (Array.isArray(data) ? data : []).map((p: any) => {
@@ -161,15 +164,13 @@ export default function CandidateList() {
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="max-w-[1400px] mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#3a4043] mb-2">Candidate Pool</h1>
-          <p className="text-[#6f7a80]">
+          <h1 className="text-2xl font-bold text-[#3a4043] mb-4">Candidate Pool</h1>
+          {/* <p className="text-[#6f7a80]">
             Discover and connect with exceptional neurodivergent talent
-          </p>
-        </div>
+          </p> */}
 
         {/* Search and Filters */}
-        <Card className="mb-8">
+        <Card className="mb-3">
           <CardContent className="p-6">
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Search */}
@@ -239,11 +240,11 @@ export default function CandidateList() {
         </Card>
 
         {/* Results Summary */}
-        <div className="mb-6">
+        <div className="mb-6 ml-2">
           {isLoading && <p className="text-[#6f7a80]">Loading candidates...</p>}
           {error && <p className="text-red-600">{error}</p>}
           {!isLoading && !error && (
-            <p className="text-[#6f7a80]">
+            <p className="text-[#6f7a80] text-sm">
               Showing {filteredCandidates.length} of {candidates.length} candidates
             </p>
           )}

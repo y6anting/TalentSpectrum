@@ -24,6 +24,7 @@ import {
   AccordionTrigger,
 } from "@/app/components/accordion";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 /* SECTION IDs and titles (kept only the active sections) */
 const SECTION_IDS = ["job-info", "job-desc", "skills", "neuro-friendly"];
@@ -42,7 +43,9 @@ interface PostJobProps {
 }
 
 export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
-  // const router = useRouter(); // No longer needed
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
+  const { success, error: showError, warning, info } = useToastHelpers();
 
   const [openSection, setOpenSection] = useState<string>("job-info");
 
@@ -141,6 +144,17 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Helper to clear a specific error when user starts typing
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   // Helper: scroll to a section and focus its first input/textarea
   const scrollToSection = (sectionId: string) => {
     const el = sectionRefs.current[sectionId];
@@ -175,9 +189,9 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
   };
 
   // Submit handler (connect to backend)
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, status: string = "active") => {
     e.preventDefault();
-    console.log("🚀 Form submitted");
+    console.log("🚀 Form submitted with status:", status);
     console.log("📝 Form state (before validation):", {
       jobTitle,
       jobType,
@@ -229,6 +243,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
         job_summary: jobSummary,
         job_requirements: jobRequirements || null,
         soft_skills: softSkills.join(", ") || null, // This is the critical line
+        status: status, // Set the status (active or draft)
         flexible_work_hour: accommodations.includes("Flexible work hours"),
         sensory_friendly_environment: accommodations.includes(
           "Sensory-friendly environment"
@@ -267,7 +282,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
       console.log("DEBUG: Value of softSkills.join(', ') || null is:", softSkills.join(", ") || null); // DEBUG LOG
 
       console.log("📤 Attempting to send request to backend...");
-      const res = await fetch("http://127.0.0.1:8000/jobs", {
+      const res = await fetch(`${API_BASE}/jobs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -275,13 +290,15 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
 
       if (!res.ok) {
         const errorData = await res.json(); // Try to get error details from the response
-        console.error("❌ Error response from server:", errorData);
         throw new Error(`Failed to post job: ${res.status} ${res.statusText}`);
       }
 
       const data = await res.json();
-      console.log("✅ Job posted successfully:", data);
-      alert("Job posted successfully!");
+      const successMessage = status === "draft" 
+        ? "Job saved as draft successfully!" 
+        : "Job posted successfully!";
+      success(successMessage);
+        
       // Call the callback to switch tabs
       onJobPosted();
       // Reset form fields after successful submission (optional)
@@ -299,9 +316,12 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
       setErrors({});
       setOpenSection("job-info"); // Return to first section
     } catch (err) {
-      console.error("❌ Error posting job:", err);
-      alert(`Failed to post job: ${err}`);
+      showError("Failed to post job. Please try again later.");
     }
+  };
+
+  const handleSaveAsDraft = (e: React.FormEvent) => {
+    handleSubmit(e, "draft");
   };
 
   // Shared padding class for content areas
@@ -311,28 +331,28 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       {" "}
       {/* Adjusted for consistency with dashboard bg */}
-      <div className="page-wrap flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#3a4043]">Post a New Job</h1>
-            <p className="text-gray-600 mt-1 italic">
+            <h2 className="text-2xl font-bold text-[#3a4043] mt-2">Post a New Job</h2>
+            {/* <p className="text-gray-600 mt-1 italic">
               Post an inclusive job for neurodivergent talent!
-            </p>
+            </p> */}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <div className="text-sm text-gray-500">Sections</div>
-            <div className="bg-white p-3 rounded-lg shadow-sm border border-[#e8e6f0] flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-4 ">
+            <div className="text-base text-gray-500">Sections</div>
+            <div className="bg-white p-2 rounded-lg shadow-sm border border-[#e8e6f0] flex items-center gap-2">
               <Eye className="h-4 w-4 text-[#635bff]" />
-              <div className="text-sm text-[#3a4043]">
+              <div className="text-base text-[#3a4043]">
                 {openSection ? SECTION_TITLES[openSection] : "Select a section"}
               </div>
             </div>
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => handleSubmit(e, "active")} className="space-y-4">
           {/* Shadcn Accordion Wrapper */}
           <Accordion
             type="single" // Ensures only one section can be open at a time
@@ -357,16 +377,16 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                   key={id}
                   value={id} // Unique value for each item, used by the Accordion to identify it
                   // Apply custom styling based on Shadcn's data-state attribute
-                  className="accordion-item-wrapper bg-white rounded-2xl border border-[#e8e6f0] shadow-sm data-[state=open]:border-2 data-[state=open]:border-[#635bff] data-[state=open]:shadow-[0_8px_30px_rgba(99,91,255,0.06)]"
+                  className="accordion-item-wrapper bg-[#fbfbff] rounded-2xl border border-[#e8e6f0] shadow-sm data-[state=open]:border-2 data-[state=open]:border-[#635bff]/30 data-[state=open]:shadow-[0_8px_30px_rgba(99,91,255,0.06)]"
                 >
                   <AccordionTrigger
                     // Shadcn's AccordionTrigger handles its own styling and icons
-                    className="flex items-center justify-between p-4 md:p-5 text-[#3a4043] text-base md:text-lg font-semibold hover:no-underline"
+                    className="flex items-center justify-between p-4 md:p-5 text-[#3a4043] text-base md:text-lg font-semibold hover:no-underline hover:cursor-pointer"
                   >
                     <div className="flex flex-col">{SECTION_TITLES[id]}</div>
                   </AccordionTrigger>
 
-                  <AccordionContent className="overflow-hidden">
+                  <AccordionContent className="overflow-hidden text-base">
                     {/* The contentPadding div is where your actual section content goes */}
                     <div ref={setSectionRef} className={contentPadding}>
                       {/* JOB INFO */}
@@ -384,7 +404,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                                 placeholder="e.g. Software Engineer"
                                 required
                                 value={jobTitle}
-                                onChange={(e) => setJobTitle(e.target.value)}
+                                onChange={(e) => {
+                                  setJobTitle(e.target.value);
+                                  clearError("jobTitle");
+                                }}
                                 className={`border ${
                                   errors.jobTitle
                                     ? "border-red-500"
@@ -418,7 +441,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               </label>
                               <Select
                                 value={jobType}
-                                onValueChange={setJobType}
+                                onValueChange={(value) => {
+                                  setJobType(value);
+                                  clearError("jobType");
+                                }}
                                 required
                               >
                                 <SelectTrigger
@@ -455,7 +481,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               </label>
                               <Select
                                 value={workLocation}
-                                onValueChange={setWorkLocation}
+                                onValueChange={(value) => {
+                                  setWorkLocation(value);
+                                  clearError("workLocation");
+                                }}
                                 required
                               >
                                 <SelectTrigger
@@ -492,7 +521,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               </label>
                               <Select
                                 value={experienceLevel}
-                                onValueChange={setExperienceLevel}
+                                onValueChange={(value) => {
+                                  setExperienceLevel(value);
+                                  clearError("experienceLevel");
+                                }}
                                 required
                               >
                                 <SelectTrigger
@@ -530,7 +562,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               <Input
                                 placeholder="e.g. Kuala Lumpur, Selangor"
                                 value={jobLocation}
-                                onChange={(e) => setJobLocation(e.target.value)}
+                                onChange={(e) => {
+                                  setJobLocation(e.target.value);
+                                  clearError("jobLocation");
+                                }}
                                 className={`border ${
                                   errors.jobLocation
                                     ? "border-red-500"
@@ -550,7 +585,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               </label>
                               <Select
                                 value={salaryRange}
-                                onValueChange={setSalaryRange}
+                                onValueChange={(value) => {
+                                  setSalaryRange(value);
+                                  clearError("salaryRange");
+                                }}
                                 required
                               >
                                 <SelectTrigger
@@ -600,7 +638,10 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               rows={4}
                               required
                               value={jobSummary}
-                              onChange={(e) => setJobSummary(e.target.value)}
+                              onChange={(e) => {
+                                setJobSummary(e.target.value);
+                                clearError("jobSummary");
+                              }}
                               className={`border ${
                                 errors.jobSummary
                                   ? "border-red-500"
@@ -661,6 +702,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               type="button"
                               onClick={addSkill}
                               variant="outline"
+                              className="hover:cursor-pointer"
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
@@ -700,7 +742,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                               {availableAccommodations.map((acc) => (
                                 <div
                                   key={acc}
-                                  className="flex items-center space-x-2"
+                                  className="flex items-center space-x-2 "
                                 >
                                   <Checkbox
                                     id={acc} // Added ID for accessibility
@@ -708,6 +750,7 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
                                     onCheckedChange={() =>
                                       toggleAccommodation(acc)
                                     }
+                                    className="cursor-pointer"
                                   />
                                   <label
                                     htmlFor={acc} // Linked to checkbox ID
@@ -730,18 +773,24 @@ export default function PostJob({ onJobPosted, onCancel }: PostJobProps) {
 
           {/* Actions */}
           <div className="flex justify-end gap-4 pt-4">
+            <Button type="submit" className="bg-[#635bff] text-white hover:cursor-pointer hover:bg-[#524aff]">
+              Post Job
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleSaveAsDraft}
+              className="cursor-pointer border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10"
+            >
+              Save as Draft
+            </Button>
             <Button
               type="button"
               variant="outline"
               onClick={onCancel} // Use onCancel prop here
+              className="cursor-pointer border border-gray-300"
             >
               Cancel
-            </Button>
-            <Button type="button" variant="outline">
-              Save as Draft
-            </Button>
-            <Button type="submit" className="bg-[#635bff] text-white">
-              Post Job
             </Button>
           </div>
         </form>

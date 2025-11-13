@@ -67,6 +67,9 @@ const USER_TYPE_CONFIG = {
 } as const;
 
 const LoginPage = () => {
+  // API base URL from environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
   const router = useRouter();
   // --- LOGIC ADDITION: Get session data and status (still useful for initial load check if needed elsewhere) ---
   const { data: session, status } = useSession();
@@ -200,7 +203,7 @@ const LoginPage = () => {
 
     try {
       // Call your backend API endpoint for registration
-      const response = await fetch("http://127.0.0.1:8000/users/register", {
+      const response = await fetch(`${API_BASE}/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -507,7 +510,7 @@ const LoginPage = () => {
                 className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
                   activeTab === "signup"
                     ? "bg-white text-[#635bff] shadow-sm"
-                    : "text-gray-600 hover:text-gray-800 cursor-pointer"
+                    : "text-gray-600 hover:text-gray-800 hover:cursor-pointer"
                 }`}
               >
                 Sign Up
@@ -678,7 +681,7 @@ const LoginPage = () => {
                         name="password"
                         value={signupData.password}
                         onChange={handleSignupInputChange}
-                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-[#635BFF] outline-none transition-colors bg-transparent"
                         placeholder="Create a password"
                         autoFocus
                         required
@@ -694,7 +697,7 @@ const LoginPage = () => {
                         name="confirmPassword"
                         value={signupData.confirmPassword}
                         onChange={handleSignupInputChange}
-                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-purple-600 outline-none transition-colors bg-transparent"
+                        className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-[#635BFF] outline-none transition-colors bg-transparent"
                         placeholder="Confirm your password"
                         required
                       />
@@ -708,7 +711,7 @@ const LoginPage = () => {
                     <button
                       type="button"
                       onClick={handlePreviousStep}
-                      className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 hover:cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Back
@@ -727,7 +730,7 @@ const LoginPage = () => {
                         (signupProgress.currentStep === "name" && !signupData.name.trim()) ||
                         (signupProgress.currentStep === "email" && !signupData.email.trim())
                           ? "bg-gray-400 cursor-pointer"
-                          : "bg-[#635bff] hover:[#635bff]"
+                          : "bg-[#635bff] hover:[#635bff] hover:cursor-pointer"
                       }`}
                     >
                       Next
@@ -740,7 +743,7 @@ const LoginPage = () => {
                       className={`flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all ${
                         isLoading || !signupData.password || !signupData.confirmPassword
                           ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-[#635bff] hover:[#635bff]"
+                          : "bg-[#635bff] hover:[#635bff] hover:cursor-pointer"
                       }`}
                     >
                       {isLoading ? "Creating account..." : "Create Account"}
@@ -761,7 +764,7 @@ const LoginPage = () => {
                       // --- LOGIC ADDITION: Commented out onClick for Google login ---
                       onClick={handleGoogleSignIn}
                       // --- END LOGIC ADDITION ---
-                      className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 hover:cursor-pointer"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path

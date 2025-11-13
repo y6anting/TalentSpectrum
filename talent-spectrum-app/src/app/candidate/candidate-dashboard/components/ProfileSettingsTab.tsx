@@ -7,6 +7,7 @@ import { Badge } from "@/app/components/badge";
 import { Skeleton } from "@/app/components/loading-skeleton";
 import { User, Mail, MapPin, Phone, Calendar, Briefcase, GraduationCap, Award, FileText, Upload } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface ProfileSettingsTabProps {
   candidateEmail: string;
@@ -17,8 +18,8 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const { data: session } = useSession();
+  const { success, error: showError, info } = useToastHelpers();
 
   useEffect(() => {
     if (candidateEmail) {
@@ -50,12 +51,11 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
     if (!file) return;
 
     if (!file.name.endsWith('.pdf')) {
-      setUploadMessage({ type: 'error', text: 'Please upload a PDF file' });
+      showError('Invalid File', 'Please upload a PDF file');
       return;
     }
 
     setIsUploading(true);
-    setUploadMessage(null);
 
     try {
       // Step 1: Upload and extract resume
@@ -106,10 +106,7 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
 
       const saveData = await saveResponse.json();
 
-      setUploadMessage({ 
-        type: 'success', 
-        text: `Resume uploaded and ${saveData.action} successfully! Profile completion: ${saveData.profile_completion}%` 
-      });
+      success('Resume Uploaded', `Resume uploaded and ${saveData.action} successfully! Profile completion: ${saveData.profile_completion}%`);
 
       // Wait for database to commit
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -124,10 +121,7 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
 
     } catch (error: any) {
       console.error("Error uploading resume:", error);
-      setUploadMessage({ 
-        type: 'error', 
-        text: error.message || 'Failed to upload resume. Please try again.' 
-      });
+      showError('Upload Failed', error.message || 'Failed to upload resume. Please try again.');
     } finally {
       setIsUploading(false);
       // Clear the file input
@@ -151,7 +145,7 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
       <Card className="border-2 border-dashed border-gray-300 hover:border-[#635BFF] transition-all">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
+            <Upload className="w-5 h-5 " />
             Upload Resume
           </CardTitle>
         </CardHeader>
@@ -191,18 +185,6 @@ export default function ProfileSettingsTab({ candidateEmail, onUploadSuccess }: 
                 className="hidden"
               />
             </div>
-
-            {uploadMessage && (
-              <div
-                className={`p-3 rounded-lg ${
-                  uploadMessage.type === 'success'
-                    ? 'bg-green-50 border border-green-200 text-green-800'
-                    : 'bg-red-50 border border-red-200 text-red-800'
-                }`}
-              >
-                {uploadMessage.text}
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

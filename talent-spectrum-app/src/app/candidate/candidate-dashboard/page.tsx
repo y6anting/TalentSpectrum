@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/app/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
 import { Badge } from "@/app/components/badge";
+import { useToastHelpers } from "@/components/ui/toast";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
   HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video
@@ -36,6 +37,12 @@ import AppointmentPage from "./Appointment/page";
 import CandidateJobListing from "../JobListing/page";
 
 export default function CandidateDashboard() {
+  // API base URL from environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
+  // Toast helpers for notifications
+  const { success, error: showError, warning, info } = useToastHelpers();
+  
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -45,6 +52,8 @@ export default function CandidateDashboard() {
   const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
 
   const [showMatchingScoreDialog, setShowMatchingScoreDialog] = useState(false);
+  // Signal to refetch profile after resume upload
+  const [resumeRefreshSignal, setResumeRefreshSignal] = useState(0);
 
   type Environment = {
     patternRecognition: string;
@@ -364,20 +373,19 @@ export default function CandidateDashboard() {
       console.log('Full session object:', session); // Add this
       console.log('Session user email:', session?.user?.email); // Add this
 
-      const sessionEmail = session?.user?.email || "";
-      // const candidate_email = sessionEmail
+      const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
+      const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
 
-      if (!sessionEmail) {
-        console.error('No email found in session.user.email. Cannot fetch profile.');
+      if (!preferredEmail) {
+        console.error('No email available to fetch profile.');
         setIsLoading(false);
         return;
       }
         
-        const emailToUse = encodeURIComponent(sessionEmail); // Removed || '' as sessionEmail is already guaranteed not empty here
-        const candidate_email = encodeURIComponent(sessionEmail);
-        console.log('Using email for profile fetch:', emailToUse);
+        const candidate_email = encodeURIComponent(preferredEmail);
+        console.log('Using email for profile fetch:', preferredEmail);
 
-        const response = await fetch(`http://127.0.0.1:8000/profiles/${candidate_email}`, {
+        const response = await fetch(`${API_BASE}/profiles/${candidate_email}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -394,7 +402,7 @@ export default function CandidateDashboard() {
             const updatedProfile = {
               ...candidateProfile,
               name: data.name || candidateProfile.name,
-              email: data.email || sessionEmail || candidateProfile.email,
+              email: data.email || data.personal_identifiers?.emailAddress || preferredEmail || candidateProfile.email,
               location: data.location || candidateProfile.location,
               profileCompletion: data.profile_completion || candidateProfile.profileCompletion,
               accommodations: data.accommodations || candidateProfile.accommodations,
@@ -402,7 +410,7 @@ export default function CandidateDashboard() {
               personalIdentifiers: {
                 ...candidateProfile.personalIdentifiers,
                 ...data.personal_identifiers,
-                emailAddress: data.personal_identifiers?.emailAddress || data.email || sessionEmail || candidateProfile.personalIdentifiers.emailAddress
+                emailAddress: data.personal_identifiers?.emailAddress || data.email || preferredEmail || candidateProfile.personalIdentifiers.emailAddress
               },
               education: {
                 ...candidateProfile.education,
@@ -493,13 +501,13 @@ export default function CandidateDashboard() {
             console.error('No data in response:', data);
             
             // If no data but we have email, at least populate the email field
-            if (sessionEmail) {
+            if (preferredEmail) {
               setCandidateProfile(prev => ({
                 ...prev,
-                email: sessionEmail,
+                email: preferredEmail,
                 personalIdentifiers: {
                   ...prev.personalIdentifiers,
-                  emailAddress: sessionEmail
+                  emailAddress: preferredEmail
                 }
               }));
             }
@@ -509,13 +517,13 @@ export default function CandidateDashboard() {
           console.log('Profile not found, creating new profile with email');
           
           // If profile not found but we have email, create a basic profile
-          if (sessionEmail) {
+          if (preferredEmail) {
             setCandidateProfile(prev => ({
               ...prev,
-              email: sessionEmail,
+              email: preferredEmail,
               personalIdentifiers: {
                 ...prev.personalIdentifiers,
-                emailAddress: sessionEmail
+                emailAddress: preferredEmail
               }
             }));
           }
@@ -528,13 +536,13 @@ export default function CandidateDashboard() {
           console.error('Error response:', errorText);
           
           // If API fails but we have email, at least populate the email field
-          if (sessionEmail) {
+          if (preferredEmail) {
             setCandidateProfile(prev => ({
               ...prev,
-              email: sessionEmail,
+              email: preferredEmail,
               personalIdentifiers: {
                 ...prev.personalIdentifiers,
-                emailAddress: sessionEmail
+                emailAddress: preferredEmail
               }
             }));
           }
@@ -562,19 +570,33 @@ export default function CandidateDashboard() {
     };
 
     fetchProfileData();
-  }, [status, session]);
+  }, [status, session, resumeRefreshSignal]);
+
+  // Listen for navigation to profile from job listing
+  useEffect(() => {
+    const handleNavigateToProfile = () => {
+      setActiveTab("profile");
+    };
+    
+    window.addEventListener('navigateToProfile', handleNavigateToProfile);
+    return () => {
+      window.removeEventListener('navigateToProfile', handleNavigateToProfile);
+    };
+  }, []);
 
     useEffect(() => {
     const fetchEducationData = async () => {
       if (status === "loading") return;
-      if (!session?.user?.email) return;
+      const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
+      const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+      if (!preferredEmail) return;
 
       setIsLoading(true);
 
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/profiles/${session.user.email}`
+          `${API_BASE}/profiles/${encodeURIComponent(preferredEmail)}`
         );
 
         if (!response.ok) {
@@ -609,18 +631,20 @@ export default function CandidateDashboard() {
     };
 
     fetchEducationData();
-  }, [session, status]); 
+  }, [session, status, resumeRefreshSignal]); 
   
   useEffect(() => {
   const fetchExperienceData = async () => {
     if (status === "loading") return;
-    if (!session?.user?.email) return;
+    const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
+    const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+    if (!preferredEmail) return;
 
     setIsLoading(true);
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/profiles/${session.user.email}`
+        `${API_BASE}/profiles/${encodeURIComponent(preferredEmail)}`
       );
 
       if (!response.ok) {
@@ -658,7 +682,20 @@ export default function CandidateDashboard() {
   };
 
   fetchExperienceData();
-}, [session, status]);
+}, [session, status, resumeRefreshSignal]);
+
+  // Listen for resume upload event to trigger refresh
+  useEffect(() => {
+    const handler = () => setResumeRefreshSignal((s) => s + 1);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resumeUploaded', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resumeUploaded', handler as EventListener);
+      }
+    };
+  }, []);
 
   // Fetch applications data from database via Next.js API route
   useEffect(() => {
@@ -958,7 +995,7 @@ export default function CandidateDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
       <div className="page-wrap py-8">
-        <div className="grid lg:grid-cols-[260px_1fr] gap-8 py-8">
+        <div className="grid lg:grid-cols-[300px_1fr] gap-8 py-8">
           {/* Sidebar */}
           <div className="lg:sticky top-[var(--app-header-height)] self-start">
             <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
@@ -1082,7 +1119,23 @@ export default function CandidateDashboard() {
 
           {/* Main Content */}
             <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap gap-4 py-2 justify-end">
+              <div className="flex flex-wrap gap-4 justify-between items-center">
+                <h2 className="text-2xl font-bold text-[#3a4043]">
+                  
+                  {activeTab === "overview" && "Overview"}
+                  {activeTab === "browse jobs" && "Browse Jobs"}
+                  {activeTab === "applications" && "My Applications"}
+                  {activeTab === "saved" && "Saved Jobs"}
+                  {activeTab === "profile config" && "Profile Data"}
+                  {activeTab === "education" && "Education"}
+                  {activeTab === "experience" && "Experience"}
+                  {activeTab === "skills" && "Skills"}
+                  {activeTab === "neuro_strength" && "Neurodivergent Strengths"}
+                  {activeTab === "environment" && "Preferred Environment"}
+                  {activeTab === "mock interview" && "Conduct a Mock Interview"}
+                  {activeTab === "Report" && "Candidate Report"}
+                  {activeTab === "Appointment" && "Book Appointment"}
+                </h2>
                 <ResumeUploadButton
                   buttonText="Upload Resume"
                   buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
@@ -1211,30 +1264,17 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "browse jobs" && (
-              // <div className="space-y-4">
-              //   <h1 className="text-2xl font-bold text-[#3a4043]">Browse Jobs</h1>
                 <CandidateJobListing />
-              // </div>
             )}
 
             {activeTab === "applications" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">My Applications</h1>
-                  {/* <Button
-                    asChild
-                    variant="outline"
-                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  >
-                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                  </Button> */}
-                </div>
                 
                 {applications.length > 0 ? (
                   <div className="grid lg:grid-cols-5 gap-6">
                     {/* Left side - Applications List */}
                     <div className="lg:col-span-2 space-y-3">
-                      {applications.map((app) => (
+                    {applications.map((app) => (
                         <Card 
                           key={app.id}
                           className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
@@ -1277,7 +1317,7 @@ export default function CandidateDashboard() {
                     <div className="lg:col-span-3">
                       {selectedApplication ? (
                         <Card className="sticky top-4">
-                          <CardContent className="p-6">
+                        <CardContent className="p-6">
                             <div className="space-y-6">
                               {/* Header */}
                               <div>
@@ -1289,36 +1329,36 @@ export default function CandidateDashboard() {
                                     <p className="text-lg text-[#635bff] font-medium mb-3">
                                       {selectedApplication.company}
                                     </p>
-                                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4" />
                                         {selectedApplication.location}
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <DollarSign className="h-4 w-4" />
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-4 w-4" />
                                         {selectedApplication.salary}
-                                      </span>
-                                    </div>
-                                  </div>
+                                </span>
+                              </div>
+                            </div>
                                   {selectedApplication.score && (
                                     <div className="text-center">
                                       <div className="text-4xl font-bold text-[#635bff] mb-1">
                                         {selectedApplication.score}%
-                                      </div>
+                            </div>
                                       <p className="text-sm text-gray-600">match</p>
-                                    </div>
+                          </div>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {getStatusBadge(selectedApplication.status)}
                                   {selectedApplication.accommodationsRequested && (
-                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                      <Shield className="h-3 w-3 mr-1" />
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                <Shield className="h-3 w-3 mr-1" />
                                       Accommodations Requested
-                                    </Badge>
-                                  )}
+                              </Badge>
+                            )}
                                 </div>
-                              </div>
+                          </div>
 
                               {/* Job Description */}
                               <div>
@@ -1326,7 +1366,7 @@ export default function CandidateDashboard() {
                                 <p className="text-gray-700 leading-relaxed">
                                   {selectedApplication.description || "No job description available."}
                                 </p>
-                              </div>
+                                  </div>
 
                               {/* Requirements */}
                               <div>
@@ -1341,7 +1381,7 @@ export default function CandidateDashboard() {
                                     <li className="text-gray-500">No specific requirements listed.</li>
                                   )}
                                 </ul>
-                              </div>
+                                    </div>
 
                               {/* Benefits */}
                               <div>
@@ -1359,7 +1399,7 @@ export default function CandidateDashboard() {
                               </div>
 
                               {/* Company Information */}
-                              <div>
+                                <div>
                                 <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Company Information</h3>
                                 <div className="space-y-2 text-sm text-gray-700">
                                   <p><strong>Company Size:</strong> {selectedApplication.companySize || "Not specified"}</p>
@@ -1402,17 +1442,17 @@ export default function CandidateDashboard() {
                                 >
                                   Withdraw Application
                                 </Button>
-                                <Button 
-                                  variant="outline"
+                          <Button
+                            variant="outline"
                                   className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
                                   onClick={() => setShowMatchingScoreDialog(true)}
-                                >
+                          >
                                   Detailed Matching Score
-                                </Button>
+                          </Button>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                        </CardContent>
+                      </Card>
                       ) : (
                         <Card className="sticky top-4">
                           <CardContent className="p-12 text-center">
@@ -1432,11 +1472,11 @@ export default function CandidateDashboard() {
                   <div className="flex items-center p-[100px] w-full justify-center">
                     <span className="text-[#5748e5] font-bold text-lg">
                       No applied applications. Apply for jobs in "Browse More Jobs" to see them here!
-                    </span>
+                      </span>
+                    </div>
+                )}
                   </div>
                 )}
-              </div>
-            )}
 
             {/* Detailed Matching Score Dialog */}
             <Dialog open={showMatchingScoreDialog} onOpenChange={setShowMatchingScoreDialog}>
@@ -1451,8 +1491,8 @@ export default function CandidateDashboard() {
                         <p className="text-lg font-semibold text-[#635bff]">
                           {(selectedApplication || selectedSavedJob)?.jobTitle} at {(selectedApplication || selectedSavedJob)?.company}
                         </p>
-                      </div>
-                    )}
+              </div>
+            )}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -1472,7 +1512,7 @@ export default function CandidateDashboard() {
                       {/* <h3 className="text-xl font-bold text-[#635bff] mb-3">{selectedApplication.jobTitle}</h3> */}
                       <div className="text-6xl font-bold text-[#635bff] mb-2">
                         {overallMatchScore}%
-                      </div>
+                </div>
                     </div>
 
                     {/* Primary Match: Experience, Skill & Education */}
@@ -1496,7 +1536,7 @@ export default function CandidateDashboard() {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-6">
-                        <div className="space-y-4">
+                  <div className="space-y-4">
                           <div>
                             <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2">
                               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -1626,14 +1666,14 @@ export default function CandidateDashboard() {
                                 <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
                                 <span className="text-sm text-gray-700">
                                   <strong>Location:</strong> Remote preference matches job offering
-                                </span>
+                              </span>
                               </div>
                               <div className="flex items-start gap-2">
                                 <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
                                 <span className="text-sm text-gray-700">
                                   <strong>Neurodivergent Strengths:</strong> Detail-Oriented, Systematic Thinking
-                                </span>
-                              </div>
+                              </span>
+                            </div>
                             </div>
                           </div>
 
@@ -1677,16 +1717,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "saved" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Saved Jobs</h1>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="border-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  >
-                    <Link href="/candidate/JobListing">Browse More Jobs</Link>
-                  </Button>
-                </div>
                 
                 {savedJobs.length > 0 ? (
                   <div className="grid lg:grid-cols-5 gap-6">
@@ -1708,13 +1738,13 @@ export default function CandidateDashboard() {
                                 <h3 className="text-base font-semibold text-[#3a4043] mb-1">{job.jobTitle}</h3>
                                 <p className="text-sm text-[#635bff] font-medium">{job.company}</p>
                               </div>
-                              <div className="flex gap-2">
-                                {job.isInclusive && (
+                            <div className="flex gap-2">
+                              {job.isInclusive && (
                                   <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 text-xs">
-                                    <Heart className="h-3 w-3 mr-1" />
-                                    Inclusive
-                                  </Badge>
-                                )}
+                                  <Heart className="h-3 w-3 mr-1" />
+                                  Inclusive
+                                </Badge>
+                              )}
                               </div>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
@@ -1731,12 +1761,12 @@ export default function CandidateDashboard() {
                               <p className="text-xs text-gray-500">Type: {job.type}</p>
                               <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
                                 {Math.round(((job.primaryMatchScore || 96) + (job.secondaryMatchScore || 90) + (job.tertiaryMatchScore || 85)) / 3)}% match
-                              </Badge>
+                                </Badge>
                             </div>
                           </CardContent>
                         </Card>
                       ))}
-                    </div>
+                          </div>
 
                     {/* Right side - Job Details */}
                     <div className="lg:col-span-3">
@@ -1796,7 +1826,7 @@ export default function CandidateDashboard() {
                                 <p className="text-gray-700 leading-relaxed">
                                   {selectedSavedJob.description || "No job description available."}
                                 </p>
-                              </div>
+                                  </div>
 
                               {/* Requirements */}
                               <div>
@@ -1811,7 +1841,7 @@ export default function CandidateDashboard() {
                                     <li className="text-gray-500">No specific requirements listed.</li>
                                   )}
                                 </ul>
-                              </div>
+                                  </div>
 
                               {/* Benefits */}
                               <div>
@@ -1840,7 +1870,7 @@ export default function CandidateDashboard() {
 
                               {/* Actions */}
                               <div className="flex gap-3 pt-4 border-t">
-                                <Button 
+                                <Button
                                   variant="outline"
                                   className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
                                   onClick={() => {
@@ -1851,13 +1881,13 @@ export default function CandidateDashboard() {
                                 >
                                   Remove from Saved
                                 </Button>
-                                <Button 
-                                  variant="outline"
+                          <Button
+                            variant="outline"
                                   className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
                                   onClick={() => setShowMatchingScoreDialog(true)}
-                                >
+                          >
                                   Detailed Matching Score
-                                </Button>
+                          </Button>
                                 <Button 
                                   className="flex-1 bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold cursor-pointer"
                                   onClick={() => handleApplyForSavedJob(selectedSavedJob)}
@@ -1866,8 +1896,8 @@ export default function CandidateDashboard() {
                                 </Button>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                        </CardContent>
+                      </Card>
                       ) : (
                         <Card className="sticky top-4">
                           <CardContent className="p-12 text-center">
@@ -1887,7 +1917,7 @@ export default function CandidateDashboard() {
                   <div className="flex items-center p-[100px] w-full justify-center">
                     <span className="text-[#5748e5] font-bold text-lg">
                       No saved jobs yet. Browse jobs and save them for later!
-                    </span>
+                      </span>
                   </div>
                 )}
               </div>
@@ -1895,7 +1925,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "profile config" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Profile Settings</h1>
                 <div className="grid gap-6">
                   <Card>
                     <CardHeader>
@@ -2026,8 +2055,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "education" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Education</h1>
-
                 <div className="grid gap-6">
                   {educations.map((edu, index) => (
                     <Card key={edu.id}>
@@ -2149,8 +2176,6 @@ export default function CandidateDashboard() {
 
              {activeTab === "experience" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Experience</h1>
-
                 <div className="grid gap-6">
                   {experiences.map((exp, index) => (
                     <Card key={exp.id}>
@@ -2320,8 +2345,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "skills" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Skills</h1>
-
                 <div className="grid gap-6">
                   {/* ---- Skill Types Card ---- */}
                   <Card>
@@ -2359,8 +2382,8 @@ export default function CandidateDashboard() {
                         );
                       })}
 
-                      {/* Save Skills button — unchanged style/location */}
-                      <div className="mt-4">
+                      {/* Save Skills button */}
+                      <div className="flex justify-end mt-4">
                         <SkillsSubmission
                           exp_skill={candidateProfile.exp_skill}
                           languageProficiencies={languageProficiencies}
@@ -2634,8 +2657,7 @@ export default function CandidateDashboard() {
             {activeTab === "neuro_strength" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">Neurodivergent Strengths</h1>
-                  <p className="text-sm text-gray-600">Select Your Top 10 Strengths</p>
+                  <p className="text-sm font-semibold text-gray-600">Select Your Top 10 Strengths</p>
                 </div>
 
                 <div className="space-y-4">
@@ -2674,20 +2696,20 @@ export default function CandidateDashboard() {
                     </div>
                   )}
 
+                  <div className="flex justify-end mt-4">
                   <NeuroStrengthSubmission
                     selectedStrengths={selectedStrengths}
                     onSave={() => {
                       calculateProfileCompletion();
                     }}
                   />
+                  </div>
                 </div>
               </div>
             )}
 
             {activeTab === "environment" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">Preferred Environment</h1>
-
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
@@ -2811,7 +2833,6 @@ export default function CandidateDashboard() {
 
             {activeTab === "mock interview" && (
               <>
-                <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Conduct a Mock Interview</h1>
                 {mockInterviewStep === "setup" && (
                   <MockInterviewSetupPage onNavigate={(target) => {
                     if (target === "interview") {
@@ -2839,8 +2860,7 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "Report" && (
-              <><h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Candidate Report</h1>
-                <ReportPage handleTabChangeProp={() => handleTabChange("mock interview")}/></>
+              <ReportPage handleTabChangeProp={() => handleTabChange("mock interview")}/>
             )}
 
             {activeTab === "Appointment" && (

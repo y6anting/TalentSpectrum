@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface ProfileSubmissionProps {
   candidateProfile: {
@@ -30,6 +31,7 @@ interface ProfileSubmissionProps {
 export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { success, error: showError } = useToastHelpers();
 
   // ✅ Get user session
   const { data: session } = useSession();
@@ -67,16 +69,16 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
       );
 
       if (response.ok) {
-        alert("Personal information saved successfully!");
+        success('Profile Saved', 'Personal information saved successfully!');
         if (onSave) onSave();
       } else {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
-        throw new Error("Failed to save personal information.");
+        showError('Save Failed', 'Failed to save personal information.');
       }
     } catch (error: any) {
       console.error("Error saving personal information:", error);
-      setError(error.message || "An error occurred while saving your personal information.");
+      showError('Error', error.message || 'An error occurred while saving your personal information.');
     } finally {
       setIsSubmitting(false);
     }

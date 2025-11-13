@@ -12,6 +12,9 @@ interface HeaderProps {
 }
 
 export default function Header({ setCurrentPage }: HeaderProps) {
+  // API base URL from environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -49,7 +52,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         });
 
         if (roleUpper === "CANDIDATE") {
-          const res = await fetch(`http://localhost:8000/users/${userEmail}`);
+          const res = await fetch(`${API_BASE}/users/${userEmail}`);
           if (res.ok) {
             const profile = await res.json();
             setDisplayName(profile?.name ?? session.user.name ?? null);
@@ -58,7 +61,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           }
         } else if (roleUpper === "EMPLOYER") {
           const res = await fetch(
-            `http://localhost:8000/jobs/company/${userEmail}`
+            `${API_BASE}/jobs/company/${userEmail}`
           );
           if (res.ok) {
             const company = await res.json();
@@ -117,10 +120,12 @@ export default function Header({ setCurrentPage }: HeaderProps) {
 
   if (role === "EMPLOYER") {
     navItems = [
-      { href: "/employer/employer-dashboard", label: "Dashboard" },
+      // { href: "/employer/employer-dashboard", label: "Dashboard" },
       // { href: "/employer/homepage", label: "Homepage" },
-      { href: "/employer/JobCoach", label: "Job Coach" },
-      { href: "/employer/candidate-list", label: "Candidate List" },
+      // { href: "/employer/JobCoach", label: "Job Coach" },
+      // { href: "/employer/candidate-list", label: "Candidate List" },
+      { href: "/candidate/community", label: "Community" },
+      { href: "/candidate/ecommerce", label: "E-Commerce" },
     ];
   } else if (role === "CANDIDATE") {
     navItems = [

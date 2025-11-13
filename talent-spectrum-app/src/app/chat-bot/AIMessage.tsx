@@ -65,14 +65,15 @@ export default function AIMessage({ text, source }: AIMessageProps) {
     <div className="w-full flex justify-start">
       <div
         className="
-          bg-[#635bff]
-          text-white
+          bg-[#635bff]/10
+          text-gray-700
           px-4 py-3
           rounded-xl rounded-bl-none
           max-w-[75%]
           break-words
           text-sm
           whitespace-pre-wrap
+          border border-[#635bff]/20
         "
       >
         {bullets.length > 0 ? (
@@ -98,7 +99,7 @@ export default function AIMessage({ text, source }: AIMessageProps) {
         )}
 
         {sourceLabel && (
-          <div className="mt-1 text-[10px] text-white/70">{sourceLabel}</div>
+          <div className="mt-1 text-[10px] text-gray-500">{sourceLabel}</div>
         )}
       </div>
     </div>

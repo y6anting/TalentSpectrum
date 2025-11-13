@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, ChangeEvent } from "react"; // Added useRef, ChangeEvent
 import { Button } from "@/app/components/button";
-import { Camera } from 'lucide-react'; // Imported Camera icon
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"; // Import confirm dialog
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2,
   FileText,
+  Camera,
   Clock,
   CheckCircle,
   MapPin,
@@ -29,6 +30,7 @@ import {
   Star,
   BarChart3,
   Calculator,
+  UserSearch,
   X,
   Briefcase,
   Book,
@@ -38,7 +40,9 @@ import {
   Search,
   ArrowUpDown,
   SquarePen, // Added SquarePen icon, 
-  BotMessageSquare
+  BotMessageSquare,
+  Filter,
+  SortAsc
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -54,7 +58,9 @@ import {
 import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
 import CandidateList from "@/app/employer/component/CandidateSearch";
+import AllCandidates from "@/app/employer/component/AllCandidates";
 import MatchedCandidates from "@/app/employer/component/MatchedCandidates";
+import { useToastHelpers } from "@/components/ui/toast";
 
 // Import the PostJob component
 import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
@@ -87,6 +93,8 @@ export type JobPosting = {
   job_summary: string;
   job_requirements?: string;
   soft_skills?: string;
+  status?: string; // active, draft, closed, expired
+  created_at?: string; // ISO date string
   flexible_work_hour: boolean;
   sensory_friendly_environment: boolean;
   peer_support_system: boolean;
@@ -182,6 +190,12 @@ interface MatchedCandidate {
 }
 
 export default function EmployerDashboard() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
+  const { success, error: showError, warning, info } = useToastHelpers();
+  
+  const { showConfirm } = useConfirmDialog();
+  
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -212,6 +226,18 @@ export default function EmployerDashboard() {
 
   // Matched candidates states
   const [shortlistedCandidates, setShortlistedCandidates] = useState<any[]>([]);
+  const [totalCandidates, setTotalCandidates] = useState<number>(0);
+
+  // Search states for filtering
+  const [jobSearchTerm, setJobSearchTerm] = useState("");
+  const [applicantSearchTerm, setApplicantSearchTerm] = useState("");
+  
+  // Filter states for Job Postings
+  const [jobFilterStatus, setJobFilterStatus] = useState("all");
+  
+  // Filter states for Shortlisted Applicants
+  const [applicantFilterStatus, setApplicantFilterStatus] = useState("all");
+  const [applicantSortBy, setApplicantSortBy] = useState("recent");
 
   // Calculator
   const [baseSalary, setBaseSalary] = useState<number>(10000);
@@ -259,53 +285,160 @@ export default function EmployerDashboard() {
   };
 
   // Handle shortlist
-  const handleShortlist = (candidate: MatchedCandidate) => {
+  const handleShortlist = async (candidate: MatchedCandidate) => {
+    if (!currentEmployerEmail) {
+      showError("Error", "Please log in to shortlist candidates");
+      return;
+    }
+
+    // Find the job ID from the job title
+    const job = jobPostings.find(j => j.job_title === candidate.jobTitle);
+    if (!job) {
+      showError("Error", "Job not found");
+      return;
+    }
+
     const newApplicant = {
-      id: candidate.id,
-      candidateName: candidate.candidateSummary.name,
-      jobTitle: candidate.jobTitle,
-      appliedDate: new Date().toISOString().split("T")[0],
+      employer_email: currentEmployerEmail,
+      candidate_id: candidate.id,
+      candidate_name: candidate.candidateSummary.name,
+      candidate_email: candidate.candidateSummary.email || "",
+      job_id: job.id,
+      job_title: candidate.jobTitle,
+      applied_date: new Date().toISOString().split("T")[0],
       status: "shortlisted",
-      accommodationsRequested:
+      accommodations_requested:
         candidate.candidateSummary.accommodations.length > 0,
-      accommodationDetails:
+      accommodation_details:
         candidate.candidateSummary.accommodations.join(", "),
       experience: candidate.candidateSummary.experienceSummary,
       score: candidate.overallMatchPercentage,
     };
 
-    setShortlistedCandidates((prev) => [...prev, newApplicant]);
-    alert(
-      `${candidate.candidateSummary.name} has been shortlisted and added to Applicants tab!`
-    );
+    try {
+      const response = await fetch(`${API_BASE}/shortlist/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newApplicant),
+      });
+
+      if (response.ok) {
+        const savedShortlist = await response.json();
+        // Update local state with the saved data
+        setShortlistedCandidates((prev) => [...prev, {
+          id: savedShortlist.id,
+          candidateName: savedShortlist.candidate_name,
+          jobTitle: savedShortlist.job_title,
+          appliedDate: savedShortlist.applied_date,
+          status: savedShortlist.status,
+          accommodationsRequested: savedShortlist.accommodations_requested,
+          accommodationDetails: savedShortlist.accommodation_details,
+          experience: savedShortlist.experience,
+          score: savedShortlist.score,
+        }]);
+        success(
+          "Candidate Shortlisted",
+          `${candidate.candidateSummary.name} has been added to Applicants tab!`
+        );
+      } else {
+        const errorData = await response.json();
+        showError("Shortlist Failed", errorData.detail || "Failed to shortlist candidate");
+      }
+    } catch (error) {
+      console.error("Error shortlisting candidate:", error);
+      showError("Error", "An error occurred while shortlisting the candidate");
+    }
   };
 
   const handleDeleteJob = async (jobId: number) => {
-    if (!confirm("Are you sure you want to delete this job posting?")) {
-      return;
-    }
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/jobs/${jobId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        alert("Job deleted successfully!");
-        if (currentEmployerEmail) {
-          const jobsResponse = await fetch(
-            `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
-          );
-          if (jobsResponse.ok) {
-            const jobsData = await jobsResponse.json();
-            setJobPostings(jobsData);
+    showConfirm({
+      title: "Delete Job Posting",
+      message: "Are you sure you want to delete this job posting? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+            method: "DELETE",
+          });
+          if (response.ok) {
+            success("Job Deleted", "Job posting deleted successfully!");
+            // Clear selection if deleted job was selected
+            if (selectedJobForApplicants?.id === jobId) {
+              setSelectedJobForApplicants(null);
+            }
+            if (currentEmployerEmail) {
+              const jobsResponse = await fetch(
+                `${API_BASE}/jobs/employer/${currentEmployerEmail}`
+              );
+              if (jobsResponse.ok) {
+                const jobsData = await jobsResponse.json();
+                setJobPostings(jobsData);
+              }
+            }
+          } else {
+            showError("Delete Failed", "Failed to delete job. Please try again.");
           }
+        } catch (error) {
+          console.error("Error deleting job:", error);
+          showError("Error", "An error occurred while deleting the job.");
         }
-      } else {
-        alert("Failed to delete job. Please try again.");
       }
-    } catch (error) {
-      console.error("Error deleting job:", error);
-      alert("An error occurred while deleting the job.");
-    }
+    });
+  };
+
+  const handleCloseJob = async (jobId: number) => {
+    showConfirm({
+      title: "Close Job Posting",
+      message: "Are you sure you want to close this job posting? Closed jobs won't be visible to candidates.",
+      confirmText: "Close Job",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          // Find the job to get its current data
+          const job = jobPostings.find(j => j.id === jobId);
+          if (!job) {
+            showError("Error", "Job not found");
+            return;
+          }
+
+          const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ...job,
+              status: "closed"
+            }),
+          });
+
+          if (response.ok) {
+            success("Job Closed", "Job posting closed successfully!");
+            // Clear selection if closed job was selected
+            if (selectedJobForApplicants?.id === jobId) {
+              setSelectedJobForApplicants(null);
+            }
+            if (currentEmployerEmail) {
+              const jobsResponse = await fetch(
+                `${API_BASE}/jobs/employer/${currentEmployerEmail}`
+              );
+              if (jobsResponse.ok) {
+                const jobsData = await jobsResponse.json();
+                setJobPostings(jobsData);
+              }
+            }
+          } else {
+            showError("Close Failed", "Failed to close job. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error closing job:", error);
+          showError("Error", "An error occurred while closing the job.");
+        }
+      }
+    });
   };
 
   const handleViewJob = (job: JobPosting) => {
@@ -324,7 +457,7 @@ export default function EmployerDashboard() {
     if (!currentEmployerEmail) return;
     try {
       const jobsRes = await fetch(
-        `http://127.0.0.1:8000/jobs/employer/${currentEmployerEmail}`
+        `${API_BASE}/jobs/employer/${currentEmployerEmail}`
       );
       if (jobsRes.ok) {
         const jobsData = await jobsRes.json();
@@ -359,7 +492,7 @@ const handleSaveEditJob = async () => {
     if (Object.keys(newErrors).length > 0) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/jobs/${editJobData.id}`, {
+      const res = await fetch(`${API_BASE}/jobs/${editJobData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editJobData),
@@ -372,17 +505,23 @@ const handleSaveEditJob = async () => {
 
       const updated = await res.json();
 
-      // Refresh job postings from server for immediate consistency
-      if (currentEmployerEmail) {
-        fetchEmployerJobs(currentEmployerEmail)
-      } else {
-        setJobPostings((prev) =>
-          prev.map((j) => (j.id === updated.id ? updated : j))
-        );
+      // Update job list immediately for instant UI feedback
+      setJobPostings((prev) =>
+        prev.map((j) => (j.id === updated.id ? updated : j))
+      );
+
+      // Also update selectedJobForApplicants if it's the same job
+      if (selectedJobForApplicants && selectedJobForApplicants.id === updated.id) {
+        setSelectedJobForApplicants(updated);
       }
 
-      // Show success alert here
-      alert("Job edited successfully!"); // <--- ADDED THIS LINE
+      // Refresh from server in background for consistency
+      if (currentEmployerEmail) {
+        fetchEmployerJobs(currentEmployerEmail);
+      }
+
+      // Show success toast
+      success("Job Updated", "Job edited successfully!");
 
       setIsEditModalOpen(false);
       setSelectedJob(null);
@@ -394,13 +533,13 @@ const handleSaveEditJob = async () => {
   // Function to handle logo upload
   const handleLogoUpload = async (file: File) => {
     if (!currentEmployerEmail) {
-      alert("Please log in as an employer to upload a logo.");
+      showError("Not Logged In", "Please log in as an employer to upload a logo.");
       return;
     }
     // Add this check if companyProfile.name is needed by backend for filename
     // and companyProfile might not be loaded yet.
     if (!companyProfile || !companyProfile.name) {
-      alert("Company profile not loaded. Cannot upload logo.");
+      showError("Profile Not Loaded", "Company profile not loaded. Cannot upload logo.");
       return;
     }
 
@@ -411,7 +550,7 @@ const handleSaveEditJob = async () => {
     formData.append("file", file);
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}/upload-company-logo`,
+        `${API_BASE}/jobs/company/${currentEmployerEmail}/upload-company-logo`,
         {
           method: "POST",
           body: formData,
@@ -423,6 +562,8 @@ const handleSaveEditJob = async () => {
         const data = await response.json();
         const newLogoUrl = data.logo_url; // Get the new logo URL from the backend response
 
+        console.log("Logo uploaded successfully. Backend returned:", newLogoUrl);
+        
         setCompanyLogo(newLogoUrl); // Update the logo displayed in the UI
 
         // Update the companyProfile state with the new logo_url for consistency
@@ -433,7 +574,7 @@ const handleSaveEditJob = async () => {
           return null;
         });
 
-        alert("Company logo uploaded successfully!");
+        success("Logo Uploaded", "Company logo uploaded successfully!");
 
         // REMOVED: await handleSaveCompanySettings(data.logo_url);
         // The backend's /upload-company-logo endpoint already updates the DB.
@@ -442,11 +583,11 @@ const handleSaveEditJob = async () => {
       } else {
         const errorText = await response.text();
         console.error("Error uploading logo:", errorText);
-        alert(`Failed to upload logo: ${errorText}`); // Display the backend's error message
+        showError("Upload Failed", `Failed to upload logo: ${errorText}`);
       }
     } catch (error) {
       console.error("Network error during logo upload:", error);
-      alert("An error occurred during logo upload.");
+      showError("Network Error", "An error occurred during logo upload.");
     } finally {
       // Optional: Reset loading state here (e.g., setIsUploading(false))
     }
@@ -456,13 +597,15 @@ const handleSaveEditJob = async () => {
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       handleLogoUpload(event.target.files[0]);
+      // Clear the file input so the same file can be selected again
+      event.target.value = '';
     }
   };
 
   // Handle company settings save (now accepts an optional logoUrl to update)
   const handleSaveCompanySettings = async (newLogoUrl: string | null = null) => {
     if (!currentEmployerEmail) {
-      alert("Please log in as an employer to save settings.");
+      showError("Not Logged In", "Please log in as an employer to save settings.");
       return;
     }
 
@@ -483,7 +626,7 @@ const handleSaveEditJob = async () => {
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}`,
+        `${API_BASE}/jobs/company/${currentEmployerEmail}`,
         {
           method: "PUT",
           headers: {
@@ -494,22 +637,25 @@ const handleSaveEditJob = async () => {
       );
 
       if (response.ok) {
-        // Only show alert if it's not part of a logo upload chain
-        if (newLogoUrl === null) {
-          alert("Company settings saved successfully!");
-        }
-        // Refresh the company profile data
+        // Refresh the company profile data immediately
         const updatedResponse = await fetch(
-          `http://127.0.0.1:8000/jobs/company/${currentEmployerEmail}`
+          `${API_BASE}/jobs/company/${currentEmployerEmail}`
         );
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
+          
+          // Update all company-related states
           setCompanyProfile(updatedData);
           setCompanyName(updatedData.name);
           setCompanyIndustry(updatedData.industry);
           setCompanyLocation(updatedData.location);
           setCompanySize(updatedData.size);
-          setCompanyLogo(updatedData.logo_url || null); // Update logo from fetched data
+          setCompanyLogo(updatedData.logo_url || null);
+        }
+        
+        // Show toast after state is updated (only if not part of logo upload)
+        if (newLogoUrl === null) {
+          success("Settings Saved", "Company settings saved successfully!");
         }
       } else {
         let errorText: string;
@@ -519,11 +665,11 @@ const handleSaveEditJob = async () => {
           errorText = "Unknown error";
         }
         console.error("Error saving company settings:", errorText);
-        alert("Failed to save company settings. Please try again.");
+        showError("Save Failed", "Failed to save company settings. Please try again.");
       }
     } catch (error) {
       console.error("Error saving company settings:", error);
-      alert("An error occurred while saving company settings.");
+      showError("Error", "An error occurred while saving company settings.");
     }
   };
 
@@ -550,7 +696,7 @@ const handleSaveEditJob = async () => {
 
       try {
         const companyResponse = await fetch(
-          `http://127.0.0.1:8000/jobs/company/${employerEmail}`
+          `${API_BASE}/jobs/company/${employerEmail}`
         );
         const defaultCompany: CompanyProfile = {
           id: 0,
@@ -578,7 +724,7 @@ const handleSaveEditJob = async () => {
           companyData = await companyResponse.json();
         } else if (companyResponse.status === 404) {
           const createResponse = await fetch(
-            "http://127.0.0.1:8000/jobs/company/",
+            `${API_BASE}/jobs/company/`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -598,13 +744,49 @@ const handleSaveEditJob = async () => {
         setCompanyLocation(companyData.location);
         setCompanySize(companyData.size);
         setCompanyLogo(companyData.logo_url || null);
+        
+        console.log("Company profile loaded. Logo URL:", companyData.logo_url);
 
         const jobsResponse = await fetch(
-          `http://127.0.0.1:8000/jobs/employer/${employerEmail}`
+          `${API_BASE}/jobs/employer/${employerEmail}`
         );
         if (jobsResponse.ok) {
           const jobsData = await jobsResponse.json();
           setJobPostings(sortJobsByLatest(jobsData));
+        }
+
+        // Fetch shortlisted candidates
+        try {
+          const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${employerEmail}`);
+          if (shortlistResponse.ok) {
+            const shortlistData = await shortlistResponse.json();
+            // Transform backend data to match frontend state structure
+            const transformedData = shortlistData.map((item: any) => ({
+              id: item.id,
+              candidateName: item.candidate_name,
+              jobTitle: item.job_title,
+              appliedDate: item.applied_date,
+              status: item.status,
+              accommodationsRequested: item.accommodations_requested,
+              accommodationDetails: item.accommodation_details,
+              experience: item.experience,
+              score: item.score,
+            }));
+            setShortlistedCandidates(transformedData);
+          }
+        } catch (err) {
+          console.error("Error fetching shortlisted candidates:", err);
+        }
+
+        // Fetch total candidates count
+        try {
+          const candidatesResponse = await fetch(`${API_BASE}/profiles/`);
+          if (candidatesResponse.ok) {
+            const candidatesData = await candidatesResponse.json();
+            setTotalCandidates(Array.isArray(candidatesData) ? candidatesData.length : 0);
+          }
+        } catch (err) {
+          console.error("Error fetching candidates count:", err);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -615,18 +797,32 @@ const handleSaveEditJob = async () => {
     fetchData();
   }, [session, status, router]);
 
-  // Auto-select the top job whenever opening the Jobs tab or when list updates
-  // useEffect(() => {
-  //   if (activeTab === "jobs" && jobPostings.length > 0) {
-  //     setSelectedJobForApplicants(jobPostings[0]);
-  //   }
-  // }, [activeTab, jobPostings]);
+  // Auto-select the first job when job postings update (after edit, delete, or refresh)
+  useEffect(() => {
+    if (jobPostings.length > 0) {
+      // If current selected job is not in the list, or there's no selection, select the first one
+      const currentJobStillExists = selectedJobForApplicants && 
+        jobPostings.some(job => job.id === selectedJobForApplicants.id);
+      
+      if (!currentJobStillExists) {
+        setSelectedJobForApplicants(jobPostings[0]);
+      } else {
+        // Update the selected job with the latest data
+        const updatedJob = jobPostings.find(job => job.id === selectedJobForApplicants.id);
+        if (updatedJob) {
+          setSelectedJobForApplicants(updatedJob);
+        }
+      }
+    } else {
+      setSelectedJobForApplicants(null);
+    }
+  }, [jobPostings]);
 
   
   const fetchEmployerJobs = async (email: string) => {
     try {
       const jobsResponse = await fetch(
-        `http://127.0.0.1:8000/jobs/employer/${email}`
+        `${API_BASE}/jobs/employer/${email}`
       );
       if (jobsResponse.ok) {
         const jobsData = await jobsResponse.json();
@@ -650,26 +846,68 @@ const handleSaveEditJob = async () => {
     "Salary"
   ]
 
-  const sortedJobPostings = [...jobPostings].sort((a, b) => {
-    switch (selectedSort) {
-      case "Newest":
-        return b.id - a.id; // higher ID = newer
-      case "Oldest":
-        return a.id - b.id; // lower ID = older
-      case "A-Z":
-        return a.job_title.localeCompare(b.job_title);
-      case "Work Mode":
-        return a.work_mode.localeCompare(b.work_mode);
-      case "Job Type":
-        return a.job_type.localeCompare(b.job_type);
-      case "Experience Level":
-        return a.experience_level.localeCompare(b.experience_level);
-      case "Salary":
-        return b.salary_range - a.salary_range;
-      default:
-        return 0;
-    }
-  });
+  const sortedJobPostings = [...jobPostings]
+    .filter((job) => {
+      // Search filter
+      const matchesSearch = !jobSearchTerm || 
+        job.job_title.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+        job.job_type.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+        job.location.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+        job.work_mode.toLowerCase().includes(jobSearchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = jobFilterStatus === "all" || 
+        (job.status && job.status.toLowerCase() === jobFilterStatus.toLowerCase());
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (selectedSort) {
+        case "Newest":
+          return b.id - a.id; // higher ID = newer
+        case "Oldest":
+          return a.id - b.id; // lower ID = older
+        case "A-Z":
+          return a.job_title.localeCompare(b.job_title);
+        case "Work Mode":
+          return a.work_mode.localeCompare(b.work_mode);
+        case "Job Type":
+          return a.job_type.localeCompare(b.job_type);
+        case "Experience Level":
+          return a.experience_level.localeCompare(b.experience_level);
+        case "Salary":
+          return b.salary_range - a.salary_range;
+        default:
+          return 0;
+      }
+    });
+
+  const filteredShortlistedCandidates = shortlistedCandidates
+    .filter((app) => {
+      // Search filter
+      const matchesSearch = !applicantSearchTerm || 
+        app.candidateName.toLowerCase().includes(applicantSearchTerm.toLowerCase()) ||
+        app.jobTitle.toLowerCase().includes(applicantSearchTerm.toLowerCase()) ||
+        app.status.toLowerCase().includes(applicantSearchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = applicantFilterStatus === "all" || 
+        app.status.toLowerCase() === applicantFilterStatus.toLowerCase();
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (applicantSortBy) {
+        case "recent":
+          return new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime();
+        case "match":
+          return (b.score || 0) - (a.score || 0);
+        case "name":
+          return a.candidateName.localeCompare(b.candidateName);
+        default:
+          return 0;
+      }
+    });
 
   const renderInputField = (
     label: string,
@@ -699,7 +937,7 @@ const handleSaveEditJob = async () => {
             onChange(val);
           }
         }}
-        className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
+        className="w-full px-3 py-2 rounded-lg outline-none focus-visible:border-gray-300 focus-visible:ring-gray-300/50 focus-visible:ring-[1px] border-2 border-[#635BFF]/30"
         placeholder={`Please enter ${label.toLowerCase()}`}
         onKeyDown={(e) =>
           type === "number" &&
@@ -735,17 +973,22 @@ const handleSaveEditJob = async () => {
                       <img
                         src={
                           companyLogo.startsWith("http")
-                            ? companyLogo
-                            : `/logo/${companyLogo.replace(/^\/?logo\//, "")}`
+                            ? `${companyLogo}?t=${Date.now()}`
+                            : `${API_BASE}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}?t=${Date.now()}`
                         }
                         alt="Company Logo"
                         className="w-full h-full object-cover"
                         onError={(e) => {
+                          console.error("Logo failed to load:", companyLogo);
                           // hide broken image and show fallback icon
                           (e.target as HTMLImageElement).style.display = "none";
-                          const fallback = document.createElement("div");
-                          fallback.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-white mx-auto' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 21h18M9 8h6m-3-5v5m4 0h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2' /></svg>`;
-                          e.currentTarget.parentElement?.appendChild(fallback);
+                          const parentDiv = e.currentTarget.parentElement;
+                          if (parentDiv && !parentDiv.querySelector('.fallback-icon')) {
+                            const fallback = document.createElement("div");
+                            fallback.className = "fallback-icon";
+                            fallback.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-white mx-auto' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 21h18M9 8h6m-3-5v5m4 0h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2' /></svg>`;
+                            parentDiv.appendChild(fallback);
+                          }
                         }}
                       />
                     ) : (
@@ -773,8 +1016,9 @@ const handleSaveEditJob = async () => {
                       label: "Search Applicants",
                       icon: Search,
                     },
+                    
                     { id: "applications", label: "Shortlisted Applicants", icon: Users },
-                    {
+                    { id: "all-candidates", label: "Candidate Pool", icon: UserSearch  },{
                       id: "tax-calculator",
                       label: "Calculator",
                       icon: Calculator,
@@ -814,6 +1058,9 @@ const handleSaveEditJob = async () => {
           <div>
             {activeTab === "overview" && (
               <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
+                  Overview
+                </h2>
                 <div className="grid md:grid-cols-3 gap-6">
                   {[
                     {
@@ -827,7 +1074,8 @@ const handleSaveEditJob = async () => {
                       icon: Users,
                       iconColor: "text-blue-600",
                       title: "Total Applicants",
-                      value: shortlistedCandidates.length,
+                      value: totalCandidates,
+                      onClick: () => setActiveTab("search-candidates"),
                     },
                     {
                       icon: Eye,
@@ -952,46 +1200,79 @@ const handleSaveEditJob = async () => {
 
             {/* Job Postings Tab - Split View with Matched Candidates */}
             {activeTab === "jobs" && (
-              <div className="grid lg:grid-cols-3 gap-6">
-                {/* Left Side - Job Postings List */}
-                <div className="lg:col-span-1 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between mb-2">
-                    {/* Title */}
-                    <h2 className="text-2xl font-bold text-[#3a4043] mr-4 flex-shrink-0">
-                      Job Postings (5)
-                    </h2>
-                    {/* Sort button */}
-                    <div className="relative mt-2 sm:mt-0 flex-shrink-0">
-                      <button
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="cursor-pointer inline-flex items-center justify-center gap-1 text-black/60 text-sm font-medium border border-[#635bff] hover:border-[#635bff] rounded-md px-3 py-1 hover:bg-[#635bff] hover:text-white transition w-fit whitespace-nowrap"
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                        <span>{selectedSort}</span>
-                      </button>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043] mb-2">Job Postings</h2>
+                  {/* <p className="text-[#6f7a80]">
+                    Manage your job postings and find matched candidates
+                  </p> */}
+                </div>
 
-                      {isDropdownOpen && (
-                        <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                          {jobPostingsSortModes.map((mode) => (
-                            <button
-                              key={mode}
-                              onClick={() => {
-                                setSelectedSort(mode);
-                                setIsDropdownOpen(false);
-                                // handle sorting here
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-violet-50 hover:text-[#635bff] ${selectedSort === mode ? "bg-violet-50 text-[#635bff]" : ""
-                                }`}
-                            >
-                              {mode}
-                            </button>
-                          ))}
+                {/* Search and Filters */}
+                <Card className="mb-3">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Search */}
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
+                          <Input
+                            placeholder="Search jobs by title, type, location, or work mode..."
+                            value={jobSearchTerm}
+                            onChange={(e) => setJobSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-visible pr-5">
+                      {/* Filters */}
+                      <div className="flex gap-4">
+                        <Select value={jobFilterStatus} onValueChange={setJobFilterStatus}>
+                          <SelectTrigger className="w-40">
+                            <Filter className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Jobs</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={selectedSort} onValueChange={setSelectedSort}>
+                          <SelectTrigger className="w-48">
+                            <SortAsc className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Newest">Newest</SelectItem>
+                            <SelectItem value="Oldest">Oldest</SelectItem>
+                            <SelectItem value="A-Z">A-Z</SelectItem>
+                            <SelectItem value="Work Mode">Work Mode</SelectItem>
+                            <SelectItem value="Job Type">Job Type</SelectItem>
+                            <SelectItem value="Experience Level">Experience Level</SelectItem>
+                            <SelectItem value="Salary">Salary</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Results Summary */}
+                <div className="mb-6 ml-2">
+                  <p className="text-[#6f7a80] text-sm">
+                    Showing {sortedJobPostings.length} of {jobPostings.length} job postings
+                  </p>
+                </div>
+
+                {/* Job Cards (Left) and Job Details (Right) */}
+                <div className="grid lg:grid-cols-3 gap-6">
+                  {/* Left Side - Job Postings List */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-visible pr-5">
                     {isLoading ? (
                       <Card>
                         <CardContent className="p-4 text-center">
@@ -1006,7 +1287,7 @@ const handleSaveEditJob = async () => {
                           </p>
                           <Button
                             size="sm"
-                            className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                            className="bg-[#635bff] hover:bg-[#5748e5] text-white hover:cursor-pointer"
                             onClick={() => setActiveTab("post-job")}
                           >
                             Post Your First Job
@@ -1084,7 +1365,7 @@ const handleSaveEditJob = async () => {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              <Button
+                              {/* <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
@@ -1092,15 +1373,24 @@ const handleSaveEditJob = async () => {
                                 }
                               >
                                 <Eye className="h-4 w-4 mr-1" /> View
-                              </Button>
+                              </Button> */}
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
                                   handleEditJob(selectedJobForApplicants)
                                 }
+                                className="border border-gray-400 hover:cursor-pointer bg-white"
                               >
                                 <Edit className="h-4 w-4 mr-1" /> Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-600 text-red-600 hover:bg-red-50 hover:cursor-pointer hover:text-red-700"
+                                onClick={() => handleCloseJob(selectedJobForApplicants.id)}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" /> Close Job
                               </Button>
                               <Button
                                 variant="outline"
@@ -1108,6 +1398,7 @@ const handleSaveEditJob = async () => {
                                 onClick={() =>
                                   handleDeleteJob(selectedJobForApplicants.id)
                                 }
+                                className="bg-red-600 hover:bg-red-700 text-white hover:text-white hover:cursor-pointer"
                               >
                                 <Trash2 className="h-4 w-4 mr-1" /> Delete
                               </Button>
@@ -1135,7 +1426,7 @@ const handleSaveEditJob = async () => {
                               {selectedJobForApplicants.experience_level}
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-gray-700 line-clamp-3">
                             {selectedJobForApplicants.job_summary}
                           </p>
                         </CardContent>
@@ -1163,36 +1454,94 @@ const handleSaveEditJob = async () => {
                     </Card>
                   )}
                 </div>
+                </div>
               </div>
             )}
 
             {/* Search Candidates Tab */}
             {activeTab === "search-candidates" && (
               <div>
-                {/* Import and use CandidateList component here */}
-                {/* <p className="text-gray-600 mb-4">
-                  Search through all available candidates in the talent pool
-                </p> */}
-                {/* You'll need to import CandidateList component from document 3 */}
                 <CandidateList />
+              </div>
+            )}
+
+            {/* All Candidates Tab */}
+            {activeTab === "all-candidates" && (
+              <div>
+                <AllCandidates />
               </div>
             )}
 
             {/* Applicants Tab */}
             {activeTab === "applications" && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-[#3a4043]">
-                    Shortlisted Applicants
-                  </h1>
-                  <div className="flex gap-2">
-                    <Button variant="outline">Filter</Button>
-                    <Button variant="outline">Sort</Button>
-                  </div>
+                {/* Header */}
+                <div className="mb-4">
+                  
+                  <h2 className="text-2xl font-bold text-[#3a4043] mb-4">Shortlisted Applicants</h2>
+                  {/* <p className="text-[#6f7a80]">
+                    View and manage candidates you've shortlisted
+                  </p> */}
                 </div>
+
+                {/* Search and Filters */}
+                <Card className="mb-3">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Search */}
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
+                          <Input
+                            placeholder="Search applicants by name, job title, or status..."
+                            value={applicantSearchTerm}
+                            onChange={(e) => setApplicantSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filters */}
+                      <div className="flex gap-4">
+                        <Select value={applicantFilterStatus} onValueChange={setApplicantFilterStatus}>
+                          <SelectTrigger className="w-52">
+                            <Filter className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                            <SelectItem value="under_review">Under Review</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={applicantSortBy} onValueChange={setApplicantSortBy}>
+                          <SelectTrigger className="w-40">
+                            <SortAsc className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recent">Most Recent</SelectItem>
+                            <SelectItem value="match">Best Match</SelectItem>
+                            <SelectItem value="name">Name A-Z</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Results Summary */}
+                <div className="mb-6 ml-2">
+                  <p className="text-[#6f7a80] text-sm">
+                    Showing {filteredShortlistedCandidates.length} of {shortlistedCandidates.length} shortlisted applicants
+                  </p>
+                </div>
+
                 <div className="space-y-4">
-                  {shortlistedCandidates.length > 0 ? (
-                    shortlistedCandidates.map((app) => (
+                  {filteredShortlistedCandidates.length > 0 ? (
+                    filteredShortlistedCandidates.map((app) => (
                       <Card key={app.id}>
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start mb-4">
@@ -1273,18 +1622,23 @@ const handleSaveEditJob = async () => {
                       <CardContent className="p-12 text-center">
                         <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-[#3a4043] mb-2">
-                          No Shortlisted Candidates Yet
+                          {applicantSearchTerm 
+                            ? "No Matching Applicants Found" 
+                            : "No Shortlisted Candidates Yet"}
                         </h3>
                         <p className="text-gray-600 mb-4">
-                          Start shortlisting candidates from your job postings
-                          to see them here.
+                          {applicantSearchTerm
+                            ? "Try adjusting your search terms"
+                            : "Start shortlisting candidates from your job postings to see them here."}
                         </p>
-                        <Button
-                          className="bg-[#635bff] hover:bg-[#5748e5] text-white"
-                          onClick={() => setActiveTab("jobs")}
-                        >
-                          View Job Postings
-                        </Button>
+                        {!applicantSearchTerm && (
+                          <Button
+                            className="bg-[#635bff] hover:bg-[#5748e5] text-white hover:cursor-pointer"
+                            onClick={() => setActiveTab("jobs")}
+                          >
+                            View Job Postings
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -1294,9 +1648,7 @@ const handleSaveEditJob = async () => {
 
             {activeTab === "settings" && (
               <div className="space-y-4">
-                {/* <h1 className="text-2xl font-bold text-[#3a4043] mt-4">
-                  Company Settings
-                </h1> */}
+                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">Company Settings</h2>
 
                 {/* Changed to full width (md:grid-cols-1) */}
                 <div className="grid md:grid-cols-1 gap-6">
@@ -1304,9 +1656,55 @@ const handleSaveEditJob = async () => {
                     <CardHeader>
                       <CardTitle>Company Information</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
+                       <div>
+                        <label htmlFor="companyLogoInput" className="block text-sm font-semibold text-gray-700 mb-1">Company Logo</label>
+                        <div className="flex items-center space-x-4">
+                          {companyLogo && companyLogo.trim() !== "" ? (
+                            <img
+                              src={
+                                companyLogo.startsWith("http")
+                                  ? `${companyLogo}?t=${Date.now()}`
+                                  : `${API_BASE}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}?t=${Date.now()}`
+                              }
+                              alt="Company Logo"
+                              className="w-20 h-20 rounded-full object-cover border border-gray-200"
+                              onError={(e) => {
+                                console.error("Logo failed to load in settings:", companyLogo);
+                                // Show fallback camera icon
+                                (e.target as HTMLImageElement).style.display = "none";
+                                const parentDiv = e.currentTarget.parentElement;
+                                if (parentDiv && !parentDiv.querySelector('.fallback-camera')) {
+                                  const fallback = document.createElement("div");
+                                  fallback.className = "w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 fallback-camera";
+                                  fallback.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>`;
+                                  parentDiv.appendChild(fallback);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                              <Camera className="h-8 w-8" />
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={onFileChange}
+                            className="hidden"
+                            accept="image/*"
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="hover:cursor-pointer"
+                          >
+                            Upload New Logo
+                          </Button>
+                        </div>
+                      </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                        <label className="block text-sm font-semibold text-[#3a4043] mb-1">
                           Company Name
                         </label>
                         <Input
@@ -1318,7 +1716,7 @@ const handleSaveEditJob = async () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                        <label className="block text-sm font-semibold text-[#3a4043] mb-1">
                           Company Email
                         </label>
                         <Input
@@ -1333,7 +1731,7 @@ const handleSaveEditJob = async () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                        <label className="block text-sm font-semibold text-[#3a4043] mb-1">
                           Industry
                         </label>
                         <Select value={companyIndustry} onValueChange={setCompanyIndustry}>
@@ -1376,7 +1774,7 @@ const handleSaveEditJob = async () => {
                         </Select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                        <label className="block text-sm font-semibold text-[#3a4043] mb-1">
                           Location
                         </label>
                         <Select value={companyLocation} onValueChange={setCompanyLocation}>
@@ -1405,62 +1803,31 @@ const handleSaveEditJob = async () => {
                         </Select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3a4043] mb-1">
+                        <label className="block text-sm font-semibold text-[#3a4043] mb-1">
                           Company Size
                         </label>
-                        <select
-                          value={companySize}
-                          onChange={(e) => setCompanySize(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg text-[#3a4043] bg-white"
-                        >
-                          <option value="1-10 employees">1-10 employees</option>
-                          <option value="11-50 employees">
-                            11-50 employees
-                          </option>
-                          <option value="50-100 employees">
-                            50-100 employees
-                          </option>
-                          <option value="100-500 employees">
-                            100-500 employees
-                          </option>
-                          <option value="500+ employees">500+ employees</option>
-                        </select>
+                        <Select value={companySize} onValueChange={setCompanySize}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select company size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1-10 employees">1-10 employees</SelectItem>
+                            <SelectItem value="11-50 employees">11-50 employees</SelectItem>
+                            <SelectItem value="50-100 employees">50-100 employees</SelectItem>
+                            <SelectItem value="100-500 employees">100-500 employees</SelectItem>
+                            <SelectItem value="500+ employees">500+ employees</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label htmlFor="companyLogoInput" className="block text-sm font-medium text-gray-700 mb-1">Company Logo</label>
-                        <div className="flex items-center space-x-4">
-                          {companyLogo ? (
-                            <img
-                              src={`${companyLogo}`}
-                              alt="Company Logo"
-                              className="w-20 h-20 rounded-full object-cover border border-gray-200"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                              <Camera className="h-8 w-8" />
-                            </div>
-                          )}
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={onFileChange}
-                            className="hidden"
-                            accept="image/*"
-                          />
-                          <Button
-                            variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            Upload New Logo
-                          </Button>
-                        </div>
-                      </div>
+                     
+                      <div className=" flex justify-end">
                       <Button
-                        className="bg-[#635bff] hover:bg-[#5346e6] text-white"
+                        className="bg-[#635bff] hover:bg-[#5346e6] text-white hover:cursor-pointer"
                         onClick={() => handleSaveCompanySettings()} // Call without newLogoUrl to save other settings
                       >
                         Save Changes
                       </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -1469,14 +1836,14 @@ const handleSaveEditJob = async () => {
 
             {activeTab === "tax-calculator" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-[#3a4043]">
+                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
                   Double Tax Relief Calculator
-                </h1>
+                </h2>
                 <Card>
                   <CardHeader>
                     <CardTitle>Enter Employer Cost Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-4">
+                  <CardContent className="grid md:grid-cols-2 gap-4 ">
                     {renderInputField(
                       "Base Salary (RM)",
                       "baseSalary",
@@ -1639,23 +2006,25 @@ const handleSaveEditJob = async () => {
                   if (currentEmployerEmail) {
                     await fetchEmployerJobs(currentEmployerEmail);
                   }
-                  setActiveTab("jobs");
+                  // Stay on post-job tab after posting
                   window.scrollTo({ top: 0, behavior: "smooth" });
-                  setSelectedSort("Newest")
                 }}
                 onCancel={() => setActiveTab("overview")}
               />
             )}
 
             {activeTab === "consult-ai" && (
-              <>
-                <Card>
+              <div className="flex flex-col h-[calc(100vh-200px)]">
+                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
+                  Consult AI
+                </h2>
+                <div className="flex-1 min-h-0">
                   <ChatBot.Chat />
-                </Card>
-              </>
+                </div>
+              </div>
             )}
             {/* // View Job Modal */}
-            <ViewJobModal
+            {/* <ViewJobModal
               isOpen={isViewModalOpen}
               job={selectedJob}
               salaryRanges={SALARY_RANGES}
@@ -1663,8 +2032,8 @@ const handleSaveEditJob = async () => {
               onEdit={() => {
                 setIsViewModalOpen(false);
                 selectedJob && handleEditJob(selectedJob);
-              }}
-            />
+              }} */}
+            {/* /> */}
 
             <EditJobModal
               isOpen={isEditModalOpen}

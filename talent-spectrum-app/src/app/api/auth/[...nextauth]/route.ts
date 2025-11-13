@@ -63,7 +63,8 @@ export const authOptions: AuthOptions = {
 
         try {
           // Call your backend login API
-          const res = await fetch("http://127.0.0.1:8000/users/login", {
+          const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+          const res = await fetch(`${API_BASE}/users/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

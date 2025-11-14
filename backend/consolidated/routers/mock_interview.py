@@ -4,15 +4,21 @@ Complete mock interview system with:
 - AI-powered question generation
 - Speech transcription (OpenAI Whisper)
 - AI feedback generation (Google Gemini)
+- Interview report storage and retrieval
 """
 import os
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Literal
 from datetime import datetime
 import json
 from dotenv import load_dotenv
-from database.models.mock_interview import JobPosition, InterviewQuestion, GenerateQuestionsRequest, Answer, FeedbackRequest
+from sqlalchemy.orm import Session
+from database.connection import get_db
+from database.models.mock_interview import (
+    JobPosition, InterviewQuestion, GenerateQuestionsRequest, Answer, FeedbackRequest,
+    InterviewReport, InterviewReportCreate, InterviewReportResponse
+)
 
 router = APIRouter()
 
@@ -461,7 +467,188 @@ def mock_interview_status():
         "features": {
             "question_generation": gemini_available,
             "feedback_generation": gemini_available,
-            "transcription": openai_available
+            "transcription": openai_available,
+            "report_storage": True
         }
     }
+
+
+# --- Interview Report Storage ---
+
+@router.post("/reports", response_model=InterviewReportResponse)
+async def create_interview_report(report: InterviewReportCreate, db: Session = Depends(get_db)):
+    """
+    Save an interview report to the database
+    """
+    try:
+        # Convert string dates to datetime
+        start_time = datetime.fromisoformat(report.start_time.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(report.end_time.replace('Z', '+00:00'))
+        
+        # Process questions_data - handle both Pydantic models and dicts
+        questions_data_list = []
+        if report.questions_data:
+            for q in report.questions_data:
+                if hasattr(q, 'dict'):
+                    # It's a Pydantic model
+                    q_dict = q.dict()
+                elif isinstance(q, dict):
+                    # It's already a dict
+                    q_dict = q
+                else:
+                    continue
+                # Ensure all required fields are present
+                questions_data_list.append({
+                    "question": q_dict.get("question", ""),
+                    "answer": q_dict.get("answer", ""),
+                    "type": q_dict.get("type", "general"),
+                    "feedback": q_dict.get("feedback"),
+                    "score": q_dict.get("score"),
+                    "hasAudio": q_dict.get("hasAudio", False)
+                })
+        
+        print(f"Saving report with {len(questions_data_list)} questions/answers")
+        print(f"Sample questions_data: {questions_data_list[:2] if questions_data_list else 'None'}")
+        
+        # Create database model
+        db_report = InterviewReport(
+            candidate_email=report.candidate_email,
+            position_title=report.position_title,
+            position_level=report.position_level,
+            interview_type=report.interview_type,
+            total_questions=report.total_questions,
+            start_time=start_time,
+            end_time=end_time,
+            duration_seconds=report.duration_seconds,
+            overall_score=report.overall_score,
+            clarity_score=report.clarity_score,
+            relevance_score=report.relevance_score,
+            completeness_score=report.completeness_score,
+            overall_feedback=report.overall_feedback,
+            strengths=report.strengths,
+            improvements=report.improvements,
+            questions_data=questions_data_list
+        )
+        
+        db.add(db_report)
+        db.commit()
+        db.refresh(db_report)
+        
+        return db_report
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating interview report: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save interview report: {str(e)}")
+
+
+@router.get("/reports/{email}", response_model=List[InterviewReportResponse])
+async def get_interview_reports(email: str, limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Get interview reports for a candidate by email (limited to 10 by default)
+    """
+    try:
+        reports = db.query(InterviewReport).filter(
+            InterviewReport.candidate_email == email
+        ).order_by(InterviewReport.created_at.desc()).limit(limit).all()
+        
+        return reports
+    except Exception as e:
+        print(f"Error fetching interview reports: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch interview reports: {str(e)}")
+
+
+@router.get("/reports/{email}/latest", response_model=InterviewReportResponse)
+async def get_latest_interview_report(email: str, db: Session = Depends(get_db)):
+    """
+    Get the most recent interview report for a candidate by email
+    """
+    try:
+        report = db.query(InterviewReport).filter(
+            InterviewReport.candidate_email == email
+        ).order_by(InterviewReport.created_at.desc()).first()
+        
+        if not report:
+            raise HTTPException(status_code=404, detail="No interview reports found for this email")
+        
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching latest interview report: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch latest interview report: {str(e)}")
+
+
+@router.get("/reports/detail/{report_id}", response_model=InterviewReportResponse)
+async def get_report_by_id(report_id: int, db: Session = Depends(get_db)):
+    """
+    Get a specific interview report by ID
+    """
+    try:
+        report = db.query(InterviewReport).filter(
+            InterviewReport.id == report_id
+        ).first()
+        
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        # Debug: Check questions_data
+        print(f"Retrieved report ID {report_id}")
+        print(f"Questions data type: {type(report.questions_data)}")
+        print(f"Questions data length: {len(report.questions_data) if report.questions_data else 0}")
+        if report.questions_data:
+            print(f"Sample questions_data: {report.questions_data[:2] if len(report.questions_data) > 0 else 'Empty'}")
+        
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching report by ID: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch report: {str(e)}")
+
+
+@router.delete("/reports/{report_id}")
+async def delete_interview_report(report_id: int, db: Session = Depends(get_db)):
+    """
+    Delete an interview report by ID
+    """
+    try:
+        report = db.query(InterviewReport).filter(
+            InterviewReport.id == report_id
+        ).first()
+        
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        db.delete(report)
+        db.commit()
+        
+        return {"message": "Report deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting interview report: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete report: {str(e)}")
+
+
+@router.get("/reports/{email}/highest-score", response_model=InterviewReportResponse)
+async def get_highest_score_interview_report(email: str, db: Session = Depends(get_db)):
+    """
+    Get the interview report with the highest score for a candidate by email
+    """
+    try:
+        report = db.query(InterviewReport).filter(
+            InterviewReport.candidate_email == email,
+            InterviewReport.overall_score.isnot(None)
+        ).order_by(InterviewReport.overall_score.desc()).first()
+        
+        if not report:
+            raise HTTPException(status_code=404, detail="No interview reports with scores found for this email")
+        
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching highest score interview report: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch highest score report: {str(e)}")
 

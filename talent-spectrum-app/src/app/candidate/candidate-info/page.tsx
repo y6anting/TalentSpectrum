@@ -300,20 +300,6 @@ export default function CandidateInfoPage() {
     },
   });
 
-  useEffect(() => {
-    const storedEmail = localStorage.getItem('userEmail');
-    if (storedEmail && !candidateProfile.personalIdentifiers.emailAddress) {
-      setCandidateProfile(prev => ({
-        ...prev,
-        email: storedEmail,
-        personalIdentifiers: {
-          ...prev.personalIdentifiers,
-          emailAddress: storedEmail
-        }
-      }));
-    }
-  }, []);
-
   // Step configuration
   const steps = [
     { id: "profile", title: "Profile Settings", icon: User, description: "Personal information and contact details" },

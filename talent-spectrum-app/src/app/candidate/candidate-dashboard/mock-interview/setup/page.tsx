@@ -6,7 +6,7 @@ import { Button } from "@/app/components/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import { Card, CardContent } from "@/app/components/card";
 import { 
-  Target, Clock, ArrowUpWideNarrow, Briefcase, Search, Users, Code, MessageSquare 
+  Target, Clock, ArrowUpWideNarrow, Briefcase, Search, Users, Code, MessageSquare, History
 } from "lucide-react";
 import { 
   generateInterviewQuestions, 
@@ -27,7 +27,7 @@ interface InterviewSession {
   questions: InterviewQuestion[];
 }
 
-type EmbeddedNavTarget = "setup" | "interview" | "feedback";
+type EmbeddedNavTarget = "setup" | "interview" | "feedback" | "history";
 interface EmbeddedNavProps { onNavigate?: (target: EmbeddedNavTarget) => void }
 
 const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
@@ -135,18 +135,33 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
     <div className="min-h-screen mb-10">
       <div className="h-full">
         <div className="max-w-[1400px] ">
+          
+          
           {/* Main Setup Card */}
-          <Card className="w-full bg-white ">
-            <CardContent className="p-6">
+          <Card className="w-full bg-[#fbfbff] border border-gray-300 shadow-sm">
+            <CardContent className="px-12 py-4">
               <div className="gap-8">
                 
                 {/* Interview Configuration */}
                 <div className="space-y-6">
                   <div className="py-6" >
-                    <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
-                      <Target className="w-5 h-5 text-[#635BFF] mr-2" />
-                      Interview Type
-                    </h3>
+                    <div className="flex items-center justify-end">
+                        <Button 
+                          variant="outline" 
+                          className=" hover:cursor-pointer hover:border-[#635BFF] hover:text-[#635BFF] bg-[#635BFF]/10 text-[#524BCC] border-[#524BCC]"
+                          onClick={() => onNavigate && onNavigate("history")}
+                        >
+                          <History className="w-4 h-4 mr-2" />
+                          View History
+                        </Button>
+                      </div>
+                      {/* <div className="flex items-center justify-between mb-4"> */}
+                        <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
+                        <Target className="w-5 h-5 text-[#635BFF] mr-2" />
+                        Interview Type
+                      </h3>
+                    
+                    {/* </div> */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-14">
                       {[
                         { value: "general", label: "General Interview", icon: Users, color: "blue" },
@@ -160,7 +175,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             w-full p-1 rounded-xl border-2 lg:text-left transition-all duration-200 
                             ${interviewType === type.value
                               ? `border-${type.color}-200 bg-${type.color}-50 shadow-lg scale-100`
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                              : 'border-gray-200 bg-white/70 hover:border-gray-300 hover:shadow-md'
                             }
                           `}
                         >
@@ -187,8 +202,9 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                       <Select
                           value={String(totalQuestions)}
                           onValueChange={(v) => setTotalQuestions(Number(v))}
+                          
                           >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full hover:cursor-pointer bg-white/70">
                           <SelectValue placeholder="Select number" />
                         </SelectTrigger>
                         <SelectContent>
@@ -211,7 +227,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         value={positionLevel}
                         onValueChange={(v) => setPositionLevel(v as PositionLevel)}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full hover:cursor-pointer bg-white/70">
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
@@ -251,8 +267,8 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                           }}
                           className={`w-full p-1.5 pr-10 border-2 rounded-lg focus:ring-1 focus:ring-[#635BFF]/30 focus:outline-none transition-all ${
                             selectedPositionId 
-                              ? 'border-gray-300 text-gray-500' 
-                              : 'border-[#635BFF]/30'
+                              ? 'border-gray-300 text-gray-500 bg-white/70' 
+                              : 'border-[#635BFF]/30 bg-white/70'
                           }`}
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -278,7 +294,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                             p-4 rounded-xl border-2 text-left transition-all duration-200 hover:cursor-pointer
                             ${selectedPositionId === position.title
                               ? 'border-[#635BFF]/30 bg-[#635BFF]/5 shadow-sm scale-100'
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                              : 'border-gray-200 bg-white/70 hover:border-gray-300 hover:shadow-md'
                             }
                           `}
                         >
@@ -332,7 +348,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         <button
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage((p) => p - 1)}
-                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
+                          className="px-3 py-2 bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
                         >
                           Previous
                         </button>
@@ -345,7 +361,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                               className={`px-2 py-1 border rounded-md transition-colors hover:cursor-pointer ${
                                 currentPage === i + 1
                                   ? "bg-[#635BFF] text-white border-[#635BFF]"
-                                  : "hover:bg-gray-100"
+                                  : "hover:bg-gray-100 bg-white"
                               }`}
                             >
                               {i + 1}
@@ -356,7 +372,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         <button
                           disabled={currentPage === totalPages}
                           onClick={() => setCurrentPage((p) => p + 1)}
-                          className="px-3 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
+                          className="px-3 py-2 bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors hover:cursor-pointer"
                         >
                           Next
                         </button>
@@ -371,7 +387,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         <div className="w-full border-t border-gray-300" />
                       </div>
                       <div className="relative flex justify-center text-sm">
-                        <span className="p-4 bg-white text-gray-500 font-semibold">OR</span>
+                        <span className="p-4 bg-[#fbfbff] text-gray-500 font-semibold">OR</span>
                       </div>
                     </div>
 
@@ -391,8 +407,8 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         placeholder="Paste a job title or job description or describe the role you're preparing for..."
                         className={`w-full p-4 border rounded-xl h-28 resize-none transition-all ${
                           selectedPositionId 
-                            ? 'border-gray-300 text-gray-500 ' 
-                            : 'border-gray-300 bg-white'
+                            ? 'border-gray-300 text-gray-500 bg-white/70' 
+                            : 'border-gray-300 bg-white/70'
                         }
                         focus:border-[#635BFF]/30 focus:ring-2 focus:ring-[#635BFF]/30 focus:bg-white focus:outline-none
                         

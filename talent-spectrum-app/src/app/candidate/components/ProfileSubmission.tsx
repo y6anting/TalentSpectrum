@@ -70,7 +70,10 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
 
       if (response.ok) {
         success('Profile Saved', 'Personal information saved successfully!');
-        if (onSave) onSave();
+        // Trigger refresh immediately for instant UI update
+        if (onSave) {
+          onSave();
+        }
       } else {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);

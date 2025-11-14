@@ -20,7 +20,8 @@ from routers import (
     company,
     ai_matching,
     match_result_route,
-    bookedAppointments
+    bookedAppointments,
+    shortlist
 )
 
 # Import models so they register with SQLAlchemy
@@ -30,6 +31,7 @@ from database.models import employer
 from database.models import chatbot as chatbot_model
 from database.models import mock_interview as mock_interview_model
 from database.models import match_result
+from database.models import shortlist as shortlist_model
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -55,16 +57,20 @@ os.makedirs("audio_outputs", exist_ok=True)
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("temp", exist_ok=True)
 
-# Logo directory for company logos
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_DIR = os.path.join(BASE_DIR, "..", "talent-spectrum-app", "public", "logo")
+# Logo directory for company logos - match jobs.py path calculation
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # consolidated/
+LOGO_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "talent-spectrum-app", "public", "logo"))
+PROFILE_PICTURES_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "talent-spectrum-app", "public", "profile-pictures"))
 os.makedirs(LOGO_DIR, exist_ok=True)
+os.makedirs(PROFILE_PICTURES_DIR, exist_ok=True)
 
 # Mount static files
 if os.path.exists("audio_outputs"):
     app.mount("/audio", StaticFiles(directory="audio_outputs"), name="audio")
 if os.path.exists(LOGO_DIR):
     app.mount("/logo", StaticFiles(directory=LOGO_DIR), name="logo")
+if os.path.exists(PROFILE_PICTURES_DIR):
+    app.mount("/profile-pictures", StaticFiles(directory=PROFILE_PICTURES_DIR), name="profile-pictures")
 
 # Create database tables on startup
 # @app.on_event("startup")
@@ -97,6 +103,7 @@ def read_root():
             "trainerbook",
             "ai-matching",
             "match-results"
+            
         ],
         "endpoints": {
             "docs": "/docs",
@@ -128,8 +135,9 @@ app.include_router(resume_extractor.router, prefix="/resume-extractor", tags=["R
 app.include_router(tts.router, prefix="/tts", tags=["Text-to-Speech"])
 app.include_router(mock_interview.router, prefix="/mock-interview", tags=["Mock Interview"])
 app.include_router(trainerbook.router, prefix="/trainerbook", tags=["TrainerBook"])
-# app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
-# app.include_router(match_result_route.router, prefix="/match_results", tags=["Match Results"])
+app.include_router(shortlist.router, prefix="/shortlist", tags=["Shortlist"])
+app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
+app.include_router(match_result_route.router, prefix="/match_results", tags=["Match Results"])
 app.include_router(bookedAppointments.router, prefix="/appointment", tags=["Appointment"])
 
 if __name__ == "__main__":

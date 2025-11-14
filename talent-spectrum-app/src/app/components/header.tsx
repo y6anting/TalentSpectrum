@@ -20,6 +20,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
 
   // Normalize role to uppercase
   const role = session?.user?.role
@@ -29,27 +30,33 @@ export default function Header({ setCurrentPage }: HeaderProps) {
         | "JOB_COACH")
     : undefined;
 
+  const handleSignOut = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("resumeParsedEmail");
+    }
+    signOut({ callbackUrl: "/login" });
+  };
+
+  // Listen for profile updates from other components
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setProfileRefreshTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     if (status !== "authenticated" || !session?.user) return;
 
     const loadName = async () => {
       try {
-        // Use session email as primary source, localStorage as fallback only
-        const sessionEmail = session?.user?.email;
-        const localEmail =
-          typeof window !== "undefined"
-            ? localStorage.getItem("userEmail")
-            : null;
-        const userEmail = encodeURIComponent(sessionEmail || localEmail || "");
+        const sessionEmail = session?.user?.email || "";
+        const userEmail = encodeURIComponent(sessionEmail);
         const roleUpper = String(session.user.role).toUpperCase();
-
-        console.log("Fetching name for:", {
-          role: roleUpper,
-          userEmail,
-          sessionEmail,
-          localEmail,
-          sessionName: session.user.name,
-        });
 
         if (roleUpper === "CANDIDATE") {
           const res = await fetch(`${API_BASE}/users/${userEmail}`);
@@ -79,7 +86,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     };
 
     loadName();
-  }, [session, status]);
+  }, [session, status, profileRefreshTrigger]);
 
   // Show loading skeleton instead of hiding header
   if (status === "loading") {
@@ -120,7 +127,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
 
   if (role === "EMPLOYER") {
     navItems = [
-      // { href: "/employer/employer-dashboard", label: "Dashboard" },
+      { href: "/employer/employer-dashboard", label: "Dashboard" },
       // { href: "/employer/homepage", label: "Homepage" },
       // { href: "/employer/JobCoach", label: "Job Coach" },
       // { href: "/employer/candidate-list", label: "Candidate List" },
@@ -129,7 +136,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     ];
   } else if (role === "CANDIDATE") {
     navItems = [
-      // { href: "/candidate/candidate-dashboard", label: "Dashboard" },
+      { href: "/candidate/candidate-dashboard", label: "Dashboard" },
       // { href: "/candidate/homepage", label: "Homepage" },
       // { href: "/candidate/JobListing", label: "Find Jobs" },
       // { href: "/candidate/JobCoach", label: "Job Coach" },
@@ -208,7 +215,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                   </span>
                 </span>
                 <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={handleSignOut}
                   className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Sign out
@@ -280,7 +287,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
-                        signOut({ callbackUrl: "/login" });
+                        handleSignOut();
                       }}
                       className="text-center bg-[#635bff] hover:bg-[#524aff] text-white py-2 rounded-full font-medium shadow-md transition-all cursor-pointer"
                     >

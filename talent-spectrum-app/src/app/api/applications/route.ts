@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching applications for:', candidateEmail);
     
-    const response = await fetch(`${BACKEND_URL}/applications/applications/${encodeURIComponent(candidateEmail)}`, {
+    const response = await fetch(`${BACKEND_URL}/profiles/${encodeURIComponent(candidateEmail)}/applications`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

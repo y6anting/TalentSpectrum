@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import traceback
 
-from rag.pdf_chat import ask_combined
+from database.models.pdf_chat import ask_combined
 
 router = APIRouter()
 

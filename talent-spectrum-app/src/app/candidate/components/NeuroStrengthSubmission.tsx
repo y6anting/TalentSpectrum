@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from "@/app/components/button";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface NeuroStrengthSubmissionProps {
   selectedStrengths: string[];
@@ -12,6 +13,7 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
+  const { success, error: showError } = useToastHelpers();
 
   const handleSubmitStrengths = async () => {
     setIsSubmitting(true);
@@ -40,8 +42,14 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
       });
 
       if (response.ok) {
-        alert('Neurodivergent strengths saved successfully!');
-        if (onSave) onSave();
+        success('Strengths Saved', 'Neurodivergent strengths saved successfully!');
+        // Call onSave callback but don't trigger full page refresh
+        if (onSave) {
+          // Use setTimeout to prevent synchronous state updates that might cause refresh
+          setTimeout(() => {
+            onSave();
+          }, 0);
+        }
       } else {
         const errorText = await response.text();
         console.error('API Error Response:', errorText);
@@ -49,7 +57,9 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
       }
     } catch (error: any) {
       console.error('Error saving neurodivergent strengths:', error);
-      setError(error.message || 'An error occurred while saving your strengths.');
+      const errorMessage = error.message || 'An error occurred while saving your strengths.';
+      setError(errorMessage);
+      showError('Save Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +69,7 @@ export function NeuroStrengthSubmission({ selectedStrengths, onSave }: NeuroStre
     <div>
       {error && <p className="text-red-600 mb-2">{error}</p>}
       <Button
-        className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+        className="bg-[#635bff] hover:bg-[#827CFF] text-white hover:cursor-pointer"
         onClick={handleSubmitStrengths}
         disabled={isSubmitting || !session}
       >

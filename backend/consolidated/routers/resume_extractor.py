@@ -281,9 +281,75 @@ Resume text:
 {context}
 """
 
+
+
+
+
+# --- MANDATORY PARSING RULES (follow in order) ---
+
+# **1. Scan the ENTIRE document line-by-line** – headers, footers, bullet points, tables, and footnotes are all valid sources.
+
+# **2. EDUCATION (never skip)**
+#    - Include **every** degree, diploma, foundation, training, certification, or course.
+#    - Allowed `level` values:  
+#      `["PT3","SPM / O-level","STPM / A-level / Diploma","Degree","Master","PhD","Vocational","Professional Certificate"]`
+#    - If the level does not match, **leave empty string** but **still create the entry**.
+#    - `graduationYear`: extract the year (e.g., 2014, 2010). If not a number between 1990–2025 → `""`.
+#    - `cgpa_grade`: extract GPA, CGPA, class, or “First Class Honours”.
+#    - `award`: any Dean’s List, scholarship, symposium, etc.
+
+# **3. EXPERIENCE (never skip)**
+#    - **Every** job, internship, freelance, project, prototype, training role, or volunteer work → **one entry**.
+#    - **Employer**: company name or “Personal Project” / “Prototype” if none.
+#    - **Title**: exact role (e.g., “CNC Programming Engineer”, “Project Designer & Coordinator”, “Volunteer”).
+#    - **Dates**: 
+#      - Look for patterns: `2019-2025`, `2016`, `2025-present`, `2024-present`.
+#      - Convert to `start` = earliest year/month, `end` = latest or `""` if “present”.
+#      - Set `"isCurrent": "true"` **only if “present”, “current”, or “-present” appears**.
+#    - **SeniorityLevel**: infer from title/duties:
+#      - Engineer, Designer, Volunteer → `"Non-executive"`
+#      - Coordinator, Lead → `"Executive"`
+#      - Manager, Head → `"Managerial"`
+#      - Unknown → `""`
+#    - **Achievements / ProjectHighlights**: copy **every bullet** under the role into `Achievements` (comma-separated) **and** into `ProjectHighlights` if it describes a deliverable.
+#    - **SkillsToolsUsed**: list every tool/software mentioned under the role.
+
+# **4. ADDITIONAL TRAINING → treat as EXPERIENCE**
+#    - Example: “Gamuda AI Academy”, “Employment Transition Programme”, “Expert Craftsman in PLC” → full entries in `experience`.
+#    - Use institution as `employer`, course name as `Title`, dates as `start`/`end`.
+
+# **5. VOLUNTEERING → treat as EXPERIENCE**
+#    - Use organization as `employer`, “Volunteer” as `Title`, dates, and bullets.
+
+# **6. SKILLS**
+#    - **HardSkills**: every technical tool, software, standard (SolidWorks, HyperMill, GD&T, Python, etc.)
+#    - **SoftSkills**: problem-solving, communication, teamwork, adaptability, etc.
+#    - **No duplicates**, case-insensitive dedupe.
+
+# **7. LANGUAGES**
+#    - Normalize: `"Malay"` → `"Malay"`, `"English"` → `"English"`, `"Mandarin"` → `"Chinese"`.
+#    - Proficiency: `"Fluent"` → `"Expert"`, `"Proficient"` → `"Intermediate"`, else `"Beginner"` or `""`.
+
+# **8. PERSONAL IDENTIFIERS**
+#    - `fullName`: exactly as in header.
+#    - `emailAddress`, `phoneNumber`: clean format.
+#    - `nationality`: infer from NRIC, address, or context → `"Malaysian"` if in Malaysia.
+#    - `dateOfBirth`: if NRIC present → first 6 digits → `YYYY-MM-DD` (YY≥25→19YY, else 20YY). Else `""`.
+
+# **9. NEURODIVERGENT / ACCOMMODATIONS**
+#    - If “Level 1 ASD”, “autistic”, “autism” appears → add to `accommodations` and `neurodivergent_strengths.strengths`.
+
+# **10. FINAL VALIDATION (you must do this)**
+#    - `education` **must not be empty** if any degree/training exists.
+#    - `experience` **must not be empty** if any job/training/volunteer exists.
+#    - All arrays: remove duplicates, strip whitespace.
+#    - All dates: ISO `YYYY` or `YYYY-MM`.
+
+# **OUTPUT ONLY THE JSON** – no markdown, no explanations, no extra text.
+
 @router.post("/upload_pdf", response_model=UploadPDFResponse)
-async def upload_pdf(file: UploadFile):
-    """Upload, parse resume PDF using Gemini."""
+async def upload_pdf(file: UploadFile, session_email: str = None):
+    """Upload, parse resume PDF using Gemini. Use session_email as fallback if resume has no email."""
     try:
         if not gemini_model:
             return UploadPDFResponse(
@@ -383,12 +449,93 @@ async def upload_pdf(file: UploadFile):
         # Try to validate and parse the JSON response
         try:
             parsed_json = json.loads(parsed_clean)
-            # Convert None values to empty strings
-            # parsed_json = convert_values_to_strings(parsed_json)
-            # print(parsed_json)
+            
+            # Debug: Print extracted data
+            print(f"📋 Extracted education entries: {len(parsed_json.get('education', []))}")
+            print(f"📋 Extracted experience entries: {len(parsed_json.get('experience', []))}")
+            if parsed_json.get('education'):
+                print(f"   Education sample: {parsed_json['education'][0] if parsed_json['education'] else 'None'}")
+            if parsed_json.get('experience'):
+                print(f"   Experience sample: {parsed_json['experience'][0] if parsed_json['experience'] else 'None'}")
+            
+            # Ensure education and experience are arrays (not None)
+            if 'education' not in parsed_json or parsed_json['education'] is None:
+                parsed_json['education'] = []
+            if 'experience' not in parsed_json or parsed_json['experience'] is None:
+                parsed_json['experience'] = []
+            
+            # CRITICAL: If arrays are empty but resume text contains education/experience keywords, retry with more explicit prompt
+            education_keywords = ['education', 'degree', 'diploma', 'university', 'college', 'institute', 'bachelor', 'master', 'phd', 'graduated', 'cgpa', 'gpa']
+            experience_keywords = ['experience', 'work', 'employment', 'job', 'position', 'role', 'project', 'internship', 'volunteer', 'training', 'coordinator', 'engineer', 'manager']
+            
+            text_lower = text.lower()
+            has_education_keywords = any(keyword in text_lower for keyword in education_keywords)
+            has_experience_keywords = any(keyword in text_lower for keyword in experience_keywords)
+            
+            if (len(parsed_json.get('education', [])) == 0 and has_education_keywords) or \
+               (len(parsed_json.get('experience', [])) == 0 and has_experience_keywords):
+                print("⚠️ WARNING: Empty arrays detected but keywords found in resume. Retrying with explicit extraction...")
+                
+                # Create a more explicit retry prompt
+                retry_prompt = f"""
+The previous extraction missed education or experience data. Please re-extract from this resume text.
+
+RESUME TEXT:
+{text[:5000]}  # Limit to first 5000 chars to avoid token limits
+
+CRITICAL: You MUST extract:
+1. ALL education entries (degrees, diplomas, certificates, training) into the "education" array
+2. ALL work experience entries (jobs, internships, projects, volunteer work) into the "experience" array
+
+If you see ANY mention of:
+- Education: university, college, degree, diploma, certificate, training, graduated, CGPA, GPA
+- Experience: job, work, employment, project, internship, volunteer, coordinator, engineer, manager, position, role
+
+Then the respective array MUST NOT be empty. Extract EVERY entry you find.
+
+Output ONLY valid JSON matching the schema, with education and experience arrays populated.
+"""
+                
+                try:
+                    retry_response = gemini_model.generate_content(
+                        retry_prompt,
+                        safety_settings=safety_settings
+                    )
+                    
+                    if retry_response and retry_response.text:
+                        retry_clean = retry_response.text.strip()
+                        # Clean markdown if present
+                        if retry_clean.startswith("```json"):
+                            retry_clean = retry_clean[7:]
+                        if retry_clean.startswith("```"):
+                            retry_clean = retry_clean[3:]
+                        if retry_clean.endswith("```"):
+                            retry_clean = retry_clean[:-3]
+                        retry_clean = retry_clean.strip()
+                        
+                        retry_json = json.loads(retry_clean)
+                        
+                        # Merge retry results, prioritizing non-empty arrays
+                        if len(retry_json.get('education', [])) > 0:
+                            parsed_json['education'] = retry_json['education']
+                            print(f"✅ Retry extracted {len(parsed_json['education'])} education entries")
+                        if len(retry_json.get('experience', [])) > 0:
+                            parsed_json['experience'] = retry_json['experience']
+                            print(f"✅ Retry extracted {len(parsed_json['experience'])} experience entries")
+                except Exception as retry_error:
+                    print(f"⚠️ Retry failed: {retry_error}")
+            
             # Validate and create Pydantic model
             resume_data = ResumeData(**parsed_json)
             parsed_info = resume_data
+            
+            # Final validation check
+            if len(parsed_info.education) == 0:
+                print("⚠️ WARNING: No education entries extracted from resume!")
+                print(f"   Resume text preview: {text[:200]}...")
+            if len(parsed_info.experience) == 0:
+                print("⚠️ WARNING: No experience entries extracted from resume!")
+                print(f"   Resume text preview: {text[:200]}...")
         except json.JSONDecodeError as e:
             raise HTTPException(
                 status_code=500, 
@@ -404,6 +551,24 @@ async def upload_pdf(file: UploadFile):
         try:
             db: Session = next(get_db())
             profile_request = convert_resume_data_to_profile_request(parsed_info)
+            
+            # ADD EMAIL FALLBACK LOGIC - Use session_email if resume has no email
+            if not profile_request.candidate_email and not profile_request.email:
+                if session_email:
+                    print(f"📧 Resume has no email. Using session email as fallback: {session_email}")
+                    profile_request.candidate_email = session_email
+                    # Also update personal_identifiers if they exist
+                    if profile_request.personal_identifiers:
+                        profile_request.personal_identifiers["emailAddress"] = session_email
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Resume contains no email and no session email provided as fallback"
+                    )
+            else:
+                email_used = profile_request.candidate_email or profile_request.email
+                print(f"Using email from resume: {email_used}")
+            
             created_profile = await create_profile(db=db, profile=profile_request)
             print(f"✅ Profile created for candidate: {created_profile}")
         except Exception as profile_error:
@@ -442,32 +607,44 @@ def convert_resume_data_to_profile_request(resume_data: ResumeData) -> Candidate
     
     # Convert education data
     educations = []
+    print(f"🔄 Converting {len(resume_data.education)} education entries...")
     if resume_data.education:
-        for edu in resume_data.education:
-            educations.append({
-                "level": edu.level,
-                "field_of_study": edu.fieldOfStudy,
-                "institution": edu.institution,
-                "graduation_year": edu.graduationYear,
-                "cgpa_grade": edu.cgpa_grade,
-                "award": edu.award
-            })
+        for i, edu in enumerate(resume_data.education):
+            edu_dict = {
+                "level": edu.level or "",
+                "field_of_study": edu.fieldOfStudy or "",
+                "institution": edu.institution or "",
+                "graduation_year": edu.graduationYear or 0,
+                "cgpa_grade": edu.cgpa_grade or "",
+                "award": edu.award or ""
+            }
+            educations.append(edu_dict)
+            print(f"   Education {i+1}: {edu_dict.get('level')} in {edu_dict.get('field_of_study')} from {edu_dict.get('institution')}")
+    else:
+        print("⚠️ No education data in resume_data.education")
     
     # Convert experience data
     experiences = []
+    print(f"🔄 Converting {len(resume_data.experience)} experience entries...")
     if resume_data.experience:
-        for exp in resume_data.experience:
-            experiences.append({
-                "employer": exp.employer,
-                "industry": exp.industry,
-                "start_date": exp.start,
-                "end_date": exp.end,
-                "seniority_level": exp.SeniorityLevel,
-                "skills_tools_used": exp.SkillsToolsUsed,
-                "project_highlights": exp.ProjectHighlights,
-                "title": exp.Title,
-                "achievements": exp.Achievements
-            })
+        for i, exp in enumerate(resume_data.experience):
+            exp_dict = {
+                "employer": exp.employer or "",
+                "industry": exp.industry or "",
+                "start_date": exp.start or "",
+                "end_date": exp.end or "",
+                "seniority_level": exp.SeniorityLevel or "",
+                "skills_tools_used": exp.SkillsToolsUsed or "",
+                "project_highlights": exp.ProjectHighlights or "",
+                "title": exp.Title or "",
+                "achievements": exp.Achievements or ""
+            }
+            experiences.append(exp_dict)
+            print(f"   Experience {i+1}: {exp_dict.get('title')} at {exp_dict.get('employer')}")
+    else:
+        print("⚠️ No experience data in resume_data.experience")
+    
+    print(f"✅ Converted: {len(educations)} educations, {len(experiences)} experiences")
     
     # Convert nested Pydantic models to dictionaries
     preferences_dict = resume_data.preferences.model_dump() if resume_data.preferences else None

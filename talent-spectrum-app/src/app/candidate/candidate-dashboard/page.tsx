@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback, ChangeEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/app/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
@@ -8,11 +8,12 @@ import { Badge } from "@/app/components/badge";
 import { useToastHelpers } from "@/components/ui/toast";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video
+  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video, Building, Bookmark, Share, Sparkles, Camera
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
+import { Input } from "@/app/components/input";
 import { Skeleton, ProfileSkeleton } from "@/app/components/loading-skeleton";
 import { ProfileSubmission } from "../components/ProfileSubmission";
 import { EducationSubmission } from "../components/EducationSubmission";
@@ -25,6 +26,8 @@ import { useSession } from "next-auth/react";
 import MockInterviewSetupPage from "./mock-interview/setup/page";
 import MockInterviewFeedbackPage from "./mock-interview/feedback/page";
 import MockInterviewProcessPage from "./mock-interview/interviewprocess/page";
+import InterviewHistoryPage from "./mock-interview/history/page";
+import InterviewReportDetailPage from "./mock-interview/history/[id]/page";
 import ReportPage from "./Report/page";
 import {
   Dialog,
@@ -35,12 +38,19 @@ import {
 } from "@/components/ui/dialog";
 import AppointmentPage from "./Appointment/page";
 import CandidateJobListing from "../JobListing/page";
+import OverviewPage from "./Overview/page";
+import ApplicationsPage from "./Applications/page";
+import SavedJobsPage from "./SavedJobs/page";
+import ProfileConfigPage from "./ProfileConfig/page";
+import EducationPage from "./Education/page";
+import ExperiencePage from "./Experience/page";
+import SkillsPage from "./Skills/page";
+import EnvironmentPage from "./Environment/page";
+import NeuroStrengthsPage from "./NeuroStrengths/page";
 
 export default function CandidateDashboard() {
-  // API base URL from environment variable
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   
-  // Toast helpers for notifications
   const { success, error: showError, warning, info } = useToastHelpers();
   
   const [activeTab, setActiveTab] = useState("overview");
@@ -49,11 +59,138 @@ export default function CandidateDashboard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback">("setup");
+  const [mockInterviewStep, setMockInterviewStep] = useState<"setup" | "process" | "feedback" | "history" | "history-detail">("setup");
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
 
   const [showMatchingScoreDialog, setShowMatchingScoreDialog] = useState(false);
-  // Signal to refetch profile after resume upload
+  // Signal to refetch profile after resume upload or profile save
   const [resumeRefreshSignal, setResumeRefreshSignal] = useState(0);
+  const [isRunningAiMatch, setIsRunningAiMatch] = useState(false);
+  
+  // Profile picture state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  
+  // Function to trigger profile refresh (without resetting user's current form state)
+  const refreshProfileData = () => {
+    // Only dispatch event for other components to refresh, don't trigger full data refetch
+    // that would reset user's current form inputs
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+    }
+    // Note: We removed setResumeRefreshSignal to prevent full data refetch
+    // which was causing form state to reset
+  };
+
+  const handleRunAiMatching = async () => {
+    if (isRunningAiMatch) return;
+    setIsRunningAiMatch(true);
+    try {
+      // Get candidate email from session
+      const candidateEmail = session?.user?.email;
+      if (!candidateEmail) {
+        showError("Authentication Required", "Please sign in to run AI matching.");
+        setIsRunningAiMatch(false);
+        return;
+      }
+      
+      const response = await fetch(`/api/ai-matching/run_matching?candidate_email=${encodeURIComponent(candidateEmail)}`, {
+        method: "POST",
+      });
+
+      const isJson = response.headers.get("content-type")?.includes("application/json");
+      const payload = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        const errorMessage =
+          (payload && (payload.detail?.message || payload.detail || payload.error || payload.message)) ||
+          "Failed to trigger AI job matching.";
+        throw new Error(errorMessage);
+      }
+
+      const message = (payload && (payload.message || payload.detail)) || "AI job matching completed successfully.";
+      success("AI Matching Completed", message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to trigger AI job matching.";
+      showError("AI Matching Failed", errorMessage);
+    } finally {
+      setIsRunningAiMatch(false);
+    }
+  };
+
+  // Function to handle profile picture upload
+  const handleProfilePictureUpload = async (file: File) => {
+    const candidateEmail = session?.user?.email;
+    if (!candidateEmail) {
+      showError("Not Logged In", "Please log in to upload a profile picture.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        `/api/profiles/${encodeURIComponent(candidateEmail)}/upload-profile-picture`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newPictureUrl = data.profile_picture_url;
+        
+        console.log("Profile picture uploaded successfully. Backend returned:", newPictureUrl);
+        
+        // Update profile picture state immediately
+        setProfilePictureUrl(newPictureUrl);
+        
+        // Update candidateProfile state with the new profile_picture_url for consistency
+        setCandidateProfile(prev => ({
+          ...prev,
+          profilePictureUrl: newPictureUrl,
+          personalIdentifiers: {
+            ...prev.personalIdentifiers,
+            profile_picture_url: newPictureUrl
+          }
+        }));
+        
+        success("Profile Picture Uploaded", "Profile picture uploaded successfully!");
+      } else {
+        const errorText = await response.text();
+        console.error("Error uploading profile picture:", errorText);
+        showError("Upload Failed", `Failed to upload profile picture: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Network error during profile picture upload:", error);
+      showError("Network Error", "An error occurred during profile picture upload.");
+    }
+  };
+
+  // Handler for when a file is selected
+  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      handleProfilePictureUpload(event.target.files[0]);
+      // Clear the file input so the same file can be selected again
+      event.target.value = '';
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedResumeEmail = sessionStorage.getItem("resumeParsedEmail");
+    if (!session?.user?.email) {
+      if (storedResumeEmail) {
+        sessionStorage.removeItem("resumeParsedEmail");
+      }
+      return;
+    }
+    if (storedResumeEmail && storedResumeEmail !== session.user.email) {
+      sessionStorage.removeItem("resumeParsedEmail");
+    }
+  }, [session?.user?.email]);
 
   type Environment = {
     patternRecognition: string;
@@ -104,6 +241,7 @@ export default function CandidateDashboard() {
     location: string;
     profileCompletion: number;
     accommodations: string[];
+    profilePictureUrl?: string | null;
     preferences: {
       workType: string;
       communication: string;
@@ -155,14 +293,26 @@ export default function CandidateDashboard() {
   // State for applications and saved jobs
   const [applications, setApplications] = useState<any[]>([]);
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  
+  // State for tracking saved job keys and IDs (for save/unsave functionality)
+  const [savedJobKeys, setSavedJobKeys] = useState<Set<string>>(new Set());
+  const [savedJobIds, setSavedJobIds] = useState<Map<string, number>>(new Map());
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+  
+  // Search and filter states
+  const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
+  const [savedJobsSearchTerm, setSavedJobsSearchTerm] = useState("");
+  const [applicationFilterStatus, setApplicationFilterStatus] = useState("all");
+  const [savedJobsSortBy, setSavedJobsSortBy] = useState("recent");
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [selectedSavedJob, setSelectedSavedJob] = useState<any | null>(null);
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
-    name: "Aminah",
+    name: session?.user?.name || "",  
     email: "",
     location: "Remote",
     profileCompletion: 85,
+    profilePictureUrl: null,
     accommodations: ["Flexible hours", "Quiet workspace", "Written instructions"],
     preferences: {
       workType: "Remote",
@@ -170,11 +320,11 @@ export default function CandidateDashboard() {
       schedule: "Flexible hours",
     },
     personalIdentifiers: {
-      fullName: "Alex Johnson",
+      fullName: session?.user?.name || "",
       dateOfBirth: "",
       gender: "",
       nationality: "",
-      emailAddress: "alex.johnson@email.com",
+      emailAddress: session?.user?.email || "",
       phoneNumber: "",
       residentialAddress: "",
       nric: "",
@@ -357,6 +507,7 @@ export default function CandidateDashboard() {
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
+      let preferredEmail = "";
       try {
       setIsLoading(true);
       if (status === "loading") {
@@ -374,7 +525,7 @@ export default function CandidateDashboard() {
       console.log('Session user email:', session?.user?.email); // Add this
 
       const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
-      const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+      preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
 
       if (!preferredEmail) {
         console.error('No email available to fetch profile.');
@@ -406,6 +557,7 @@ export default function CandidateDashboard() {
               location: data.location || candidateProfile.location,
               profileCompletion: data.profile_completion || candidateProfile.profileCompletion,
               accommodations: data.accommodations || candidateProfile.accommodations,
+              profilePictureUrl: data.profile_picture_url || candidateProfile.profilePictureUrl,
               preferences: data.preferences || candidateProfile.preferences,
               personalIdentifiers: {
                 ...candidateProfile.personalIdentifiers,
@@ -426,6 +578,26 @@ export default function CandidateDashboard() {
                 ...data.environment
               },
             };
+            
+            // Update profile picture state from API response
+            // The backend extracts profile_picture_url from personal_identifiers
+            const pictureUrl = data.profile_picture_url || data.personal_identifiers?.profile_picture_url;
+            if (pictureUrl) {
+              setProfilePictureUrl(pictureUrl);
+              console.log('Profile picture URL loaded:', pictureUrl);
+            } else {
+              // If not in top level, check personal_identifiers
+              const picFromIdentifiers = updatedProfile.personalIdentifiers?.profile_picture_url;
+              if (picFromIdentifiers) {
+                setProfilePictureUrl(picFromIdentifiers);
+                console.log('Profile picture URL loaded from personal_identifiers:', picFromIdentifiers);
+              }
+            }
+            
+            // Ensure profilePictureUrl is set in updatedProfile
+            if (pictureUrl) {
+              updatedProfile.profilePictureUrl = pictureUrl;
+            }
             
             console.log('Updated personalIdentifiers:', updatedProfile.personalIdentifiers);
             setCandidateProfile(updatedProfile);
@@ -492,8 +664,15 @@ export default function CandidateDashboard() {
             }
 
             // Set neurodivergent strengths from API response
+            // Only set on initial load (when selectedStrengths is empty) to prevent overwriting user's current selections
+            // Resume uploads will trigger refreshSignal > 0, but we preserve user's current selections
             if (data.neurodivergent_strengths?.length > 0) {
+              if (selectedStrengths.length === 0) {
+                // Initial load - set from database
               setSelectedStrengths(data.neurodivergent_strengths);
+              }
+              // If user already has selections, don't overwrite them
+              // This prevents the "refresh" from resetting user's form state
             }
             
             setDataLoaded(true);
@@ -552,15 +731,13 @@ export default function CandidateDashboard() {
       } catch (error) {
         console.error('Error fetching profile data:', error);
         
-        // If there's an error but we have email, at least populate the email field
-        const fallbackEmail = typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null;
-        if (fallbackEmail) {
+        if (preferredEmail) {
           setCandidateProfile(prev => ({
             ...prev,
-            email: fallbackEmail,
+            email: preferredEmail,
             personalIdentifiers: {
               ...prev.personalIdentifiers,
-              emailAddress: fallbackEmail
+              emailAddress: preferredEmail
             }
           }));
         }
@@ -697,82 +874,296 @@ export default function CandidateDashboard() {
     };
   }, []);
 
-  // Fetch applications data from database via Next.js API route
+  // Listen for job applied event to refresh applications
   useEffect(() => {
-    const fetchApplicationsData = async (email: string) => {
-      try {
-        const response = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`, {
+    const handler = () => {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        // Refetch applications
+        fetch(`/api/applications?candidateEmail=${encodeURIComponent(sessionEmail)}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-        });
+        })
+          .then(res => res.json())
+          .then(data => {
+            const mapped = Array.isArray(data)
+              ? data.map((app: any) => ({
+                  id: app.id ?? app.application_id ?? undefined,
+                  jobTitle: app.jobTitle ?? app.job_title ?? '',
+                  company: app.company ?? app.employer ?? '',
+                  appliedDate: app.appliedDate ?? app.applied_date ?? '',
+                  status: app.status ?? 'under_review',
+                  location: app.location ?? '',
+                  salary: app.salary ?? '',
+                  accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
+                  score: app.score ?? undefined,
+                }))
+              : [];
+            setApplications(mapped);
+            if (mapped.length > 0 && !selectedApplication) {
+              setSelectedApplication(mapped[0]);
+            }
+          })
+          .catch(err => console.error('Error refreshing applications:', err));
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jobApplied', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('jobApplied', handler as EventListener);
+      }
+    };
+  }, [session, selectedApplication]);
 
-        if (!response.ok) {
-          console.error('Failed to fetch applications:', response.status);
-          setApplications([]);
-          return;
-        }
+  // Listen for job saved event to refresh saved jobs
+  useEffect(() => {
+    const handler = () => {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        // Refetch saved jobs
+        fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(sessionEmail)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        })
+          .then(res => res.json())
+          .then(data => {
+            const mapped = Array.isArray(data)
+              ? data.map((job: any) => ({
+                  id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
+                  jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
+                  company: job.company ?? job.employer ?? '',
+                  location: job.location ?? '',
+                  salary: job.salary ?? '',
+                  type: job.type ?? job.job_type ?? '',
+                  isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
+                  hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
+                }))
+              : [];
+            setSavedJobs(mapped);
+            if (mapped.length > 0 && !selectedSavedJob) {
+              setSelectedSavedJob(mapped[0]);
+            }
+          })
+          .catch(err => console.error('Error refreshing saved jobs:', err));
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jobSaved', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('jobSaved', handler as EventListener);
+      }
+    };
+  }, [session, selectedSavedJob]);
 
-        const data = await response.json();
-        const mapped = Array.isArray(data)
-          ? data.map((app: any) => ({
+  // Fetch applications data from database via Next.js API route
+  const fetchApplicationsData = useCallback(async (email: string) => {
+    try {
+      // Fetch both applications and all jobs in parallel
+      const [applicationsResponse, jobsResponse] = await Promise.all([
+        fetch(`/api/applications?candidateEmail=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        fetch('/api/jobs', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      ]);
+
+      if (!applicationsResponse.ok) {
+        console.error('Failed to fetch applications:', applicationsResponse.status);
+        setApplications([]);
+        return;
+      }
+
+      const applicationsData = await applicationsResponse.json();
+      const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
+
+      console.log('Applications data:', applicationsData);
+      console.log('Jobs data count:', jobsData.length);
+
+      // Import transform utilities
+      const { transformJob, findMatchingJob } = await import('./utils/jobTransform');
+
+      const mapped = Array.isArray(applicationsData)
+        ? applicationsData.map((app: any) => {
+            const appJobTitle = app.jobTitle ?? app.job_title ?? '';
+            const appCompany = app.company ?? app.employer ?? '';
+            
+            console.log(`Looking for match: jobTitle="${appJobTitle}", company="${appCompany}"`);
+            
+            // Find matching job from all jobs
+            const matchingJob = findMatchingJob(jobsData, appJobTitle, appCompany);
+            
+            console.log(`Match found:`, matchingJob ? 'YES' : 'NO', matchingJob ? `Job ID: ${matchingJob.id}` : '');
+            
+            // Base application data - ensure status is properly included
+            const baseApp = {
               id: app.id ?? app.application_id ?? undefined,
-              jobTitle: app.jobTitle ?? app.job_title ?? '',
-              company: app.company ?? app.employer ?? '',
+              jobTitle: appJobTitle,
+              company: appCompany,
               appliedDate: app.appliedDate ?? app.applied_date ?? '',
-              status: app.status ?? 'under_review',
+              status: app.status ?? 'under_review', // Status from backend
               location: app.location ?? '',
               salary: app.salary ?? '',
               accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
               score: app.score ?? undefined,
-            }))
-          : [];
+              interviewDate: app.interviewDate ?? app.interview_date ?? undefined,
+            };
 
-        setApplications(mapped);
-        if (mapped.length > 0 && !selectedApplication) {
-          setSelectedApplication(mapped[0]);
-        }
-      } catch (error) {
-        console.error('Error fetching applications data:', error);
-        setApplications([]);
+            // If matching job found, enrich with full job details
+            if (matchingJob) {
+              const transformedJob = transformJob(matchingJob);
+              console.log(`Enriching application with job data:`, {
+                description: transformedJob.description?.substring(0, 50),
+                requirements: transformedJob.requirements?.length,
+                accommodations: transformedJob.accommodations?.length,
+              });
+              return {
+                ...baseApp,
+                // Override with transformed job data
+                description: transformedJob.description,
+                requirements: transformedJob.requirements,
+                accommodations: transformedJob.accommodations,
+                companySize: transformedJob.companySize,
+                industry: transformedJob.industry,
+                postedDate: transformedJob.postedDate,
+                applicationDeadline: transformedJob.applicationDeadline,
+                salaryRange: transformedJob.salaryRange,
+                salary: transformedJob.salary, // Use formatted salary from transformJob
+                primaryMatchScore: transformedJob.primaryMatchScore,
+                secondaryMatchScore: transformedJob.secondaryMatchScore,
+                tertiaryMatchScore: transformedJob.tertiaryMatchScore,
+                accommodationsFriendly: transformedJob.accommodationsFriendly,
+                type: transformedJob.type,
+              };
+            }
+
+            console.log(`No matching job found for application:`, baseApp);
+            return baseApp;
+          })
+        : [];
+
+      setApplications(mapped);
+      if (mapped.length > 0 && !selectedApplication) {
+        setSelectedApplication(mapped[0]);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching applications data:', error);
+      setApplications([]);
+    }
+  }, [selectedApplication]);
 
-    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+  // Initial fetch on mount
+  useEffect(() => {
+    const sessionEmail = session?.user?.email;
     if (sessionEmail) {
       fetchApplicationsData(sessionEmail);
     }
-  }, [session]);
+  }, [session, fetchApplicationsData]);
+
+  // Refresh applications when Applications tab is activated
+  useEffect(() => {
+    if (activeTab === 'applications') {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        console.log('Refreshing applications data for Applications tab');
+        fetchApplicationsData(sessionEmail);
+      }
+    }
+  }, [activeTab, session, fetchApplicationsData]);
 
   // Fetch saved jobs data from database via Next.js API route
   useEffect(() => {
     const fetchSavedJobsData = async (email: string) => {
       try {
-        const response = await fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
+        // Fetch both saved jobs and all jobs in parallel
+        const [savedJobsResponse, jobsResponse] = await Promise.all([
+          fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }),
+          fetch('/api/jobs', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          })
+        ]);
 
-        if (!response.ok) {
-          console.error('Failed to fetch saved jobs:', response.status);
+        if (!savedJobsResponse.ok) {
+          console.error('Failed to fetch saved jobs:', savedJobsResponse.status);
           setSavedJobs([]);
           return;
         }
 
-        const data = await response.json();
-        const mapped = Array.isArray(data)
-          ? data.map((job: any) => ({
-              id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
-              jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
-              company: job.company ?? job.employer ?? '',
-              location: job.location ?? '',
-              salary: job.salary ?? '',
-              type: job.type ?? job.job_type ?? '',
-              isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
-              hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
-            }))
+        const savedJobsData = await savedJobsResponse.json();
+        const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
+
+        // Import transform utilities
+        const { transformJob, findMatchingJob } = await import('./utils/jobTransform');
+
+        const mapped = Array.isArray(savedJobsData)
+          ? savedJobsData.map((job: any) => {
+              // Find matching job from all jobs
+              const matchingJob = findMatchingJob(jobsData, job.jobTitle ?? job.job_title ?? job.title ?? '', job.company ?? job.employer ?? '');
+              
+              // Base saved job data
+              const baseJob = {
+                id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
+                jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
+                company: job.company ?? job.employer ?? '',
+                location: job.location ?? '',
+                salary: job.salary ?? '',
+                type: job.type ?? job.job_type ?? '',
+                isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
+                hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
+              };
+
+              // If matching job found, enrich with full job details
+              if (matchingJob) {
+                const transformedJob = transformJob(matchingJob);
+                return {
+                  ...baseJob,
+                  // Override with transformed job data
+                  description: transformedJob.description,
+                  requirements: transformedJob.requirements,
+                  accommodations: transformedJob.accommodations,
+                  companySize: transformedJob.companySize,
+                  industry: transformedJob.industry,
+                  postedDate: transformedJob.postedDate,
+                  applicationDeadline: transformedJob.applicationDeadline,
+                  salaryRange: transformedJob.salaryRange,
+                  salary: transformedJob.salary, // Use formatted salary from transformJob
+                  primaryMatchScore: transformedJob.primaryMatchScore,
+                  secondaryMatchScore: transformedJob.secondaryMatchScore,
+                  tertiaryMatchScore: transformedJob.tertiaryMatchScore,
+                  accommodationsFriendly: transformedJob.accommodationsFriendly,
+                  type: transformedJob.type,
+                };
+              }
+
+              return baseJob;
+            })
           : [];
 
         setSavedJobs(mapped);
+        
+        // Update saved job keys and IDs for save/unsave functionality
+        const savedKeys = new Set<string>();
+        const savedIds = new Map<string, number>();
+        mapped.forEach((job: any) => {
+          const jobKey = `${job.jobTitle || job.title}-${job.company}`;
+          savedKeys.add(jobKey);
+          if (job.id) {
+            savedIds.set(jobKey, job.id);
+          }
+        });
+        setSavedJobKeys(savedKeys);
+        setSavedJobIds(savedIds);
+        
         if (mapped.length > 0 && !selectedSavedJob) {
           setSelectedSavedJob(mapped[0]);
         }
@@ -782,11 +1173,156 @@ export default function CandidateDashboard() {
       }
     };
 
-    const sessionEmail = session?.user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('userEmail') : null);
+    const sessionEmail = session?.user?.email;
     if (sessionEmail) {
       fetchSavedJobsData(sessionEmail);
     }
   }, [session]);
+
+  // Check if user has a profile/resume
+  const checkUserProfile = async (userEmail: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/profiles?email=${encodeURIComponent(userEmail)}`);
+      if (!response.ok) {
+        return false;
+      }
+      const data = await response.json();
+      
+      // Check if profile exists and has meaningful data
+      return data && (
+        data.personal_identifiers?.fullName ||
+        data.experience?.length > 0 ||
+        data.education?.length > 0 ||
+        data.exp_skill?.employer
+      );
+    } catch (error) {
+      console.error('Error checking user profile:', error);
+      return false;
+    }
+  };
+
+  // Handle save/unsave job
+  const handleSaveJob = async (job: any) => {
+    const jobKey = `${job.jobTitle || job.title}-${job.company}`;
+    
+    try {
+      const userEmail = session?.user?.email;
+      if (!userEmail) {
+        showError('Not Authenticated', 'Please sign in before saving jobs.');
+        return;
+      }
+      
+      // Check if already saved - if so, unsave it
+      if (savedJobKeys.has(jobKey)) {
+        setSavingJobId(jobKey);
+        const savedJobId = savedJobIds.get(jobKey);
+        if (savedJobId) {
+          const response = await fetch(`/api/saved-jobs?savedJobId=${savedJobId}`, {
+            method: 'DELETE',
+          });
+
+          if (response.ok) {
+            success('Job Removed', 'Job has been removed from your saved jobs.');
+            
+            setSavedJobKeys(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(jobKey);
+              return newSet;
+            });
+            setSavedJobIds(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(jobKey);
+              return newMap;
+            });
+            
+            // Remove from savedJobs array
+            setSavedJobs(prev => prev.filter(savedJob => {
+              const key = `${savedJob.jobTitle || savedJob.title}-${savedJob.company}`;
+              return key !== jobKey;
+            }));
+            
+            if (selectedSavedJob && `${selectedSavedJob.jobTitle || selectedSavedJob.title}-${selectedSavedJob.company}` === jobKey) {
+              const remaining = savedJobs.filter(savedJob => {
+                const key = `${savedJob.jobTitle || savedJob.title}-${savedJob.company}`;
+                return key !== jobKey;
+              });
+              setSelectedSavedJob(remaining.length > 0 ? remaining[0] : null);
+            }
+            
+            window.dispatchEvent(new CustomEvent('jobUnsaved', {
+              detail: { id: savedJobId, jobTitle: job.jobTitle || job.title, company: job.company }
+            }));
+          } else {
+            const errorData = await response.json();
+            showError('Unsave Failed', errorData.error || 'Failed to unsave job');
+          }
+        }
+        setSavingJobId(null);
+        return;
+      }
+
+      // Check if user has a valid profile
+      const hasProfile = await checkUserProfile(userEmail);
+      if (!hasProfile) {
+        showError('Profile Incomplete', 'Please complete your profile or upload your resume to save.');
+        return;
+      }
+
+      setSavingJobId(jobKey);
+
+      // Save the job - need to get job_id from the job object or fetch it
+      const jobId = job.job_id || job.id;
+      if (!jobId) {
+        showError('Save Failed', 'Job ID not found. Please try again.');
+        setSavingJobId(null);
+        return;
+      }
+
+      const response = await fetch('/api/saved-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidate_email: userEmail,
+          job_id: typeof jobId === 'string' ? parseInt(jobId) : jobId
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        success('Job Saved!', 'Job has been saved to your saved jobs.');
+        const savedId = result?.saved_job?.id;
+        
+        setSavedJobKeys(prev => new Set([...prev, jobKey]));
+        if (savedId) {
+          setSavedJobIds(prev => new Map([...prev, [jobKey, savedId]]));
+        }
+        
+        window.dispatchEvent(new CustomEvent('jobSaved', {
+          detail: {
+            id: savedId || jobId,
+            jobTitle: job.jobTitle || job.title,
+            company: job.company,
+            location: job.location,
+            jobType: job.type,
+            salary: job.salary,
+          }
+        }));
+      } else {
+        const errorData = await response.json();
+        const msg = errorData.error || errorData.detail || 'Failed to save job';
+        if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+          showError('Profile Incomplete', 'Please complete your profile or upload your resume to save.');
+        } else {
+          showError('Save Failed', msg);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving job:', err);
+      showError('Save Error', 'An error occurred while saving the job. Please try again.');
+    } finally {
+      setSavingJobId(null);
+    }
+  };
 
   // Calculate profile completion
   const calculateProfileCompletion = () => {
@@ -847,22 +1383,22 @@ export default function CandidateDashboard() {
     }
   }, [candidateProfile.personalIdentifiers, candidateProfile.education, candidateProfile.exp_skill, candidateProfile.environment, educations, experiences, dataLoaded]);
 
-  // Debug education state changes
   useEffect(() => {
     console.log('Education state changed:', educations);
   }, [educations]);
 
-  // Demo data removed; applications and saved jobs now fetched from database via API
-
   // Handle tab switching
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
+    // Reset mock interview step when switching to mock interview tab
+    if (tabId === "mock interview") {
+      setMockInterviewStep("setup");
+      setSelectedReportId(null);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Handle applying for a saved job - move it from saved to applications
   const handleApplyForSavedJob = (job: any) => {
-    // Create a new application from the saved job
     const newApplication = {
       ...job,
       id: applications.length > 0 ? Math.max(...applications.map(app => app.id)) + 1 : 1,
@@ -871,19 +1407,15 @@ export default function CandidateDashboard() {
       accommodationsRequested: job.hasAccommodations || false,
     };
 
-    // Add to applications
     setApplications(prev => [newApplication, ...prev]);
 
-    // Remove from saved jobs
     setSavedJobs(prev => prev.filter(savedJob => savedJob.id !== job.id));
 
-    // Update selected saved job if needed
     if (selectedSavedJob?.id === job.id) {
       const remainingSavedJobs = savedJobs.filter(savedJob => savedJob.id !== job.id);
       setSelectedSavedJob(remainingSavedJobs.length > 0 ? remainingSavedJobs[0] : null);
     }
 
-    // Switch to applications tab and select the new application
     setActiveTab("applications");
     setSelectedApplication(newApplication);
   };
@@ -902,10 +1434,19 @@ export default function CandidateDashboard() {
     );
   };
 
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 90) return "font-bold text-green-600";
+    if (score >= 80) return "font-bold text-blue-600";
+    if (score >= 70) return "font-bold text-yellow-600";
+    return "font-bold text-red-600";
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "under_review":
         return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Under Review</Badge>;
+      case "shortlisted":
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Shortlisted</Badge>;
       case "interview_scheduled":
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Interview Scheduled</Badge>;
       case "rejected":
@@ -997,13 +1538,62 @@ export default function CandidateDashboard() {
       <div className="page-wrap py-8">
         <div className="grid lg:grid-cols-[300px_1fr] gap-8 py-8">
           {/* Sidebar */}
-          <div className="lg:sticky top-[var(--app-header-height)] self-start">
-            <div className="lg:sticky lg:top-[calc(var(--app-header-height)+16px)]">
+          <div className="lg:sticky lg:top-[calc(var(--app-header-height)+32px)] lg:self-start lg:max-h-[calc(100vh-var(--app-header-height)-64px)] lg:overflow-y-auto">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                      {candidateProfile.name.split(' ').map(n => n[0]).join('')}
+                    <div className="relative w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
+                      {(() => {
+                        const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                        return picUrl && picUrl.trim() !== "";
+                      })() ? (
+                        <img
+                          src={
+                            (() => {
+                              const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                              if (!picUrl) return '';
+                              if (picUrl.startsWith("http")) {
+                                return `${picUrl}?t=${Date.now()}`;
+                              }
+                              // Match employer dashboard logic exactly
+                              return `${API_BASE}${picUrl.startsWith('/') ? '' : '/'}${picUrl}?t=${Date.now()}`;
+                            })()
+                          }
+                          alt="Profile Picture"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                            console.error("Profile picture failed to load:", picUrl);
+                            console.error("Constructed URL:", picUrl?.startsWith("http") 
+                              ? picUrl 
+                              : `${API_BASE}${picUrl?.startsWith('/') ? '' : '/'}${picUrl}`);
+                            (e.target as HTMLImageElement).style.display = "none";
+                            const parentDiv = e.currentTarget.parentElement;
+                            if (parentDiv && !parentDiv.querySelector('.fallback-initials')) {
+                              const fallback = document.createElement("div");
+                              fallback.className = "fallback-initials w-full h-full flex items-center justify-center text-white text-sm font-semibold";
+                              fallback.textContent = candidateProfile.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+                              parentDiv.appendChild(fallback);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span>{candidateProfile.name.split(' ').map(n => n[0]).join('')}</span>
+                      )}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={onFileChange}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+                        title="Upload profile picture"
+                      >
+                        <Camera className="h-5 w-5 text-white" />
+                      </button>
                     </div>
                     <div>
                       <h3 className="font-semibold text-[#635bff]">{candidateProfile.name}</h3>
@@ -1114,7 +1704,6 @@ export default function CandidateDashboard() {
                   </nav>
                 </CardContent>
               </Card>
-            </div>
           </div>
 
           {/* Main Content */}
@@ -1132,351 +1721,63 @@ export default function CandidateDashboard() {
                   {activeTab === "skills" && "Skills"}
                   {activeTab === "neuro_strength" && "Neurodivergent Strengths"}
                   {activeTab === "environment" && "Preferred Environment"}
-                  {activeTab === "mock interview" && "Conduct a Mock Interview"}
+                  {activeTab === "mock interview" && "Mock Interview"}
                   {activeTab === "Report" && "Candidate Report"}
                   {activeTab === "Appointment" && "Book Appointment"}
                 </h2>
-                <ResumeUploadButton
-                  buttonText="Upload Resume"
-                  buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200"
-                  onResumeProcessed={(parsedInfo) => {
-                    console.log("Resume processed:", parsedInfo);
-                  }}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <ResumeUploadButton
+                    buttonText="Upload Resume"
+                    buttonClassName="bg-[#635bff] hover:bg-[#5748e5] text-white text-base font-semibold px-6 py-3 rounded-full shadow-md transition-all duration-200 hover:cursor-pointer"
+                    onResumeProcessed={(parsedInfo) => {
+                      console.log("Resume processed:", parsedInfo);
+                    }}
+                  />
+                  {/* <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Get AI Matches"}
+                  </Button> */}
+                </div>
               </div>
               {activeTab === "overview" && (
-                <div className="space-y-6">
-                <div className="grid md:grid-cols-3 gap-6">
-                  {[
-                    {
-                      icon: Briefcase,
-                      iconColor: "text-[#635bff]",
-                      title: "Applications Submitted",
-                      value: applications.length,
-                    },
-                    {
-                      icon: Eye,
-                      iconColor: "text-blue-600",
-                      title: "Profile Views",
-                      value: 12,
-                    },
-                    {
-                      icon: Heart,
-                      iconColor: "text-red-500",
-                      title: "Saved Jobs",
-                      value: savedJobs.length,
-                    },
-                  ].map((card, idx) => {
-                    const Icon = card.icon;
-                    return (
-                      <motion.div
-                        key={idx}
-                        whileHover={{
-                          boxShadow: "2px 2px 2px rgba(99,91,255,0.3)",
-                        }}
-                        className="rounded-xl overflow-hidden hover:cursor-pointer"
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        onClick={() => {
-                          card.icon == Briefcase
-                            ? handleTabChange("applications")
-                            : card.icon == Heart
-                              ? handleTabChange("saved")
-                              : null
-                        }}
-                      >
-                        <Card>
-                          <CardContent className="p-6 text-center">
-                            <Icon className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`} />
-                            <h3 className="font-semibold text-[#3a4043] mb-1">{card.value}</h3>
-                            <p className="text-sm text-gray-600">{card.title}</p>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Recent Applications</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="divide-y divide-gray-200">
-                      {applications.slice(0, 3).map((app, index) => (
-                        <motion.div
-                          key={app.id}
-                          whileHover={{
-                            backgroundColor: "rgba(99,91,255,0.04)",
-                          }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                          className={`flex items-center justify-between py-3 ${index === 0 ? "" : ""} hover:cursor-pointer`}
-                        >
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(app.status)}
-                            <div>
-                              <h4 className="font-medium text-[#3a4043]">{app.jobTitle}</h4>
-                              <p className="text-sm text-gray-600">
-                                {app.company} • {app.location}
-                              </p>
-                            </div>
-                            {app.accommodationsRequested && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-purple-100 text-purple-800 flex items-center gap-1"
-                              >
-                                <Shield className="h-3 w-3" />
-                                Accommodations
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">Score: {Math.round(((app.primaryMatchScore || 96) + (app.secondaryMatchScore || 90) + (app.tertiaryMatchScore || 85)) / 3)}%</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-purple-600" />
-                      Your Accommodations Profile
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {candidateProfile.accommodations.map((accommodation, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          <span className="text-[#3a4043]">{accommodation}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Button variant="outline" className="mt-4">
-                      Update Accommodations
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                <OverviewPage
+                  applications={applications}
+                  savedJobs={savedJobs}
+                  handleTabChange={handleTabChange}
+                  getStatusIcon={getStatusIcon}
+                  getStatusBadge={getStatusBadge}
+                />
+              )}
 
             {activeTab === "browse jobs" && (
                 <CandidateJobListing />
             )}
 
             {activeTab === "applications" && (
-              <div className="space-y-6">
-                
-                {applications.length > 0 ? (
-                  <div className="grid lg:grid-cols-5 gap-6">
-                    {/* Left side - Applications List */}
-                    <div className="lg:col-span-2 space-y-3">
-                    {applications.map((app) => (
-                        <Card 
-                          key={app.id}
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            selectedApplication?.id === app.id 
-                              ? 'border-2 border-[#635bff] shadow-md' 
-                              : 'border border-gray-200'
-                          }`}
-                          onClick={() => setSelectedApplication(app)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h3 className="text-base font-semibold text-[#3a4043] mb-1">{app.jobTitle}</h3>
-                                <p className="text-sm text-[#635bff] font-medium">{app.company}</p>
-                              </div>
-                              {getStatusBadge(app.status)}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {app.location}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-3 w-3" />
-                                {app.salary}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-gray-500">Posted: {app.appliedDate}</p>
-                              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                                {Math.round(((app.primaryMatchScore || 96) + (app.secondaryMatchScore || 90) + (app.tertiaryMatchScore || 85)) / 3)}% match
-                              </Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+              <ApplicationsPage
+                applications={applications}
+                setApplications={setApplications}
+                applicationSearchTerm={applicationSearchTerm}
+                setApplicationSearchTerm={setApplicationSearchTerm}
+                applicationFilterStatus={applicationFilterStatus}
+                setApplicationFilterStatus={setApplicationFilterStatus}
+                selectedApplication={selectedApplication}
+                setSelectedApplication={setSelectedApplication}
+                showMatchingScoreDialog={showMatchingScoreDialog}
+                setShowMatchingScoreDialog={setShowMatchingScoreDialog}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                handleSaveJob={handleSaveJob}
+                savedJobKeys={savedJobKeys}
+                savingJobId={savingJobId}
+              />
+            )}
 
-                    {/* Right side - Application Details */}
-                    <div className="lg:col-span-3">
-                      {selectedApplication ? (
-                        <Card className="sticky top-4">
-                        <CardContent className="p-6">
-                            <div className="space-y-6">
-                              {/* Header */}
-                              <div>
-                                <div className="flex items-start justify-between mb-4">
-                                  <div>
-                                    <h2 className="text-2xl font-bold text-[#3a4043] mb-2">
-                                      {selectedApplication.jobTitle}
-                                    </h2>
-                                    <p className="text-lg text-[#635bff] font-medium mb-3">
-                                      {selectedApplication.company}
-                                    </p>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                        {selectedApplication.location}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <DollarSign className="h-4 w-4" />
-                                        {selectedApplication.salary}
-                                </span>
-                              </div>
-                            </div>
-                                  {selectedApplication.score && (
-                                    <div className="text-center">
-                                      <div className="text-4xl font-bold text-[#635bff] mb-1">
-                                        {selectedApplication.score}%
-                            </div>
-                                      <p className="text-sm text-gray-600">match</p>
-                          </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {getStatusBadge(selectedApplication.status)}
-                                  {selectedApplication.accommodationsRequested && (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                <Shield className="h-3 w-3 mr-1" />
-                                      Accommodations Requested
-                              </Badge>
-                            )}
-                                </div>
-                          </div>
-
-                              {/* Job Description */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Job Description</h3>
-                                <p className="text-gray-700 leading-relaxed">
-                                  {selectedApplication.description || "No job description available."}
-                                </p>
-                                  </div>
-
-                              {/* Requirements */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Requirements</h3>
-                                <ul className="space-y-2">
-                                  {selectedApplication.requirements?.map((req: string, index: number) => (
-                                    <li key={index} className="flex items-start gap-2 text-gray-700">
-                                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                                      <span>{req}</span>
-                                    </li>
-                                  )) || (
-                                    <li className="text-gray-500">No specific requirements listed.</li>
-                                  )}
-                                </ul>
-                                    </div>
-
-                              {/* Benefits */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Benefits</h3>
-                                <ul className="space-y-2">
-                                  {selectedApplication.benefits?.map((benefit: string, index: number) => (
-                                    <li key={index} className="flex items-start gap-2 text-gray-700">
-                                      <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                      <span>{benefit}</span>
-                                    </li>
-                                  )) || (
-                                    <li className="text-gray-500">No benefits information available.</li>
-                                  )}
-                                </ul>
-                              </div>
-
-                              {/* Company Information */}
-                                <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Company Information</h3>
-                                <div className="space-y-2 text-sm text-gray-700">
-                                  <p><strong>Company Size:</strong> {selectedApplication.companySize || "Not specified"}</p>
-                                  <p><strong>Founded:</strong> {selectedApplication.founded || "Not specified"}</p>
-                                  <p><strong>Application Deadline:</strong> {selectedApplication.deadline || "Not specified"}</p>
-                                </div>
-                              </div>
-
-                              {/* Interview Information */}
-                              {selectedApplication.interviewDate && (
-                                <div className="bg-blue-50 p-4 rounded-lg">
-                                  <h3 className="text-lg font-semibold text-[#3a4043] mb-2">Interview Scheduled</h3>
-                                  <p className="text-gray-700 mb-3">
-                                    <strong>Date:</strong> {selectedApplication.interviewDate}
-                                  </p>
-                                  <Button
-                                    size="sm"
-                                    className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200"
-                                    onClick={() => router.push("/mock-interview/setup")}
-                                  >
-                                    Prepare for Interview
-                                  </Button>
-                                </div>
-                              )}
-
-                              {/* Actions */}
-                              <div className="flex gap-3 pt-4 border-t">
-                                <Button 
-                                  className="flex-1 bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold cursor-pointer"
-                                  onClick={() => {
-                                    if (selectedApplication) {
-                                      // Remove the application from the list
-                                      setApplications(prev => prev.filter(app => app.id !== selectedApplication.id));
-                                      // Get the remaining applications
-                                      const remainingApplications = applications.filter(app => app.id !== selectedApplication.id);
-                                      // Set the selected application to the first remaining one, or null if none left
-                                      setSelectedApplication(remainingApplications.length > 0 ? remainingApplications[0] : null);
-                                    }
-                                  }}
-                                >
-                                  Withdraw Application
-                                </Button>
-                          <Button
-                            variant="outline"
-                                  className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
-                                  onClick={() => setShowMatchingScoreDialog(true)}
-                          >
-                                  Detailed Matching Score
-                          </Button>
-                              </div>
-                            </div>
-                        </CardContent>
-                      </Card>
-                      ) : (
-                        <Card className="sticky top-4">
-                          <CardContent className="p-12 text-center">
-                            <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                              Select an Application
-                            </h3>
-                            <p className="text-gray-500">
-                              Click on an application from the list to view details
-                            </p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center p-[100px] w-full justify-center">
-                    <span className="text-[#5748e5] font-bold text-lg">
-                      No applied applications. Apply for jobs in "Browse More Jobs" to see them here!
-                      </span>
-                    </div>
-                )}
-                  </div>
-                )}
 
             {/* Detailed Matching Score Dialog */}
             <Dialog open={showMatchingScoreDialog} onOpenChange={setShowMatchingScoreDialog}>
@@ -1717,195 +2018,325 @@ export default function CandidateDashboard() {
 
             {activeTab === "saved" && (
               <div className="space-y-6">
+                {/* Search and Filters */}
+                <Card className="mb-3 sticky top-22 z-10">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row gap-4 w-full">
+                      {/* Search */}
+                      <div className="flex-1">
+                        <div className="relative w-full">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
+                          <Input
+                            placeholder="Search jobs by title, company, or keywords..."
+                            value={savedJobsSearchTerm}
+                            onChange={(e) => setSavedJobsSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filters */}
+                      <div className="flex gap-4">
+                        <Select value="all" onValueChange={() => {}}>
+                          <SelectTrigger className="w-42">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Locations</SelectItem>
+                            <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
+                            <SelectItem value="Petaling Jaya">Petaling Jaya</SelectItem>
+                            <SelectItem value="George Town">George Town</SelectItem>
+                            <SelectItem value="Johor Bahru">Johor Bahru</SelectItem>
+                            <SelectItem value="Remote">Remote</SelectItem>
+                            <SelectItem value="Hybrid">Hybrid</SelectItem>
+                            <SelectItem value="Malaysia">Malaysia</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value="all" onValueChange={() => {}}>
+                          <SelectTrigger className="w-42">
+                            <Clock className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="Full-time">Full-time</SelectItem>
+                            <SelectItem value="Part-time">Part-time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Remote">Remote</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={savedJobsSortBy} onValueChange={setSavedJobsSortBy}>
+                          <SelectTrigger className="w-42">
+                            <Clock className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recent">Most Recent</SelectItem>
+                            <SelectItem value="match">Best Match</SelectItem>
+                            <SelectItem value="company">Company</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Results Summary */}
+                <div className="mb-6 ml-2">
+                  <p className="text-[#6f7a80] text-sm">
+                    Showing {savedJobs.filter(job => 
+                      !savedJobsSearchTerm || 
+                      job.jobTitle.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                      job.company.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                      job.location.toLowerCase().includes(savedJobsSearchTerm.toLowerCase())
+                    ).length} of {savedJobs.length} jobs
+                  </p>
+                </div>
                 
-                {savedJobs.length > 0 ? (
-                  <div className="grid lg:grid-cols-5 gap-6">
+                {savedJobs.filter(job => 
+                  !savedJobsSearchTerm || 
+                  job.jobTitle.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                  job.company.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                  job.location.toLowerCase().includes(savedJobsSearchTerm.toLowerCase())
+                ).length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
                     {/* Left side - Saved Jobs List */}
-                    <div className="lg:col-span-2 space-y-3">
-                      {savedJobs.map((job) => (
-                        <Card 
+                    <div className="lg:col-span-1 xl:col-span-2 space-y-4">
+                      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#c5c4d4] scrollbar-track-transparent overflow-visible">
+                      {savedJobs.filter(job => 
+                        !savedJobsSearchTerm || 
+                        job.jobTitle.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                        job.company.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                        job.location.toLowerCase().includes(savedJobsSearchTerm.toLowerCase())
+                      ).sort((a, b) => {
+                        if (savedJobsSortBy === "match") {
+                          const aScore = ((a.primaryMatchScore || 96) + (a.secondaryMatchScore || 90) + (a.tertiaryMatchScore || 85)) / 3;
+                          const bScore = ((b.primaryMatchScore || 96) + (b.secondaryMatchScore || 90) + (b.tertiaryMatchScore || 85)) / 3;
+                          return bScore - aScore;
+                        } else if (savedJobsSortBy === "company") {
+                          return a.company.localeCompare(b.company);
+                        }
+                        return 0; // recent (default order)
+                      }).map((job, index) => (
+                        <motion.div
                           key={job.id}
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            selectedSavedJob?.id === job.id 
-                              ? 'border-2 border-[#635bff] shadow-md' 
-                              : 'border border-gray-200'
-                          }`}
-                          onClick={() => setSelectedSavedJob(job)}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h3 className="text-base font-semibold text-[#3a4043] mb-1">{job.jobTitle}</h3>
-                                <p className="text-sm text-[#635bff] font-medium">{job.company}</p>
+                          <Card 
+                            className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                              selectedSavedJob?.id === job.id 
+                                ? "ring-2 ring-[#635bff] bg-[#635bff]/5" 
+                                : "hover:shadow-md"
+                            }`}
+                            onClick={() => setSelectedSavedJob(job)}
+                          >
+                            <CardContent className="p-4 flex flex-col h-full">
+                              <div className="flex flex-col sm:flex-row justify-between gap-4 h-full">
+                                {/* LEFT CONTENT */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                    <h3 className="text-lg font-semibold text-[#3a4043] truncate">{job.jobTitle}</h3>
+                                    <Badge className={`${getMatchScoreColor(Math.round(((job.primaryMatchScore || 96) + (job.secondaryMatchScore || 90) + (job.tertiaryMatchScore || 85)) / 3))} bg-opacity-10`}>
+                                      {Math.round(((job.primaryMatchScore || 96) + (job.secondaryMatchScore || 90) + (job.tertiaryMatchScore || 85)) / 3)}% match
+                                    </Badge>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-4 text-sm text-[#6f7a80] mb-3">
+                                    <span className="flex items-center gap-1">
+                                      <Briefcase className="h-4 w-4" />
+                                      {job.company}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-4 w-4" />
+                                      {job.location}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-4 w-4" />
+                                      {job.type || job.jobType || "Full-time"}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <DollarSign className="h-4 w-4" />
+                                      {job.salary}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-[#6f7a80] text-sm mb-3 truncate overflow-hidden whitespace-nowrap">
+                                    {job.description || "No description available"}
+                                  </p>
+
+                                  <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
+                                    <span>Saved: {job.savedDate || new Date().toISOString().split('T')[0]}</span>
+                                  </div>
+                                </div>
+
+                                {/* RIGHT BUTTON */}
+                                <div className="flex flex-col gap-2 sm:self-start shrink-0">
+                                  <button
+                                    className="p-2 rounded-md transition-colors text-red-500 hover:bg-red-50 cursor-pointer"
+                                    disabled={savingJobId === `${job.jobTitle || job.title}-${job.company}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSaveJob(job);
+                                    }}
+                                  >
+                                    <Heart className="h-5 w-5 fill-red-500" />
+                                  </button>
+                                </div>
                               </div>
-                            <div className="flex gap-2">
-                              {job.isInclusive && (
-                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 text-xs">
-                                  <Heart className="h-3 w-3 mr-1" />
-                                  Inclusive
-                                </Badge>
-                              )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {job.location}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-3 w-3" />
-                                {job.salary}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-gray-500">Type: {job.type}</p>
-                              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                                {Math.round(((job.primaryMatchScore || 96) + (job.secondaryMatchScore || 90) + (job.tertiaryMatchScore || 85)) / 3)}% match
-                                </Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
                       ))}
-                          </div>
+                      </div>
+                    </div>
 
                     {/* Right side - Job Details */}
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-1 xl:col-span-3">
                       {selectedSavedJob ? (
-                        <Card className="sticky top-4">
-                          <CardContent className="p-6">
-                            <div className="space-y-6">
-                              {/* Header */}
-                              <div>
-                                <div className="flex items-start justify-between mb-4">
-                                  <div>
-                                    <h2 className="text-2xl font-bold text-[#3a4043] mb-2">
-                                      {selectedSavedJob.jobTitle}
-                                    </h2>
-                                    <p className="text-lg text-[#635bff] font-medium mb-3">
-                                      {selectedSavedJob.company}
-                                    </p>
-                                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
-                                        {selectedSavedJob.location}
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <DollarSign className="h-4 w-4" />
-                                        {selectedSavedJob.salary}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  {selectedSavedJob.score && (
-                                    <div className="text-center">
-                                      <div className="text-4xl font-bold text-[#635bff] mb-1">
-                                        {selectedSavedJob.score}%
-                                      </div>
-                                      <p className="text-sm text-gray-600">match</p>
-                                    </div>
-                                  )}
+                        <Card className="sticky top-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                          <CardHeader className="pb-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <CardTitle className="text-2xl font-bold text-[#3a4043] mb-2">
+                                  {selectedSavedJob.jobTitle}
+                                </CardTitle>
+                                <div className="flex items-center gap-4 text-[#6f7a80] mb-4">
+                                  <span className="flex items-center gap-1">
+                                    <Briefcase className="h-4 w-4" />
+                                    {selectedSavedJob.company}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {selectedSavedJob.location}
+                                  </span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {selectedSavedJob.isInclusive && (
-                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
-                                      <Heart className="h-3 w-3 mr-1" />
-                                      Inclusive
-                                    </Badge>
-                                  )}
-                                  {selectedSavedJob.hasAccommodations && (
-                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                      <Shield className="h-3 w-3 mr-1" />
-                                      Accommodations Available
-                                    </Badge>
-                                  )}
+                                <div className="flex items-center gap-4 text-sm text-[#6f7a80]">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    {selectedSavedJob.type || selectedSavedJob.jobType || "Full-time"}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="h-4 w-4" />
+                                    {selectedSavedJob.salary}
+                                  </span>
                                 </div>
                               </div>
-
-                              {/* Job Description */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Job Description</h3>
-                                <p className="text-gray-700 leading-relaxed">
-                                  {selectedSavedJob.description || "No job description available."}
-                                </p>
-                                  </div>
-
-                              {/* Requirements */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Requirements</h3>
-                                <ul className="space-y-2">
-                                  {selectedSavedJob.requirements?.map((req: string, index: number) => (
-                                    <li key={index} className="flex items-start gap-2 text-gray-700">
-                                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                                      <span>{req}</span>
-                                    </li>
-                                  )) || (
-                                    <li className="text-gray-500">No specific requirements listed.</li>
-                                  )}
-                                </ul>
-                                  </div>
-
-                              {/* Benefits */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Benefits</h3>
-                                <ul className="space-y-2">
-                                  {selectedSavedJob.benefits?.map((benefit: string, index: number) => (
-                                    <li key={index} className="flex items-start gap-2 text-gray-700">
-                                      <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                      <span>{benefit}</span>
-                                    </li>
-                                  )) || (
-                                    <li className="text-gray-500">No benefits information available.</li>
-                                  )}
-                                </ul>
+                              <div className="flex items-center gap-3 ml-4">
+                                <Badge className={`${getMatchScoreColor(Math.round(((selectedSavedJob.primaryMatchScore || 96) + (selectedSavedJob.secondaryMatchScore || 90) + (selectedSavedJob.tertiaryMatchScore || 85)) / 3))} bg-opacity-10 text-lg px-4 py-2`}>
+                                  {Math.round(((selectedSavedJob.primaryMatchScore || 96) + (selectedSavedJob.secondaryMatchScore || 90) + (selectedSavedJob.tertiaryMatchScore || 85)) / 3)}% match
+                                </Badge>
+                                <button
+                                  className="p-2 rounded-md transition-colors text-red-500 hover:bg-red-50 cursor-pointer"
+                                  disabled={savingJobId === `${selectedSavedJob.jobTitle || selectedSavedJob.title}-${selectedSavedJob.company}`}
+                                  onClick={() => handleSaveJob(selectedSavedJob)}
+                                >
+                                  <Heart className="w-5 h-5 fill-red-500" />
+                                </button>
                               </div>
+                            </div>
+                          </CardHeader>
 
-                              {/* Company Information */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#3a4043] mb-3">Company Information</h3>
-                                <div className="space-y-2 text-sm text-gray-700">
-                                  <p><strong>Company Size:</strong> {selectedSavedJob.companySize || "Not specified"}</p>
-                                  <p><strong>Founded:</strong> {selectedSavedJob.founded || "Not specified"}</p>
-                                  <p><strong>Application Deadline:</strong> {selectedSavedJob.deadline || "Not specified"}</p>
+                          <CardContent className="space-y-6">
+                            {/* Job Description */}
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Job Description</h4>
+                              <p className="text-[#6f7a80] break-words leading-relaxed whitespace-pre-line">
+                                {selectedSavedJob.description || "No job description available."}
+                              </p>
+                            </div>
+
+                            {/* Requirements */}
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Requirements</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedSavedJob.requirements?.map((req: string, index: number) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {req}
+                                  </Badge>
+                                )) || (
+                                  <p className="text-[#6f7a80] text-sm">No specific requirements listed.</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Benefits */}
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Benefits</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedSavedJob.benefits?.map((benefit: string, index: number) => (
+                                  <Badge key={index} variant="outline" className="text-xs border-[#635bff]/20 text-[#635bff]">
+                                    {benefit}
+                                  </Badge>
+                                )) || (
+                                  <p className="text-[#6f7a80] text-sm">No benefits information available.</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Company Information */}
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Company Information</h4>
+                              <div className="space-y-2 text-sm text-[#6f7a80]">
+                                <div className="flex justify-between">
+                                  <span>Company Size:</span>
+                                  <span>{selectedSavedJob.companySize || "Not specified"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Saved:</span>
+                                  <span>{selectedSavedJob.savedDate || new Date().toISOString().split('T')[0]}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Application Deadline:</span>
+                                  <span>{selectedSavedJob.deadline || "Not specified"}</span>
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Actions */}
-                              <div className="flex gap-3 pt-4 border-t">
+                            {/* Actions */}
+                            <div className="flex flex-col gap-3 pt-4 border-t border-[#e8e6f0]">
+                              <Button 
+                                className="w-full bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
+                                onClick={() => handleApplyForSavedJob(selectedSavedJob)}
+                              >
+                                <Briefcase className="w-4 h-4 mr-2" />
+                                Apply Now
+                              </Button>
+                              <div className="flex gap-2">
                                 <Button
                                   variant="outline"
-                                  className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
                                   onClick={() => {
                                     setSavedJobs(prev => prev.filter(j => j.id !== selectedSavedJob.id));
                                     const remainingSavedJobs = savedJobs.filter(j => j.id !== selectedSavedJob.id);
                                     setSelectedSavedJob(remainingSavedJobs.length > 0 ? remainingSavedJobs[0] : null);
                                   }}
                                 >
+                                  <Bookmark className="w-4 h-4 mr-2" />
                                   Remove from Saved
                                 </Button>
-                          <Button
-                            variant="outline"
-                                  className="flex-1 border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 cursor-pointer"
+                                <Button
+                                  variant="outline"
+                                  className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
                                   onClick={() => setShowMatchingScoreDialog(true)}
-                          >
-                                  Detailed Matching Score
-                          </Button>
-                                <Button 
-                                  className="flex-1 bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold cursor-pointer"
-                                  onClick={() => handleApplyForSavedJob(selectedSavedJob)}
                                 >
-                                  Apply Now
+                                  <Share className="w-4 h-4 mr-2" />
+                                  View Match
                                 </Button>
                               </div>
                             </div>
-                        </CardContent>
+                          </CardContent>
                       </Card>
                       ) : (
                         <Card className="sticky top-4">
                           <CardContent className="p-12 text-center">
-                            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                              Select a Saved Job
-                            </h3>
-                            <p className="text-gray-500">
+                            <Briefcase className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-600 mb-2">No job selected</h3>
+                            <p className="text-sm text-gray-500">
                               Click on a job from the list to view details
                             </p>
                           </CardContent>
@@ -1914,11 +2345,30 @@ export default function CandidateDashboard() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center p-[100px] w-full justify-center">
-                    <span className="text-[#5748e5] font-bold text-lg">
-                      No saved jobs yet. Browse jobs and save them for later!
-                      </span>
-                  </div>
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-base font-semibold text-gray-600 mb-2">
+                        {savedJobs.length === 0 
+                          ? "No saved jobs yet" 
+                          : "No jobs found"}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        {savedJobs.length === 0 
+                          ? "Browse jobs and save them for later!" 
+                          : "Try adjusting your search criteria or filters to find more opportunities."}
+                      </p>
+                      {savedJobs.length > 0 && (
+                        <Button
+                          size="sm"
+                          className="bg-[#635bff] hover:bg-[#5748e5] text-white"
+                          onClick={() => setSavedJobsSearchTerm("")}
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
@@ -1926,6 +2376,76 @@ export default function CandidateDashboard() {
             {activeTab === "profile config" && (
               <div className="space-y-6">
                 <div className="grid gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Profile Picture</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="relative">
+                          {(() => {
+                            const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                            return picUrl && picUrl.trim() !== "";
+                          })() ? (
+                            <img
+                              src={
+                                (() => {
+                                  const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                                  if (!picUrl) return '';
+                                  if (picUrl.startsWith("http")) {
+                                    return `${picUrl}?t=${Date.now()}`;
+                                  }
+                                  // Match employer dashboard logic exactly
+                                  return `${API_BASE}${picUrl.startsWith('/') ? '' : '/'}${picUrl}?t=${Date.now()}`;
+                                })()
+                              }
+                              alt="Profile"
+                              className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                              onError={(e) => {
+                                const picUrl = profilePictureUrl || candidateProfile.profilePictureUrl;
+                                console.error("Profile picture failed to load in Profile Data tab:", picUrl);
+                                console.error("Constructed URL:", picUrl?.startsWith("http") 
+                                  ? picUrl 
+                                  : `${API_BASE}${picUrl?.startsWith('/') ? '' : '/'}${picUrl}`);
+                                // Show fallback camera icon
+                                (e.target as HTMLImageElement).style.display = "none";
+                                const parentDiv = e.currentTarget.parentElement;
+                                if (parentDiv && !parentDiv.querySelector('.fallback-camera')) {
+                                  const fallback = document.createElement("div");
+                                  fallback.className = "w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 fallback-camera";
+                                  fallback.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>`;
+                                  parentDiv.appendChild(fallback);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
+                              <User className="h-12 w-12 text-gray-400" />
+                            </div>
+                          )}
+                          <input
+                            id="profilePictureInput"
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={onFileChange}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute bottom-0 right-0 p-2 bg-[#635bff] text-white rounded-full cursor-pointer hover:bg-[#524aff] transition-colors"
+                          >
+                            <Camera className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Upload your profile picture</p>
+                          <p className="text-xs text-gray-500">JPG, PNG or GIF. Max size 5MB</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                   <Card>
                     <CardHeader>
                       <CardTitle>Personal Information</CardTitle>
@@ -2033,23 +2553,24 @@ export default function CandidateDashboard() {
                           </div>
                         ))}
                       </div>
-
-                      <div className="flex justify-end mt-4">
-                        <ProfileSubmission
-                          candidateProfile={{
-                            personalIdentifiers: candidateProfile.personalIdentifiers,
-                            name: candidateProfile.name,
-                            email: candidateProfile.email,
-                            location: candidateProfile.location,
-                          }}
-                          onSave={() => {
-                            calculateProfileCompletion();
-                          }}
-                        />
-                      </div>
                     </CardContent>
                   </Card>
                 </div>
+                 <hr className="border-gray-200 my-8" />
+                  <div className="flex justify-end mt-4">
+                    <ProfileSubmission
+                      candidateProfile={{
+                        personalIdentifiers: candidateProfile.personalIdentifiers,
+                        name: candidateProfile.name,
+                        email: candidateProfile.email,
+                        location: candidateProfile.location,
+                      }}
+                      onSave={() => {
+                        calculateProfileCompletion();
+                        refreshProfileData();
+                      }}
+                    />
+                  </div>
               </div>
             )}
 
@@ -2136,38 +2657,40 @@ export default function CandidateDashboard() {
                             </div>
                           ))}
                         </div>
+                        <div className="flex justify-end py-3">
+                          <Button
+                            onClick={() =>
+                              setEducations([
+                                ...educations,
+                                {
+                                  id: Date.now(),
+                                  level: "",
+                                  fieldOfStudy: "",
+                                  institution: "",
+                                  graduationYear: null,
+                                  cgpa_grade: "",
+                                  award: "",
+                                },
+                              ])
+                            }
+                            className="bg-[#635bff] hover:bg-[#827CFF] text-white hover:cursor-pointer"
+                          >
+                            + Add Education
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
 
-                <div className="flex justify-end mb-4">
-                  <Button
-                    onClick={() =>
-                      setEducations([
-                        ...educations,
-                        {
-                          id: Date.now(),
-                          level: "",
-                          fieldOfStudy: "",
-                          institution: "",
-                          graduationYear: null,
-                          cgpa_grade: "",
-                          award: "",
-                        },
-                      ])
-                    }
-                    className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                  >
-                    + Add Education
-                  </Button>
-                </div>
-
+                
+                <hr className="border-gray-200 my-8" />
                 <div className="flex justify-end">
                   <EducationSubmission
                     educations={educations}
                     onSave={() => {
                       calculateProfileCompletion();
+                      refreshProfileData();
                     }}
                   />
                 </div>
@@ -2299,36 +2822,36 @@ export default function CandidateDashboard() {
                               className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                             />
                           </div>
+                        </div> 
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() =>
+                              setExperiences([
+                                ...experiences,
+                                {
+                                  id: Date.now(),
+                                  employer: "",
+                                  title: "",
+                                  industry: "",
+                                  start: "",
+                                  end: "",
+                                  isCurrent: true,
+                                  seniorityLevel: "",
+                                  skillsToolsUsed: "",
+                                  projectHighlights: "",
+                                  achievements: "",
+                                },
+                              ])
+                            }
+                            className="bg-[#635bff] hover:bg-[#827CFF] text-white hover:cursor-pointer"
+                          >
+                            + Add Experience
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() =>
-                        setExperiences([
-                          ...experiences,
-                          {
-                            id: Date.now(),
-                            employer: "",
-                            title: "",
-                            industry: "",
-                            start: "",
-                            end: "",
-                            isCurrent: true,
-                            seniorityLevel: "",
-                            skillsToolsUsed: "",
-                            projectHighlights: "",
-                            achievements: "",
-                          },
-                        ])
-                      }
-                      className="bg-[#635bff] hover:bg-[#827CFF] text-white"
-                    >
-                      + Add Experience
-                    </Button>
-                  </div>
+                  <hr className="border-gray-200 my-4" />
 
                   <div className="flex justify-end">
                     <ExperienceSkillsSubmission
@@ -2336,6 +2859,7 @@ export default function CandidateDashboard() {
                       // exp_skill={candidateProfile.exp_skill}
                       onSave={() => {
                         calculateProfileCompletion();
+                        refreshProfileData();
                       }}
                     />
                   </div>
@@ -2381,18 +2905,7 @@ export default function CandidateDashboard() {
                           </div>
                         );
                       })}
-
-                      {/* Save Skills button */}
-                      <div className="flex justify-end mt-4">
-                        <SkillsSubmission
-                          exp_skill={candidateProfile.exp_skill}
-                          languageProficiencies={languageProficiencies}
-                          userEmail={session?.user?.email || ""}
-                          onSave={() => {
-                            calculateProfileCompletion();
-                          }}
-                        />
-                      </div>
+                      
                     </CardContent>
                   </Card>
 
@@ -2415,7 +2928,7 @@ export default function CandidateDashboard() {
                               },
                             ]);
                           }}
-                          className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto"
+                          className="bg-[#635bff] hover:bg-[#827CFF] text-white w-full sm:w-auto hover:cursor-pointer"
                         >
                           + Add Language
                         </Button>
@@ -2457,7 +2970,7 @@ export default function CandidateDashboard() {
                                       setLanguageProficiencies(updated);
                                     }}
                                   >
-                                    <SelectTrigger className="w-full md:w-[180px]">
+                                    <SelectTrigger className="w-full md:w-[180px] hover:cursor-pointer">
                                       <SelectValue placeholder="Select language" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -2504,7 +3017,7 @@ export default function CandidateDashboard() {
                                           setLanguageProficiencies(updated);
                                         }}
                                       >
-                                        <SelectTrigger className="w-full md:w-[140px]">
+                                        <SelectTrigger className="w-full md:w-[140px] hover:cursor-pointer">
                                           <SelectValue placeholder="Select level" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -2530,7 +3043,7 @@ export default function CandidateDashboard() {
                                       setLanguageProficiencies(updated);
                                     }}
                                     variant="ghost"
-                                    className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-100 hover:cursor-pointer"
                                   >
                                     Delete
                                   </Button>
@@ -2647,65 +3160,87 @@ export default function CandidateDashboard() {
                           </div>
                         ))}
                       </div>
+                      
                     </CardContent>
                   </Card>
+                  {/* Save Skills button */}
+                  <hr className="border-gray-200 my-8" />
+                      <div className="flex justify-end">
+                        <SkillsSubmission
+                          exp_skill={candidateProfile.exp_skill}
+                          languageProficiencies={languageProficiencies}
+                          userEmail={session?.user?.email || ""}
+                          onSave={() => {
+                            calculateProfileCompletion();
+                            refreshProfileData();
+                          }}
+                        />
+                      </div>
                 </div>
               </div>
             )}
 
 
             {activeTab === "neuro_strength" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between mb-6">
-                  <p className="text-sm font-semibold text-gray-600">Select Your Top 10 Strengths</p>
-                </div>
+             <Card> 
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between my-6">
+                      <p className="text-sm font-semibold text-gray-600">Select Your Top 10 Strengths</p>
+                    </div>
 
-                <div className="space-y-4">
-                  <div className="flex flex-wrap gap-3">
-                    {strengthOptions
-                      .filter((strength) => !selectedStrengths.includes(strength))
-                      .map((strength) => (
-                        <Button
-                          key={strength}
-                          variant="outline"
-                          className="rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50"
-                          onClick={() => toggleStrength(strength)}
-                        >
-                          {strength}
-                          <Plus className="ml-2 h-4 w-4" />
-                        </Button>
-                      ))}
-                  </div>
-
-                  {selectedStrengths.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium text-[#3a4043] mb-2">Selected Strengths:</h3>
+                    <div className="space-y-4">
                       <div className="flex flex-wrap gap-3">
-                        {selectedStrengths.map((strength) => (
-                          <Button
-                            key={strength}
-                            variant="outline"
-                            className="rounded-full border border-purple-400 bg-purple-100 text-purple-600 hover:bg-purple-200"
-                            onClick={() => toggleStrength(strength)}
-                          >
-                            {strength}
-                            <X className="ml-2 h-4 w-4" />
-                          </Button>
-                        ))}
+                        {strengthOptions
+                          .filter((strength) => !selectedStrengths.includes(strength))
+                          .map((strength) => (
+                            <Button
+                              key={strength}
+                              variant="outline"
+                              className="rounded-full border border-purple-400 text-purple-600 hover:bg-purple-50"
+                              onClick={() => toggleStrength(strength)}
+                            >
+                              {strength}
+                              <Plus className="ml-2 h-4 w-4" />
+                            </Button>
+                          ))}
+                      </div>
+
+                      {selectedStrengths.length > 0 && (
+                        <div className="mt-4">
+                          <h3 className="text-sm font-medium text-[#3a4043] mb-2">Selected Strengths:</h3>
+                          <div className="flex flex-wrap gap-3">
+                            {selectedStrengths.map((strength) => (
+                              <Button
+                                key={strength}
+                                variant="outline"
+                                className="rounded-full border border-purple-400 bg-purple-100 text-purple-600 hover:bg-purple-200"
+                                onClick={() => toggleStrength(strength)}
+                              >
+                                {strength}
+                                <X className="ml-2 h-4 w-4" />
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <hr className="border-gray-200 my-8" />
+                      <div className="flex justify-end mt-4">
+                      <NeuroStrengthSubmission
+                        selectedStrengths={selectedStrengths}
+                        onSave={() => {
+                          calculateProfileCompletion();
+                          // Only dispatch event, don't trigger full data refetch
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('profileUpdated'));
+                          }
+                        }}
+                      />
                       </div>
                     </div>
-                  )}
-
-                  <div className="flex justify-end mt-4">
-                  <NeuroStrengthSubmission
-                    selectedStrengths={selectedStrengths}
-                    onSave={() => {
-                      calculateProfileCompletion();
-                    }}
-                  />
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {activeTab === "environment" && (
@@ -2819,14 +3354,16 @@ export default function CandidateDashboard() {
                     </CardContent>
                   </Card>
                 </div>
-
+                <hr className="border-gray-200 my-8" />
                 <div className="flex justify-end mt-4">
                   <EnvironmentSubmission
                     environment={candidateProfile.environment}
                     onSave={() => {
                       calculateProfileCompletion();
+                      refreshProfileData();
                     }}
                   />
+                
                 </div>
               </div>
             )}
@@ -2837,6 +3374,8 @@ export default function CandidateDashboard() {
                   <MockInterviewSetupPage onNavigate={(target) => {
                     if (target === "interview") {
                       setMockInterviewStep("process");
+                    } else if (target === "history") {
+                      setMockInterviewStep("history");
                     }
                   }} />
                 )}
@@ -2853,8 +3392,38 @@ export default function CandidateDashboard() {
                   <MockInterviewFeedbackPage onNavigate={(target) => {
                     if (target === "setup") {
                       setMockInterviewStep("setup");
+                    } else if (target === "history") {
+                      setMockInterviewStep("history");
                     }
                   }} />
+                )}
+
+                {mockInterviewStep === "history" && (
+                  <InterviewHistoryPage 
+                    onNavigate={(target, reportId?) => {
+                      if (target === "setup") {
+                        setMockInterviewStep("setup");
+                      } else if (target === "detail" && reportId) {
+                        setSelectedReportId(reportId);
+                        setMockInterviewStep("history-detail");
+                      }
+                    }}
+                  />
+                )}
+
+                {mockInterviewStep === "history-detail" && selectedReportId && (
+                  <InterviewReportDetailPage 
+                    reportId={selectedReportId}
+                    onNavigate={(target) => {
+                      if (target === "history") {
+                        setMockInterviewStep("history");
+                        setSelectedReportId(null);
+                      } else if (target === "setup") {
+                        setMockInterviewStep("setup");
+                        setSelectedReportId(null);
+                      }
+                    }}
+                  />
                 )}
               </>
             )}

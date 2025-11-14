@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from "@/app/components/button";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface ExperienceSkillsSubmissionProps {
   experiences: Array<{
@@ -21,6 +22,7 @@ export function ExperienceSkillsSubmission({ experiences, onSave }: ExperienceSk
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
+  const { success, error: showError } = useToastHelpers();
 
   const handleSubmitExperienceSkills = async () => {
     setIsSubmitting(true);
@@ -41,7 +43,7 @@ export function ExperienceSkillsSubmission({ experiences, onSave }: ExperienceSk
       });
 
       if (experienceResponse.ok) {
-        alert('Experience saved successfully!');
+        success('Experience Saved', 'Experience information saved successfully!');
         if (onSave) onSave();
       } else {
         const expText = await experienceResponse.text();
@@ -50,7 +52,9 @@ export function ExperienceSkillsSubmission({ experiences, onSave }: ExperienceSk
       }
     } catch (error: any) {
       console.error('Error saving experience:', error);
-      setError(error.message || 'An error occurred while saving your experience & skills.');
+      const errorMessage = error.message || 'An error occurred while saving your experience & skills.';
+      setError(errorMessage);
+      showError('Save Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -60,7 +64,7 @@ export function ExperienceSkillsSubmission({ experiences, onSave }: ExperienceSk
     <div>
       {error && <p className="text-red-600 mb-2">{error}</p>}
       <Button
-        className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+        className="bg-[#635bff] hover:bg-[#827CFF] text-white cursor-pointer"
         onClick={handleSubmitExperienceSkills}
         disabled={isSubmitting}
       >

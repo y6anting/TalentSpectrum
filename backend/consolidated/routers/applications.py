@@ -75,7 +75,7 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
         # Get candidate profile by email
         candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == application.candidate_email).first()
         if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate profile not found")
+            raise HTTPException(status_code=404, detail="Candidate profile not found. Please create your profile by uploading a resume or filling in your details manually.")
 
         # Get job details
         job = db.query(Post_Job).filter(Post_Job.id == application.job_id).first()
@@ -113,6 +113,9 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         return {"message": "Application submitted successfully", "application": new_application}
 
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error applying to job: {e}")
@@ -135,34 +138,102 @@ async def get_candidate_applications(candidate_email: str, db: DbDep):
         # Return empty array instead of 500 error
         return []
 
-@router.get("/applications/employer/{employer_email}")
+@router.get("/employer/{employer_email}")
 async def get_employer_applications(employer_email: str, db: DbDep):
     try:
         company_key = employer_email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-        results = (
-            db.query(JobApplication, CandidateProfile)
-            .join(CandidateProfile, JobApplication.candidate_id == CandidateProfile.id)
-            .filter(JobApplication.company == company_key)
-            .all()
-        )
+        print(f"get_employer_applications: Looking for applications with company_key: {company_key}")
+        
+        # Get all applications for this company
+        applications = db.query(JobApplication).filter(JobApplication.company == company_key).all()
+        print(f"get_employer_applications: Found {len(applications)} applications")
+        
         apps = []
-        for application, candidate in results:
-            apps.append({
-                "id": application.id,
-                "candidate_name": candidate.name,
-                "candidate_email": candidate.email,
-                "job_title": application.job_title,
-                "applied_date": application.applied_date,
-                "status": application.status,
-                "accommodations_requested": application.accommodations_requested,
-                "score": application.score,
-                "interview_date": application.interview_date,
-                "location": application.location,
-                "salary": application.salary,
-            })
+        for application in applications:
+            # Find candidate profile by email
+            candidate = db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_email == application.candidate_email
+            ).first()
+            
+            # Format dates as ISO strings
+            applied_date_str = application.applied_date.strftime("%Y-%m-%d") if application.applied_date else None
+            interview_date_str = application.interview_date.strftime("%Y-%m-%d") if application.interview_date else None
+            
+            if candidate:
+                apps.append({
+                    "id": application.id,
+                    "candidate_name": candidate.name or "Unknown",
+                    "candidate_email": candidate.candidate_email or application.candidate_email,
+                    "job_title": application.job_title,
+                    "applied_date": applied_date_str,
+                    "status": application.status,
+                    "accommodations_requested": application.accommodations_requested,
+                    "score": application.score,
+                    "interview_date": interview_date_str,
+                    "location": application.location,
+                    "salary": application.salary,
+                })
+            else:
+                # If candidate profile not found, still include the application with basic info
+                apps.append({
+                    "id": application.id,
+                    "candidate_name": "Unknown",
+                    "candidate_email": application.candidate_email,
+                    "job_title": application.job_title,
+                    "applied_date": applied_date_str,
+                    "status": application.status,
+                    "accommodations_requested": application.accommodations_requested,
+                    "score": application.score,
+                    "interview_date": interview_date_str,
+                    "location": application.location,
+                    "salary": application.salary,
+                })
+        
+        print(f"get_employer_applications: Returning {len(apps)} applications")
         return apps
     except Exception as e:
+        import traceback
+        print(f"get_employer_applications: Error: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error fetching employer applications: {e}")
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+
+@router.patch("/{application_id}")
+async def update_application_status(application_id: int, db: DbDep, status_data: StatusUpdateRequest):
+    """Update application status (shortlisted, rejected, under_review)"""
+    try:
+        application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+        
+        if not application:
+            raise HTTPException(status_code=404, detail="Application not found")
+        
+        new_status = status_data.status
+        if new_status not in ["shortlisted", "rejected", "under_review"]:
+            raise HTTPException(status_code=400, detail="Invalid status. Must be 'shortlisted', 'rejected', or 'under_review'")
+        
+        application.status = new_status
+        db.commit()
+        db.refresh(application)
+        
+        return {
+            "message": f"Application status updated to {new_status}",
+            "application": {
+                "id": application.id,
+                "candidate_email": application.candidate_email,
+                "job_title": application.job_title,
+                "status": application.status
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Error updating application status: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error updating application status: {e}")
 
 # Saved Jobs endpoints
 @router.post("/save")
@@ -171,7 +242,7 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
         # Get candidate profile by email
         candidate = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == saved_job.candidate_email).first()
         if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate profile not found")
+            raise HTTPException(status_code=404, detail="Candidate profile not found. Please create your profile by uploading a resume or filling in your details manually.")
 
         # Get job details
         job = db.query(Post_Job).filter(Post_Job.id == saved_job.job_id).first()
@@ -225,6 +296,9 @@ async def save_job(db: DbDep, saved_job: SavedJobRequest):
 
         return {"message": "Job saved successfully", "saved_job": new_saved_job}
 
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saving job: {e}")
@@ -259,6 +333,9 @@ async def unsave_job(saved_job_id: int, db: DbDep):
 
         return {"message": "Job removed from saved jobs"}
 
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error removing saved job: {e}")

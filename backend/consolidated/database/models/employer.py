@@ -1,7 +1,8 @@
 from database.connection import Base
-from sqlalchemy import Column, Integer, String, Float, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 # SQLAlchemy model
 class Post_Job(Base):
@@ -18,6 +19,8 @@ class Post_Job(Base):
     job_summary = Column(Text, nullable=False)
     job_requirements = Column(Text)
     soft_skills = Column(Text)
+    status = Column(String, default="active", nullable=True)  # active, draft, closed, expired
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
     flexible_work_hour = Column(Boolean, default=False)
     sensory_friendly_environment = Column(Boolean, default=False)
     peer_support_system = Column(Boolean, default=False)
@@ -46,6 +49,7 @@ class PostJobRequest(BaseModel):
     job_summary: str
     job_requirements: Optional[str] = None
     soft_skills: Optional[str] = None
+    status: Optional[str] = "active"  # active, draft, closed, expired
     flexible_work_hour: bool = False
     sensory_friendly_environment: bool = False
     peer_support_system: bool = False

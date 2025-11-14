@@ -1,6 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import Annotated
+import os
+import shutil
+import json
+import re
+from datetime import datetime
 
 from database.connection import get_db
 from database.models.candidate import CandidateProfile, CandidateProfileRequest, Education, Experience, JobApplication, SavedJob
@@ -33,6 +39,12 @@ async def get_profiles_by_email(email: str, db: DbDep):
     # Get related experience records using email
     experiences = db.query(Experience).filter(Experience.candidate_email == email).all()
     
+    # Extract profile picture URL from personal_identifiers
+    personal_identifiers = profile.personal_identifiers or {}
+    if not isinstance(personal_identifiers, dict):
+        personal_identifiers = {}
+    profile_picture_url = personal_identifiers.get("profile_picture_url")
+    
     # Convert to dictionaries for JSON response
     profile_dict = {
         "id": profile.id,
@@ -44,6 +56,7 @@ async def get_profiles_by_email(email: str, db: DbDep):
         "accommodations": profile.accommodations,
         "preferences": profile.preferences,
         "personal_identifiers": profile.personal_identifiers,
+        "profile_picture_url": profile_picture_url,  # Add profile picture URL
         "education": profile.education,
         "experience": profile.experience,
         "skills": profile.skills,
@@ -116,8 +129,9 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
     db.refresh(new_profile)
     
     # Create education records
+    print(f"Saving {len(educations_data)} education entries to database...")
     if educations_data:
-        for edu_data in educations_data:
+        for i, edu_data in enumerate(educations_data):
             education = Education(
                 candidate_email=user_email,
                 level=edu_data.get('level'),
@@ -130,8 +144,9 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
             db.add(education)
     
     # Create experience records
+    print(f"Saving {len(experiences_data)} experience entries to database...")
     if experiences_data:
-        for exp_data in experiences_data:
+        for i, exp_data in enumerate(experiences_data):
             experience = Experience(
                 candidate_email=user_email,
                 employer=exp_data.get('employer'),
@@ -145,8 +160,12 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
                 achievements=exp_data.get('achievements') or exp_data.get('Achievements')
             )
             db.add(experience)
+            print(f"   Experience {i+1}: {exp_data.get('title') or exp_data.get('Title')} at {exp_data.get('employer')}")
+    else:
+        print("⚠️ No experience data to save")
     
     db.commit()
+    print(f"✅ Profile saved successfully with {len(educations_data)} educations and {len(experiences_data)} experiences")
     return {"message": "Profile added", "profile": new_profile}
 
 @router.put("/{email}")
@@ -171,10 +190,13 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
             setattr(existing, key, value)
     
     # Handle educations if provided
-    if 'educations' in profile_data and profile_data['educations']:
+    educations_data = profile_data.pop('educations', [])
+    print(f"Updating profile: {len(educations_data)} education entries...")
+    if educations_data:
         # Clear existing and add new ones
-        db.query(Education).filter(Education.candidate_email == email).delete()
-        for edu_data in profile_data['educations']:
+        deleted_count = db.query(Education).filter(Education.candidate_email == email).delete()
+        print(f"   Deleted {deleted_count} existing education records")
+        for i, edu_data in enumerate(educations_data):
             education = Education(
                 candidate_email=email,
                 level=edu_data.get('level'),
@@ -185,12 +207,18 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
                 award=edu_data.get('award')
             )
             db.add(education)
+            print(f"   Added education {i+1}: {edu_data.get('level')} in {edu_data.get('fieldOfStudy') or edu_data.get('field_of_study')}")
+    else:
+        print("No education data provided in update")
     
     # Handle experiences if provided
-    if 'experiences' in profile_data and profile_data['experiences']:
+    experiences_data = profile_data.pop('experiences', [])
+    print(f"💼 Updating profile: {len(experiences_data)} experience entries...")
+    if experiences_data:
         # Clear existing and add new ones
-        db.query(Experience).filter(Experience.candidate_email == email).delete()
-        for exp_data in profile_data['experiences']:
+        deleted_count = db.query(Experience).filter(Experience.candidate_email == email).delete()
+        print(f"   Deleted {deleted_count} existing experience records")
+        for i, exp_data in enumerate(experiences_data):
             experience = Experience(
                 candidate_email=email,
                 employer=exp_data.get('employer'),
@@ -204,9 +232,13 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
                 achievements=exp_data.get('achievements') or exp_data.get('Achievements')
             )
             db.add(experience)
+            print(f"   Added experience {i+1}: {exp_data.get('title') or exp_data.get('Title')} at {exp_data.get('employer')}")
+    else:
+        print("⚠️ No experience data provided in update")
     
     db.commit()
     db.refresh(existing)
+    print(f"✅ Profile updated successfully with {len(educations_data)} educations and {len(experiences_data)} experiences")
     return {"message": "Profile updated", "profile": existing}
 
 # Education endpoints
@@ -474,8 +506,9 @@ async def get_applications(email: str, db: Session = Depends(get_db)):
     """Get all job applications for a candidate by email"""
     applications = db.query(JobApplication).filter(JobApplication.candidate_email == email).all()
     
-    return [
-        {
+    result = []
+    for app in applications:
+        app_data = {
             "id": str(app.id),
             "jobTitle": app.job_title,
             "company": app.company,
@@ -486,17 +519,20 @@ async def get_applications(email: str, db: Session = Depends(get_db)):
             "accommodationsRequested": app.accommodations_requested,
             "score": app.score,
             "interviewDate": app.interview_date.strftime("%Y-%m-%d") if app.interview_date else None,
+            "job_id": app.job_id if hasattr(app, 'job_id') else None,
         }
-        for app in applications
-    ]
+        result.append(app_data)
+    
+    return result
 
 @router.get("/{email}/saved-jobs")
 async def get_saved_jobs(email: str, db: Session = Depends(get_db)):
     """Get all saved jobs for a candidate by email"""
     saved_jobs = db.query(SavedJob).filter(SavedJob.candidate_email == email).all()
     
-    return [
-        {
+    result = []
+    for job in saved_jobs:
+        job_data = {
             "id": str(job.id),
             "title": job.job_title,
             "company": job.company,
@@ -505,7 +541,69 @@ async def get_saved_jobs(email: str, db: Session = Depends(get_db)):
             "salary": job.salary,
             "isInclusive": job.is_inclusive,
             "hasAccommodations": job.has_accommodations,
+            "job_id": job.job_id if hasattr(job, 'job_id') else None,
         }
-        for job in saved_jobs
-    ]
+        result.append(job_data)
+    
+    return result
+
+# =============================
+#   PROFILE PICTURE UPLOAD ROUTE
+# =============================
+
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename to remove invalid characters"""
+    # Remove or replace invalid characters
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    # Remove leading/trailing spaces and dots
+    filename = filename.strip(' .')
+    return filename
+
+@router.post("/{email}/upload-profile-picture")
+async def upload_profile_picture(email: str, db: DbDep, file: UploadFile = File(...)):
+    """Upload profile picture for a candidate"""
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Candidate profile not found for this email.")
+
+    allowed_extensions = ["jpg", "jpeg", "png", "gif", "svg"]
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+    
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension not in allowed_extensions:
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
+
+    # Use candidate name or email for filename
+    sanitized_name = sanitize_filename(profile.name or email.split('@')[0])
+    timestamp = int(datetime.now().timestamp())
+    new_filename = f"{sanitized_name}_{timestamp}.{file_extension}"
+    
+    # Profile pictures directory - match jobs.py path calculation exactly
+    # From routers/profiles.py, go up 2 levels to backend/, then to talent-spectrum-app
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Goes to routers/
+    PROFILE_PICTURES_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "talent-spectrum-app", "public", "profile-pictures"))
+    file_path = os.path.join(PROFILE_PICTURES_DIR, new_filename)
+
+    try:
+        os.makedirs(PROFILE_PICTURES_DIR, exist_ok=True)
+        print(f"Saving profile picture to: {file_path}")
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
+
+    profile_picture_url = f"/profile-pictures/{new_filename}"
+    
+    # Store in personal_identifiers JSON field
+    personal_identifiers = profile.personal_identifiers or {}
+    if not isinstance(personal_identifiers, dict):
+        personal_identifiers = {}
+    personal_identifiers["profile_picture_url"] = profile_picture_url
+    profile.personal_identifiers = personal_identifiers
+    
+    db.commit()
+    db.refresh(profile)
+
+    return JSONResponse(status_code=200, content={"message": "Profile picture uploaded successfully", "profile_picture_url": profile_picture_url})
 

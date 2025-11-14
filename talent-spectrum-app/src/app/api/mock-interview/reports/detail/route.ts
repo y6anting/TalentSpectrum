@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/api/mock-interview/reports/detail/${encodeURIComponent(id)}`,
+      `${BACKEND_URL}/mock-interview/reports/detail/${encodeURIComponent(id)}`,
       {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },

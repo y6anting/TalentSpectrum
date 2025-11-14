@@ -227,12 +227,12 @@ export default function EmployerJobListing() {
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-xl font-semibold text-[#3a4043]">{job.title}</h3>
                         {getStatusBadge(job.status)}
-                        {job.accommodationsFriendly && (
+                        {/* {job.accommodationsFriendly && (
                           <Badge variant="secondary" className="bg-purple-100 text-purple-800">
                             <Shield className="h-3 w-3 mr-1" />
                             Accommodation Friendly
                           </Badge>
-                        )}
+                        )} */}
                       </div>
                       
                       <div className="flex items-center gap-4 text-sm text-[#6f7a80] mb-3">

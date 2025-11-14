@@ -298,7 +298,7 @@ const TextToSpeech: React.FC = () => {
             onClick={readText}
             onMouseDown={(e) => e.preventDefault()}
             size="sm"
-            className="bg-[#635BFF] hover:bg-[#524BCC] text-white px-3 py-1.5 text-xs font-medium transition-all"
+            className="hover:cursor-pointer bg-[#635BFF] hover:bg-[#524BCC] text-white px-3 py-1.5 text-xs font-medium transition-all"
             title="Read selected text aloud"
           >
             <Volume2 className="w-4 h-4 mr-1.5" />
@@ -309,7 +309,7 @@ const TextToSpeech: React.FC = () => {
             onMouseDown={(e) => e.preventDefault()}
             size="sm"
             variant="outline"
-            className="px-2 py-1.5 text-xs hover:bg-gray-100 transition-all"
+            className="px-2 py-1.5 text-xs hover:cursor-pointer hover:bg-gray-100 transition-all"
             title="Close"
           >
             <X className="w-4 h-4" />

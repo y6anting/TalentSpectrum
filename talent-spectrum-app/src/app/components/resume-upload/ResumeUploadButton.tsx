@@ -70,8 +70,6 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
           }
         }
 
-      // Removed: setResumeData(dataToSet);
-      // Removed: setShowParsedModal(true);
       if (onResumeProcessed) onResumeProcessed(parsedInfo);
 
       // EXTRACT AND STORE RESUME EMAIL WITH FALLBACK
@@ -96,8 +94,6 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
         console.error("❌ Error storing resume email:", e);
       }
 
-      // ✅ REMOVED: No more PUT call here - Backend already saved the data
-      // Just dispatch the event to trigger profile refetch
       try {
         const finalEmail = 
           (dataToSet as any)?.personal_identifiers?.emailAddress || 
@@ -113,8 +109,8 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
         console.log("✅ Event dispatched successfully");
         
         // Show success message with instructions
-        toast.success("Resume parsed successfully! Please review and edit your profile under Profile Settings tab if necessary.", {
-          duration: 6000, // Show for 6 seconds
+        toast.success("Resume uploaded successfully! Your profile has been updated.", {
+          duration: 5000,
           style: {
             maxWidth: '500px',
           },
@@ -175,3 +171,4 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
 };
 
 export default ResumeUploadButton;
+

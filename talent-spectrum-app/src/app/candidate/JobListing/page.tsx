@@ -41,6 +41,10 @@ import {
   Briefcase,
   Globe,
   Award,
+  ChevronDown,
+  ChevronUp,
+  BrainCircuit,
+  House,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { ToastProvider, useToastHelpers } from "@/components/ui/toast";
@@ -83,20 +87,35 @@ interface DisplayJob {
   location: string;
   type: string;
   salary: string;
+  salaryRange?: number; // Index for SALARY_RANGES array
   postedDate: string;
   matchScore: number;
   accommodationsFriendly: boolean;
   description: string;
   requirements: string[];
   benefits: string[];
+  accommodations?: string[]; // Accommodations offered
   companySize: string;
   industry: string;
   applicationDeadline: string;
   neurodivergentFriendly: boolean;
   logo?: string;
+  primaryMatchScore?: number;
+  secondaryMatchScore?: number;
+  tertiaryMatchScore?: number;
 }
 
-export function CandidateJobListingContent() {
+const SALARY_RANGES = [
+  "Below RM 3,000",
+  "RM 3,000 - RM 5,000",
+  "RM 5,001 - RM 8,000",
+  "RM 8,001 - RM 12,000",
+  "RM 12,001 - RM 18,000",
+  "RM 18,001 - RM 25,000",
+  "Above RM 25,000",
+];
+
+export default function CandidateJobListingContent() {
   const { success, error: showError, warning, info } = useToastHelpers();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLocation, setFilterLocation] = useState("all");
@@ -106,11 +125,12 @@ export function CandidateJobListingContent() {
   const [selectedJob, setSelectedJob] = useState<DisplayJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isApplying, setIsApplying] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Map<string, number>>(new Map());
+  const [expandedMatchingScore, setExpandedMatchingScore] = useState<string | null>(null);
 
   // Check if user has a profile/resume
   const checkUserProfile = async (userEmail: string): Promise<boolean> => {
@@ -120,15 +140,62 @@ export function CandidateJobListingContent() {
         return false;
       }
       const data = await response.json();
+      
       // Check if profile exists and has meaningful data (not just auto-created empty profile)
-      // A profile is considered valid if it has personal identifiers or education or experience
-      const hasValidProfile = data && (
-        (data.personal_identifiers && Object.keys(data.personal_identifiers).length > 0) ||
-        (data.educations && data.educations.length > 0) ||
-        (data.experiences && data.experiences.length > 0) ||
-        (data.education && Object.keys(data.education).length > 0) ||
-        (data.experience && Object.keys(data.experience).length > 0)
-      );
+      // A profile is considered valid if it has:
+      // 1. Personal identifiers with at least one filled field (excluding email)
+      // 2. OR at least one education entry
+      // 3. OR at least one experience entry
+      
+      let hasValidProfile = false;
+      
+      // Check personal identifiers - need at least one non-empty field besides email
+      if (data.personal_identifiers) {
+        const personalFields = Object.entries(data.personal_identifiers)
+          .filter(([key, value]) => key !== 'email' && value && String(value).trim() !== '');
+        if (personalFields.length > 0) {
+          hasValidProfile = true;
+        }
+      }
+      
+      // Check educations
+      if (!hasValidProfile && data.educations && Array.isArray(data.educations) && data.educations.length > 0) {
+        // Check if at least one education has meaningful data
+        const hasRealEducation = data.educations.some((edu: any) => 
+          edu.degree || edu.institution || edu.field_of_study
+        );
+        if (hasRealEducation) {
+          hasValidProfile = true;
+        }
+      }
+      
+      // Check experiences
+      if (!hasValidProfile && data.experiences && Array.isArray(data.experiences) && data.experiences.length > 0) {
+        // Check if at least one experience has meaningful data
+        const hasRealExperience = data.experiences.some((exp: any) => 
+          exp.job_title || exp.company || exp.description
+        );
+        if (hasRealExperience) {
+          hasValidProfile = true;
+        }
+      }
+      
+      // Alternative field names (legacy support)
+      if (!hasValidProfile && data.education && Object.keys(data.education).length > 0) {
+        const hasRealEducation = Object.values(data.education).some(val => val && String(val).trim() !== '');
+        if (hasRealEducation) {
+          hasValidProfile = true;
+        }
+      }
+      
+      if (!hasValidProfile && data.experience && Object.keys(data.experience).length > 0) {
+        const hasRealExperience = Object.values(data.experience).some(val => val && String(val).trim() !== '');
+        if (hasRealExperience) {
+          hasValidProfile = true;
+        }
+      }
+      
+      console.log('Profile validation result:', hasValidProfile, 'for user:', userEmail);
       return hasValidProfile;
     } catch (error) {
       console.error('Error checking user profile:', error);
@@ -159,16 +226,22 @@ export function CandidateJobListingContent() {
     const requirements = job.job_requirements ? job.job_requirements.split(',').map(r => r.trim()) : [];
     const softSkills = job.soft_skills ? job.soft_skills.split(',').map(s => s.trim()) : [];
     
-    // Create benefits array based on accommodations
-    const benefits = [];
-    if (job.flexible_work_hour) benefits.push("Flexible Hours");
-    if (job.sensory_friendly_environment) benefits.push("Sensory Friendly Environment");
-    if (job.peer_support_system) benefits.push("Peer Support System");
-    if (job.dedicated_workspace) benefits.push("Dedicated Workspace");
-    if (job.mental_health_support) benefits.push("Mental Health Support");
-    if (job.near_public_transport) benefits.push("Near Public Transport");
-    if (job.optional_social_event) benefits.push("Optional Social Events");
-    if (benefits.length === 0) benefits.push("Standard Benefits");
+    // Create accommodations array based on job accommodations
+    const accommodations = [];
+    if (job.flexible_work_hour) accommodations.push("Flexible Work Hours");
+    if (job.quiet_room) accommodations.push("Quiet Room/Space");
+    if (job.sensory_friendly_environment) accommodations.push("Sensory-Friendly Environment");
+    if (job.peer_support_system) accommodations.push("Peer Support System");
+    if (job.dedicated_workspace) accommodations.push("Dedicated Workspace");
+    if (job.sensory_aids) accommodations.push("Sensory Aids Allowed");
+    if (job.neurodiversity_awareness_training) accommodations.push("Neurodiversity Awareness Training");
+    if (job.provide_visual_guidance) accommodations.push("Visual Project-Tracking Tool");
+    if (job.regular_supervisor_check_in) accommodations.push("Regular Check-in with Supervisor");
+    if (job.optional_social_event) accommodations.push("No Forced Social Events");
+    if (job.zero_tolerance_bullying_mobbing_policy) accommodations.push("Zero Tolerance Policy for Bullying & Mobbing");
+    if (job.mental_health_support) accommodations.push("Mental Health Support");
+    if (job.augmentative_alternative_communication) accommodations.push("Alternative Communication App Allowed");
+    if (job.near_public_transport) accommodations.push("Near Public Transport");
 
     // Calculate match score (simplified - in real app this would be more sophisticated)
     let matchScore = 70; // Base score
@@ -183,17 +256,22 @@ export function CandidateJobListingContent() {
       company: job.employer_email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Extract company name from email
       location: job.location,
       type: job.job_type,
-      salary: `RM${job.salary_range}k - RM${job.salary_range + 20}k / annum`,
+      salary: SALARY_RANGES[job.salary_range] || `RM${job.salary_range}k - RM${job.salary_range + 20}k / annum`,
+      salaryRange: job.salary_range, // Store the index for SALARY_RANGES
       postedDate: new Date().toISOString().split('T')[0], // Current date as placeholder
       matchScore: Math.min(matchScore, 100),
       accommodationsFriendly,
       description: job.job_summary,
       requirements: [...requirements, ...softSkills],
-      benefits,
+      benefits: accommodations, // Store accommodations in benefits field for compatibility
+      accommodations: accommodations, // Also store in accommodations field
       companySize: "50-500 employees", // Default placeholder
       industry: "Technology", // Default placeholder
       applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
       neurodivergentFriendly: accommodationsFriendly,
+      primaryMatchScore: Math.min(matchScore, 100),
+      secondaryMatchScore: Math.min(matchScore - 5, 95),
+      tertiaryMatchScore: Math.min(matchScore - 10, 90),
     };
   };
 
@@ -266,26 +344,30 @@ export function CandidateJobListingContent() {
   // Handle apply to job
   const handleApplyToJob = async (job: DisplayJob) => {
     console.log('Apply button clicked for job:', job.title);
+    const jobKey = `${job.title}-${job.company}`;
+    
     try {
-      const jobKey = `${job.title}-${job.company}`;
       if (appliedJobs.has(jobKey)) {
         info('Already Applied', 'You have already applied to this job.');
         return;
       }
-      setIsApplying(true);
+      
       const userEmail = session?.user?.email;
       if (!userEmail) {
         showError('Not Authenticated', 'Please sign in before applying to jobs.');
         return;
       }
 
-      // Check if user has a valid profile before allowing application
+      // Check if user has a valid profile BEFORE setting loading state
+      // This ensures profile validation is ALWAYS enforced
       const hasProfile = await checkUserProfile(userEmail);
       if (!hasProfile) {
-        showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before applying to jobs. You need to have at least some basic information in your profile.');
-        setIsApplying(false);
+        showError('Profile Incomplete', 'Please complete your profile or upload your resume to apply.');
         return;
       }
+
+      // Only set loading state after validation passes
+      setApplyingJobId(jobKey);
 
       const response = await fetch('/api/applications', {
         method: 'POST',
@@ -323,79 +405,38 @@ export function CandidateJobListingContent() {
         const errorData = await response.json();
         console.error('Application failed:', errorData);
         
-        // If backend is not available, still update UI for demo purposes
-        if (response.status >= 500) {
-          warning('Service Temporarily Unavailable', 'Your application will be processed when the service is restored.');
-          const jobKey = `${job.title}-${job.company}`;
-          setAppliedJobs(prev => new Set([...prev, jobKey]));
-          window.dispatchEvent(new CustomEvent('jobApplied', {
-            detail: {
-              id: parseInt(job.id),
-              jobTitle: job.title,
-              company: job.company,
-              appliedDate: new Date().toISOString(),
-              status: 'under_review',
-              accommodationsRequested: job.accommodationsFriendly,
-              location: job.location,
-              salary: job.salary,
-              matchScore: job.matchScore
-            }
-          }));
+        const msg = errorData.error || errorData.detail || 'Failed to apply to job';
+        if (msg.toLowerCase().includes('already applied')) {
+          info('Already Applied', 'You have already applied to this job.');
+        } else if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+          showError('Profile Incomplete', 'Please complete your profile or upload your resume to apply.');
         } else {
-          const msg = errorData.error || errorData.detail || 'Failed to apply to job';
-          if (msg.toLowerCase().includes('already applied')) {
-            info('Already Applied', 'You have already applied to this job.');
-          } else if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
-            showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before applying to jobs.');
-          } else {
-            showError('Application Failed', msg);
-          }
+          showError('Application Failed', msg);
         }
       }
     } catch (err) {
       console.error('Error applying to job:', err);
-      
-      // If it's a network error, still update UI for demo purposes
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        warning('Network Error', 'Your application will be processed when connection is restored.');
-        const jobKey = `${job.title}-${job.company}`;
-        setAppliedJobs(prev => new Set([...prev, jobKey]));
-        window.dispatchEvent(new CustomEvent('jobApplied', {
-          detail: {
-            id: parseInt(job.id),
-            jobTitle: job.title,
-            company: job.company,
-            appliedDate: new Date().toISOString(),
-            status: 'under_review',
-            accommodationsRequested: job.accommodationsFriendly,
-            location: job.location,
-            salary: job.salary,
-            matchScore: job.matchScore
-          }
-        }));
-      } else {
-        showError('Application Error', 'An error occurred while applying to the job');
-      }
+      showError('Application Error', 'An error occurred while applying to the job. Please try again.');
     } finally {
-      setIsApplying(false);
+      setApplyingJobId(null);
     }
   };
 
   // Handle save job
   const handleSaveJob = async (job: DisplayJob) => {
     console.log('Save button clicked for job:', job.title);
+    const jobKey = `${job.title}-${job.company}`;
+    
     try {
-      setIsSaving(true);
       const userEmail = session?.user?.email;
       if (!userEmail) {
         showError('Not Authenticated', 'Please sign in before saving jobs.');
         return;
       }
-
-      const jobKey = `${job.title}-${job.company}`;
       
       // Check if already saved - if so, unsave it (allow unsaving without profile check)
       if (savedJobs.has(jobKey)) {
+        setSavingJobId(jobKey);
         const savedJobId = savedJobIds.get(jobKey);
         if (savedJobId) {
           // Unsave the job
@@ -427,42 +468,21 @@ export function CandidateJobListingContent() {
           } else {
             const errorData = await response.json();
             console.error('Unsave job failed:', errorData);
-            
-            // If backend is not available, still update UI for demo purposes
-            if (response.status >= 500) {
-              warning('Service Temporarily Unavailable', 'Job will be unsaved when service is restored.');
-              setSavedJobs(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(jobKey);
-                return newSet;
-              });
-              setSavedJobIds(prev => {
-                const newMap = new Map(prev);
-                newMap.delete(jobKey);
-                return newMap;
-              });
-              window.dispatchEvent(new CustomEvent('jobUnsaved', {
-                detail: {
-                  id: savedJobId,
-                  jobTitle: job.title,
-                  company: job.company
-                }
-              }));
-            } else {
-              showError('Unsave Failed', errorData.error || 'Failed to unsave job');
-            }
+            showError('Unsave Failed', errorData.error || 'Failed to unsave job');
           }
         }
         return;
       }
 
-      // Check if user has a valid profile before allowing save
+      // Check if user has a valid profile BEFORE setting loading state
       const hasProfile = await checkUserProfile(userEmail);
       if (!hasProfile) {
-        showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before saving jobs. You need to have at least some basic information in your profile.');
-        setIsSaving(false);
+        showError('Profile Incomplete', 'Please complete your profile or upload your resume to save.');
         return;
       }
+
+      // Only set loading state after validation passes
+      setSavingJobId(jobKey);
 
       // Save the job
       const response = await fetch('/api/saved-jobs', {
@@ -500,56 +520,18 @@ export function CandidateJobListingContent() {
         const errorData = await response.json();
         console.error('Save job failed:', errorData);
         
-        // If backend is not available, still update UI for demo purposes
-        if (response.status >= 500) {
-          warning('Service Temporarily Unavailable', 'Job will be saved when service is restored.');
-          setSavedJobs(prev => new Set([...prev, jobKey]));
-          setSavedJobIds(prev => new Map([...prev, [jobKey, Date.now()]]));
-          window.dispatchEvent(new CustomEvent('jobSaved', {
-            detail: {
-              id: Date.now(),
-              jobTitle: job.title,
-              company: job.company,
-              location: job.location,
-              jobType: job.type,
-              salary: job.salary,
-              isInclusive: job.accommodationsFriendly
-            }
-          }));
+        const msg = errorData.error || errorData.detail || 'Failed to save job';
+        if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+          showError('Profile Incomplete', 'Please complete your profile or upload your resume to save.');
         } else {
-          const msg = errorData.error || errorData.detail || 'Failed to save job';
-          if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
-            showError('Profile Incomplete', 'Please upload your resume or complete your profile settings before saving jobs.');
-          } else {
-            showError('Save Failed', msg);
-          }
+          showError('Save Failed', msg);
         }
       }
     } catch (err) {
       console.error('Error saving job:', err);
-      
-      // If it's a network error, still update UI for demo purposes
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        warning('Network Error', 'Job will be saved when connection is restored.');
-        const jobKey = `${job.title}-${job.company}`;
-        setSavedJobs(prev => new Set([...prev, jobKey]));
-        setSavedJobIds(prev => new Map([...prev, [jobKey, Date.now()]]));
-        window.dispatchEvent(new CustomEvent('jobSaved', {
-          detail: {
-            id: Date.now(),
-            jobTitle: job.title,
-            company: job.company,
-            location: job.location,
-            jobType: job.type,
-            salary: job.salary,
-            isInclusive: job.accommodationsFriendly
-          }
-        }));
-      } else {
-        showError('Save Error', 'An error occurred while saving the job');
-      }
+      showError('Save Error', 'An error occurred while saving the job. Please try again.');
     } finally {
-      setIsSaving(false);
+      setSavingJobId(null);
     }
   };
 
@@ -610,13 +592,13 @@ export function CandidateJobListingContent() {
   }
 
   return (
-    <div className="w-full px-4">
+    <div className="w-full">
         {/* Search and Filters - Sticky at Top */}
         <Card className="mb-3 sticky top-22 z-10">
           <CardContent className="p-4">
             <div className="flex flex-col lg:flex-row gap-4 w-full">
               {/* Search */}
-              <div className="flex w-4/9">
+              <div className="flex-1">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
                   <Input
@@ -631,7 +613,7 @@ export function CandidateJobListingContent() {
               {/* Filters */}
               <div className="flex gap-4">
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-42">
                     <MapPin className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Location" />
                   </SelectTrigger>
@@ -648,7 +630,7 @@ export function CandidateJobListingContent() {
                 </Select>
 
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-42">
                     <Clock className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
@@ -662,7 +644,7 @@ export function CandidateJobListingContent() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-42">
                     <SortAsc className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -679,17 +661,17 @@ export function CandidateJobListingContent() {
         </Card>
 
         {/* Results Summary */}
-        <div className="my-4 px-3">
-          <p className="text-[#6f7a80]">
+        <div className="mb-6 ml-2">
+          <p className="text-[#6f7a80] text-sm">
             Showing {filteredJobs.length} of {jobs.length} jobs
           </p>
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-6 lg:h-[calc(100vh-300px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
           {/* Left Side - Job List */}
-          <div className="overflow-y-auto py-2 px-2 lg:h-full scrollbar-thin scrollbar-thumb-[#c5c4d4] scrollbar-track-transparent">
-            <div className="space-y-4">
+          <div className="lg:col-span-1 xl:col-span-2 space-y-4">
+            <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#c5c4d4] scrollbar-track-transparent overflow-visible">
                     {filteredJobs.map((job, index) => (
                     <motion.div
                         key={job.id}
@@ -714,12 +696,6 @@ export function CandidateJobListingContent() {
                                     <Badge className={`${getMatchScoreColor(job.matchScore)} bg-opacity-10`}>
                                         {job.matchScore}% match
                                     </Badge>
-                                    {job.accommodationsFriendly && (
-                                        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                        <Shield className="h-3 w-3 mr-1" />
-                                        Accommodation Friendly
-                                        </Badge>
-                                    )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-4 text-sm text-[#6f7a80] mb-3">
@@ -737,11 +713,11 @@ export function CandidateJobListingContent() {
                                     </span>
                                     <span className="flex items-center gap-1">
                                         <DollarSign className="h-4 w-4" />
-                                        {job.salary}
+                                        {job.salaryRange !== undefined && SALARY_RANGES[job.salaryRange] ? SALARY_RANGES[job.salaryRange] : job.salary}
                                     </span>
                                     </div>
 
-                                    <p className="text-[#6f7a80] text-sm mb-3 line-clamp-2">
+                                    <p className="text-[#6f7a80] text-sm mb-3 line-clamp-3 overflow-hidden">
                                     {job.description}
                                     </p>
 
@@ -751,8 +727,8 @@ export function CandidateJobListingContent() {
                                     </div>
                                 </div>
 
-                                {/* RIGHT BUTTONS */}
-                                <div className="flex flex-col gap-2 sm:self-start shrink-0">
+                                {/* RIGHT BUTTONS AND HEART */}
+                                <div className="flex flex-col justify-between items-end gap-2 sm:self-start shrink-0">
                                     <Button
                                     size="sm"
                                     className={`w-full sm:w-auto ${
@@ -760,31 +736,28 @@ export function CandidateJobListingContent() {
                                         ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white"
                                         : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
                                     }`}
-                                    disabled={isApplying}
+                                    disabled={applyingJobId === `${job.title}-${job.company}` || appliedJobs.has(`${job.title}-${job.company}`)}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleApplyToJob(job);
                                     }}
                                     >
-                                    {appliedJobs.has(`${job.title}-${job.company}`) ? "Applied" : "Apply"}
+                                    {applyingJobId === `${job.title}-${job.company}` ? "Applying..." : (appliedJobs.has(`${job.title}-${job.company}`) ? "Applied" : "Apply")}
                                     </Button>
-                                    <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className={`w-full sm:w-auto ${
+                                    <button
+                                    className={`p-2 rounded-md transition-colors cursor-pointer ${
                                         savedJobs.has(`${job.title}-${job.company}`)
-                                        ? "border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 hover:cursor-pointer"
-                                        : "border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 hover:cursor-pointer"
+                                        ? "text-red-500 hover:bg-red-50"
+                                        : "text-gray-400 hover:text-red-500 hover:bg-red-50"
                                     }`}
-                                    disabled={isSaving}
+                                    disabled={savingJobId === `${job.title}-${job.company}`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleSaveJob(job);
                                     }}
                                     >
-                                    <Bookmark className="w-3 h-3 mr-1" />
-                                    {savedJobs.has(`${job.title}-${job.company}`) ? "Saved" : "Save"}
-                                    </Button>
+                                    <Heart className={`w-5 h-5 ${savedJobs.has(`${job.title}-${job.company}`) ? "fill-red-500" : ""}`} />
+                                    </button>
                                 </div>
                                 </div>
                             </CardContent>
@@ -796,14 +769,15 @@ export function CandidateJobListingContent() {
               {/* No Results */}
               {filteredJobs.length === 0 && (
                 <Card>
-                  <CardContent className="p-12 text-center">
-                    <Search className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-[#3a4043] mb-2">No jobs found</h3>
-                    <p className="text-[#6f7a80] mb-4">
+                  <CardContent className="p-8 text-center">
+                    <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-base font-semibold text-gray-600 mb-2">No jobs found</h3>
+                    <p className="text-sm text-gray-500 mb-4">
                       Try adjusting your search criteria or filters to find more opportunities.
                     </p>
                     <Button 
-                      variant="outline" 
+                      size="sm"
+                      className="bg-[#635bff] hover:bg-[#5748e5] text-white"
                       onClick={() => {
                         setSearchTerm("");
                         setFilterLocation("all");
@@ -819,10 +793,10 @@ export function CandidateJobListingContent() {
           </div>
 
           {/* Right Side - Job Details */}
-          <div className="lg:sticky lg:top-8 lg:self-start">
+          <div className="lg:col-span-1 xl:col-span-3">
             {selectedJob ? (
-            <Card className="max-h-[calc(100vh-200px)] overflow-y-auto">
-              <CardHeader className="pb-4">
+            <Card className="sticky top-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <CardHeader className="pb-4 relative">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-2xl font-bold text-[#3a4043] mb-2">
@@ -845,20 +819,25 @@ export function CandidateJobListingContent() {
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />
-                        {selectedJob?.salary}
+                        {selectedJob?.salaryRange !== undefined && SALARY_RANGES[selectedJob.salaryRange] ? SALARY_RANGES[selectedJob.salaryRange] : selectedJob?.salary}
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 ml-4">
-                    <Badge className={`${getMatchScoreColor(selectedJob?.matchScore || 0)} bg-opacity-10`}>
+                  <div className="flex items-center gap-3 ml-4">
+                    <Badge className={`${getMatchScoreColor(selectedJob?.matchScore || 0)} bg-opacity-10 text-lg px-4 py-2`}>
                       {selectedJob?.matchScore}% match
                     </Badge>
-                    {selectedJob?.accommodationsFriendly && (
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Accommodation Friendly
-                      </Badge>
-                    )}
+                    <button
+                      className={`p-2 rounded-md transition-colors cursor-pointer ${
+                        savedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)
+                        ? "text-red-500 hover:bg-red-50"
+                        : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      }`}
+                      disabled={savingJobId === `${selectedJob?.title}-${selectedJob?.company}`}
+                      onClick={() => selectedJob && handleSaveJob(selectedJob)}
+                    >
+                      <Heart className={`w-5 h-5 ${savedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ? "fill-red-500" : ""}`} />
+                    </button>
                   </div>
                 </div>
               </CardHeader>
@@ -867,30 +846,38 @@ export function CandidateJobListingContent() {
                 {/* Job Description */}
                 <div>
                   <h4 className="font-semibold text-[#3a4043] mb-3">Job Description</h4>
-                  <p className="text-[#6f7a80] leading-relaxed">{selectedJob?.description}</p>
+                  <p className="text-[#6f7a80] break-words leading-relaxed whitespace-pre-line">{selectedJob?.description}</p>
                 </div>
 
                 {/* Requirements */}
                 <div>
                   <h4 className="font-semibold text-[#3a4043] mb-3">Requirements</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedJob?.requirements.map((req, reqIndex) => (
-                      <Badge key={reqIndex} variant="secondary" className="text-xs">
-                        {req}
-                      </Badge>
-                    ))}
+                    {selectedJob?.requirements && selectedJob.requirements.length > 0 ? (
+                      selectedJob.requirements.map((req, reqIndex) => (
+                        <Badge key={reqIndex} variant="secondary" className="text-xs">
+                          {req}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-[#6f7a80]">No specific requirements listed.</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Benefits */}
+                {/* Accommodations Offered */}
                 <div>
-                  <h4 className="font-semibold text-[#3a4043] mb-3">Benefits</h4>
+                  <h4 className="font-semibold text-[#3a4043] mb-3">Accommodations Offered</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedJob?.benefits.map((benefit, benefitIndex) => (
-                      <Badge key={benefitIndex} variant="outline" className="text-xs border-[#635bff]/20 text-[#635bff]">
-                        {benefit}
-                      </Badge>
-                    ))}
+                    {selectedJob?.accommodations && selectedJob.accommodations.length > 0 ? (
+                      selectedJob.accommodations.map((accommodation, accommodationIndex) => (
+                        <Badge key={accommodationIndex} variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
+                          {accommodation}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-[#6f7a80]">No specific accommodations listed.</p>
+                    )}
                   </div>
                 </div>
 
@@ -917,49 +904,252 @@ export function CandidateJobListingContent() {
                   </div>
                 </div>
 
+                {/* Detailed Matching Score - Expandable */}
+                <div className="pt-4 border-t border-[#e8e6f0]">
+                  <button
+                    onClick={() => setExpandedMatchingScore(expandedMatchingScore === selectedJob?.id ? null : selectedJob?.id || null)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="font-semibold text-[#635BFF]">View Matching Detail</span>
+                    {expandedMatchingScore === selectedJob?.id ? (
+                      <ChevronUp className="h-5 w-5 text-[#6f7a80]" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-[#6f7a80]" />
+                    )}
+                  </button>
+                  {expandedMatchingScore === selectedJob?.id && selectedJob && (() => {
+                    const primaryMatchScore = selectedJob.primaryMatchScore || selectedJob.matchScore || 96;
+                    const secondaryMatchScore = selectedJob.secondaryMatchScore || 90;
+                    const tertiaryMatchScore = selectedJob.tertiaryMatchScore || 85;
+                    const overallMatchScore = selectedJob.matchScore;
+
+                    return (
+                      <div className="mt-4 space-y-6">
+                        {/* Overall Match Score */}
+                        <div className="text-center py-6 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-2">Overall Match</p>
+                          <div className="text-6xl font-bold text-[#635bff] mb-2">
+                            {overallMatchScore}%
+                          </div>
+                        </div>
+
+                        {/* Primary Match: Experience, Skill & Education */}
+                        <Card className="border-2 border-green-200">
+                          <CardHeader className="bg-green-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 bg-green-100 rounded-lg">
+                                  <Briefcase className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg">Primary Match: <br />Experience, Skill & Education</CardTitle>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Strong alignment with required technical skills
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-3xl font-bold text-green-600">{primaryMatchScore}%</div>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Matched Skills
+                                </h4>
+                                <div className="flex flex-wrap gap-2 ml-6">
+                                  {["Python", "Machine Learning", "NLP", "Data Analysis"].map((skill) => (
+                                    <Badge key={skill} className="bg-green-100 text-green-800 border-green-300">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-yellow-600">⚠</span>
+                                  Consider
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  Cloud Computing (minor gap)
+                                </p>
+                              </div>
+
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-blue-600">💡</span>
+                                  AI Recommendation
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  Candidate possesses core technical competencies. Consider a short technical assessment for cloud skills.
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Secondary Match: Environmental Fit */}
+                        <Card className="border-2 border-purple-200">
+                          <CardHeader className="bg-purple-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 bg-purple-100 rounded-lg">
+                                  <House className="h-5 w-5 text-purple-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg">Secondary Match: <br /> Environmental Fit</CardTitle>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Excellent fit for remote work and preference for written communication
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-3xl font-bold text-purple-600">{secondaryMatchScore}%</div>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-3">Matched Preferences</h4>
+                                <div className="space-y-2 ml-6">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                    <span className="text-sm text-gray-700">Remote work experience</span>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                    <span className="text-sm text-gray-700">Preference for written communication</span>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                    <span className="text-sm text-gray-700">Flexible hours</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-orange-600">📋</span>
+                                  Consider
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  Prefers independent work; team style might need slight adjustment
+                                </p>
+                              </div>
+
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-blue-600">💡</span>
+                                  AI Recommendation
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  The candidate&apos;s environmental preferences align well with the remote-first culture. Ensure clear written instructions are standard.
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Tertiary Match: Other Factors */}
+                        <Card className="border-2 border-blue-200">
+                          <CardHeader className="bg-blue-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 bg-blue-100 rounded-lg">
+                                  <BrainCircuit className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg">Tertiary Match: <br /> Other Factors</CardTitle>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Good alignment with company&apos;s focus on detail-oriented problem solving
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-3xl font-bold text-blue-600">{tertiaryMatchScore}%</div>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-semibold text-[#3a4043] mb-3">Matched Factors</h4>
+                                <div className="space-y-2 ml-6">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                                    <span className="text-sm text-gray-700">
+                                      <strong>Location:</strong> Remote preference matches job offering
+                                    </span>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                                    <span className="text-sm text-gray-700">
+                                      <strong>Neurodivergent Strengths:</strong> Detail-Oriented, Systematic Thinking
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-yellow-600">⚠</span>
+                                  Consider
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  Presentation comfort is lower; may need support for client-facing roles
+                                </p>
+                              </div>
+
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                  <span className="text-blue-600">💡</span>
+                                  AI Recommendation
+                                </h4>
+                                <p className="text-sm text-gray-700 ml-6">
+                                  Candidate&apos;s preference for detail and systematic thinking is a strong asset. Provide coaching or alternative presentation methods if required.
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-3 pt-4 border-t border-[#e8e6f0]">
+                <div className="flex flex-row gap-3 pt-4 border-t border-[#e8e6f0]">
                   <Button 
-                    className={`w-full ${
+                    className={`w-[50%] ${
                       appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)
                       ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white"
                                         : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
                     }`}
-                    disabled={isApplying || appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)}
+                    disabled={applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` || appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)}
                     onClick={() => selectedJob && handleApplyToJob(selectedJob)}
                   >
                     <Briefcase className="w-4 h-4 mr-2" />
-                    {appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ? "Applied" : "Apply Now"}
+                    {applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` ? "Applying..." : (appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ? "Applied" : "Apply Now")}
                   </Button>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      className={`flex-1 ${
-                        savedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)
-                        ? "border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 hover:cursor-pointer"
-                                        : "border-[#635bff] text-[#635bff] hover:bg-[#635bff]/10 hover:cursor-pointer"
-                      }`}
-                      disabled={isSaving}
-                      onClick={() => selectedJob && handleSaveJob(selectedJob)}
-                    >
-                      <Bookmark className="w-4 h-4 mr-2" />
-                      {savedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ? "Saved" : "Save Job"}
-                    </Button>
-                    <Button variant="outline" className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50">
-                      <Share className="w-4 h-4 mr-2" />
-                      Share
-                    </Button>
-                  </div>
+                  <Button variant="outline" className="w-[50%] border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
                 </div>
               </CardContent>
             </Card>
             ) : (
-              <Card className="max-h-[calc(100vh-200px)] overflow-y-auto">
+              <Card className="sticky top-4">
                 <CardContent className="p-12 text-center">
-                  <Search className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-[#3a4043] mb-2">No job selected</h3>
-                  <p className="text-[#6f7a80]">
-                    Select a job from the list to view details.
+                  <Briefcase className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">No job selected</h3>
+                  <p className="text-sm text-gray-500">
+                    Click on a job from the list to view details
                   </p>
                 </CardContent>
               </Card>
@@ -970,12 +1160,12 @@ export function CandidateJobListingContent() {
   );
 }
 
-export default function CandidateJobListing() {
-  return (
-    <ToastProvider>
-      <div className="page-wrap">
-        <CandidateJobListingContent />
-      </div>
-    </ToastProvider>
-  );
-}
+// export default function CandidateJobListing() {
+//   return (
+//     <ToastProvider>
+//       <div>
+//         <CandidateJobListingContent />
+//       </div>
+//     </ToastProvider>
+//   );
+// }

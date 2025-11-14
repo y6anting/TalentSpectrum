@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
+import { useToastHelpers } from "@/components/ui/toast";
 
 interface LanguageProficiency {
   id: number;
@@ -32,6 +33,7 @@ export function SkillsSubmission({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
+  const { success, error: showError } = useToastHelpers();
 
   const userEmail = session?.user?.email;
 
@@ -59,11 +61,13 @@ export function SkillsSubmission({
 
       if (!response.ok) throw new Error("Failed to save skills.");
 
-      alert("Skills saved successfully!");
+      success('Skills Saved', 'Skills information saved successfully!');
       if (onSave) onSave();
     } catch (err: any) {
       console.error("Error saving skills:", err);
-      setError(err.message || "An error occurred while saving your skills.");
+      const errorMessage = err.message || "An error occurred while saving your skills.";
+      setError(errorMessage);
+      showError('Save Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +107,9 @@ useEffect(() => {
 
       console.log("✅ Auto-saved language proficiency:", payload);
     } catch (err: any) {
-      setError(err.message || "Error auto-saving language proficiency.");
+      const errorMessage = err.message || "Error auto-saving language proficiency.";
+      setError(errorMessage);
+      showError('Auto-save Failed', errorMessage);
     } finally {
       setIsAutoSaving(false);
     }
@@ -116,18 +122,18 @@ useEffect(() => {
     <div>
       {error && <p className="text-red-600 mb-2">{error}</p>}
       <Button
-        className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+        className="bg-[#635bff] hover:bg-[#827CFF] text-white hover:cursor-pointer"
         onClick={handleSubmitSkills}
         disabled={isSubmitting}
       >
         {isSubmitting ? "Saving..." : "Save Skills"}
       </Button>
 
-      {isAutoSaving && (
+      {/* {isAutoSaving && (
         <p className="text-xs text-gray-500 mt-1 italic">
           Auto-saving language proficiency...
         </p>
-      )}
+      )} */}
     </div>
   );
 }

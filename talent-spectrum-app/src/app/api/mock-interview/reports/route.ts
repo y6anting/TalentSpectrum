@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const response = await fetch(`${BACKEND_URL}/api/mock-interview/reports`, {
+    const response = await fetch(`${BACKEND_URL}/mock-interview/reports`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/api/mock-interview/reports/${encodeURIComponent(email)}`,
+      `${BACKEND_URL}/mock-interview/reports/${encodeURIComponent(email)}`,
       {
         method: 'GET',
         headers: {

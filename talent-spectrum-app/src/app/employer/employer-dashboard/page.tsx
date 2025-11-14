@@ -42,7 +42,8 @@ import {
   SquarePen, // Added SquarePen icon, 
   BotMessageSquare,
   Filter,
-  SortAsc
+  SortAsc,
+  Sparkles
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -244,6 +245,9 @@ export default function EmployerDashboard() {
 
   const [selectedSort, setSelectedSort] = useState("Newest");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // State for AI matching
+  const [isRunningAiMatch, setIsRunningAiMatch] = useState(false);
 
   const result = calculateEmployerCosts(baseSalary || 0);
 
@@ -349,6 +353,34 @@ export default function EmployerDashboard() {
     } catch (error) {
       console.error("Error shortlisting candidate:", error);
       showError("Error", "An error occurred while shortlisting the candidate");
+    }
+  };
+
+  const handleRunAiMatching = async () => {
+    if (isRunningAiMatch) return;
+    setIsRunningAiMatch(true);
+    try {
+      const response = await fetch(`${API_BASE}/ai-matching/run_matching`, {
+        method: "POST",
+      });
+
+      const isJson = response.headers.get("content-type")?.includes("application/json");
+      const payload = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        const errorMessage =
+          (payload && (payload.detail?.message || payload.detail || payload.error || payload.message)) ||
+          "Failed to trigger AI job matching.";
+        throw new Error(errorMessage);
+      }
+
+      const message = (payload && (payload.message || payload.detail)) || "AI job matching completed successfully.";
+      success("AI Matching Completed", message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to trigger AI job matching.";
+      showError("AI Matching Failed", errorMessage);
+    } finally {
+      setIsRunningAiMatch(false);
     }
   };
 
@@ -1018,7 +1050,8 @@ const handleSaveEditJob = async () => {
                     },
                     
                     { id: "applications", label: "Shortlisted Applicants", icon: Users },
-                    { id: "all-candidates", label: "Candidate Pool", icon: UserSearch  },{
+                    // { id: "all-candidates", label: "Candidate Pool", icon: UserSearch  },
+                    {
                       id: "tax-calculator",
                       label: "Calculator",
                       icon: Calculator,
@@ -1058,9 +1091,20 @@ const handleSaveEditJob = async () => {
           <div>
             {activeTab === "overview" && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
-                  Overview
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
+                    Overview
+                  </h2>
+                  {/* <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button> */}
+                </div>
                 <div className="grid md:grid-cols-3 gap-6">
                   {[
                     {
@@ -1202,11 +1246,17 @@ const handleSaveEditJob = async () => {
             {activeTab === "jobs" && (
               <div className="space-y-4">
                 {/* Header */}
-                <div className="mb-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043] mb-2">Job Postings</h2>
-                  {/* <p className="text-[#6f7a80]">
-                    Manage your job postings and find matched candidates
-                  </p> */}
+                <div className="mb-4 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Job Postings</h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
                 </div>
 
                 {/* Search and Filters */}
@@ -1460,7 +1510,19 @@ const handleSaveEditJob = async () => {
 
             {/* Search Candidates Tab */}
             {activeTab === "search-candidates" && (
-              <div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Search Applicants</h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
+                </div>
                 <CandidateList />
               </div>
             )}
@@ -1475,13 +1537,17 @@ const handleSaveEditJob = async () => {
             {/* Applicants Tab */}
             {activeTab === "applications" && (
               <div className="space-y-4">
-                {/* Header */}
-                <div className="mb-4">
-                  
-                  <h2 className="text-2xl font-bold text-[#3a4043] mb-4">Shortlisted Applicants</h2>
-                  {/* <p className="text-[#6f7a80]">
-                    View and manage candidates you've shortlisted
-                  </p> */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Shortlisted Applicants</h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
                 </div>
 
                 {/* Search and Filters */}
@@ -1648,7 +1714,18 @@ const handleSaveEditJob = async () => {
 
             {activeTab === "settings" && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">Company Settings</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Company Settings</h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
+                </div>
 
                 {/* Changed to full width (md:grid-cols-1) */}
                 <div className="grid md:grid-cols-1 gap-6">
@@ -1836,9 +1913,20 @@ const handleSaveEditJob = async () => {
 
             {activeTab === "tax-calculator" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
-                  Double Tax Relief Calculator
-                </h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
+                    Double Tax Relief Calculator
+                  </h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
+                </div>
                 <Card>
                   <CardHeader>
                     <CardTitle>Enter Employer Cost Details</CardTitle>
@@ -2000,24 +2088,48 @@ const handleSaveEditJob = async () => {
             )}
 
             {activeTab === "post-job" && (
-              <PostJob
-                // onJobPosted={handleJobPosted}
-                onJobPosted={async () => {
-                  if (currentEmployerEmail) {
-                    await fetchEmployerJobs(currentEmployerEmail);
-                  }
-                  // Stay on post-job tab after posting
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                onCancel={() => setActiveTab("overview")}
-              />
+              <div className="space-y-4">
+                <div className="flex justify-end mb-4">
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
+                </div>
+                <PostJob
+                  // onJobPosted={handleJobPosted}
+                  onJobPosted={async () => {
+                    if (currentEmployerEmail) {
+                      await fetchEmployerJobs(currentEmployerEmail);
+                    }
+                    // Stay on post-job tab after posting
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  onCancel={() => setActiveTab("overview")}
+                />
+              </div>
             )}
 
             {activeTab === "consult-ai" && (
               <div className="flex flex-col h-[calc(100vh-200px)]">
-                <h2 className="text-2xl font-bold text-[#3a4043] mb-4">
-                  Consult AI
-                </h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
+                    Consult AI
+                  </h2>
+                  <Button
+                    onClick={handleRunAiMatching}
+                    disabled={isRunningAiMatch}
+                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
+                  </Button>
+                </div>
                 <div className="flex-1 min-h-0">
                   <ChatBot.Chat />
                 </div>

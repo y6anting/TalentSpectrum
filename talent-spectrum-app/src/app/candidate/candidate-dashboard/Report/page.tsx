@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,7 +13,10 @@ import {
   Award,
   TrendingUp,
   Download,
-  Clock
+  Clock,
+  CheckCircle,
+  ArrowRight,
+  ArrowUpWideNarrow
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { API_ENDPOINTS } from "@/app/config/api";
@@ -90,31 +93,54 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
   const PRIMARY_5 = "rgba(99, 91, 255, 0.05)";
   const BORDER_20 = "rgba(99, 91, 255, 0.2)";
 
-  useEffect(() => {
-    const loadReportData = async () => {
-      try {
-        // Load profile data and mock interview feedback using email from session
-        if (authSession?.user?.email) {
-          const userEmail = authSession.user.email;
-          
-          // Fetch candidate profile data
-          try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-            const profileResponse = await fetch(`${backendUrl}/profiles/${encodeURIComponent(userEmail)}`);
-            if (profileResponse.ok) {
-              const profile = await profileResponse.json();
-              setProfileData(profile);
-              console.log('Profile data loaded for report:', profile);
-            }
-          } catch (err) {
-            console.error("Failed to fetch profile data:", err);
+  const loadReportData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Load profile data and mock interview feedback using email from session
+      if (authSession?.user?.email) {
+        const userEmail = authSession.user.email;
+        
+        // Fetch candidate profile data
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+          const profileResponse = await fetch(`${backendUrl}/profiles/${encodeURIComponent(userEmail)}`);
+          if (profileResponse.ok) {
+            const profile = await profileResponse.json();
+            setProfileData(profile);
+            console.log('Profile data loaded for report:', profile);
           }
+        } catch (err) {
+          console.error("Failed to fetch profile data:", err);
+        }
           
-          // Fetch mock interview feedback
+        // Fetch mock interview feedback - use highest score instead of latest
+        try {
+          const response = await fetch(`/api/mock-interview/reports/highest-score?email=${encodeURIComponent(userEmail)}`);
+          if (response.ok) {
+            const highestScoreReport = await response.json();
+            if (highestScoreReport) {
+              setMockInterviewFeedback({
+                overall_score: highestScoreReport.overall_score || 0,
+                strengths: highestScoreReport.strengths || [],
+                areas_for_improvement: highestScoreReport.improvements || []
+              });
+              setMockInterviewDetails({
+                position: highestScoreReport.position_title,
+                interviewType: highestScoreReport.interview_type,
+                positionLevel: highestScoreReport.position_level,
+                questionCount: highestScoreReport.total_questions,
+                date: new Date(highestScoreReport.created_at).toLocaleDateString(),
+                duration: Math.round(highestScoreReport.duration_seconds / 60)
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch highest score mock interview report:", err);
+          // Fallback to latest if highest score fails
           try {
-            const response = await fetch(`/api/mock-interview/reports/latest?email=${encodeURIComponent(userEmail)}`);
-            if (response.ok) {
-              const latestReport = await response.json();
+            const fallbackResponse = await fetch(`/api/mock-interview/reports/latest?email=${encodeURIComponent(userEmail)}`);
+            if (fallbackResponse.ok) {
+              const latestReport = await fallbackResponse.json();
               if (latestReport) {
                 setMockInterviewFeedback({
                   overall_score: latestReport.overall_score || 0,
@@ -131,8 +157,8 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                 });
               }
             }
-          } catch (err) {
-            console.error("Failed to fetch mock interview report:", err);
+          } catch (fallbackErr) {
+            console.error("Failed to fetch latest mock interview report as fallback:", fallbackErr);
           }
         }
 
@@ -152,53 +178,155 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
             }
           }
         }
+      }
 
-        // Resume report
-        const storedReport = sessionStorage.getItem("resumeReport");
-        if (storedReport) {
-          const parsedReport = JSON.parse(storedReport);
-          setReportData(parsedReport);
-          setLoading(false);
-          return;
+      // Resume feedback and areas for improvement - fetch from AI if resume file exists
+      // Resume summary will use Candidate_Profiles data (already fetched above as profileData)
+      let resumeFeedbackData: any = null;
+      try {
+        const resumeFile = await getResumeFile();
+        if (resumeFile) {
+          // Only fetch resume feedback (for areas for improvement and suitable job roles)
+          // Resume summary will come from Candidate_Profiles data
+          const feedbackResponse = await fetchResumeFeedback(resumeFile);
+          resumeFeedbackData = feedbackResponse;
+          console.log('✅ Resume feedback fetched from AI');
         }
+      } catch (err) {
+        console.error("Failed to fetch resume feedback from API:", err);
+      }
 
-        try {
-          const resumeFile = await getResumeFile();
-          if (resumeFile) {
-            // Fetch both resume feedback and summary in parallel
-            const [feedbackResponse, summaryResponse] = await Promise.all([
-              fetchResumeFeedback(resumeFile),
-              fetchResumeSummary(resumeFile)
-            ]);
-
-            // Combine the responses
-            const combinedData: ReportData = {
-              resume_feedback: feedbackResponse.resume_feedback,
-              career_guidance: feedbackResponse.career_guidance,
-              resume_summary: summaryResponse
-            };
-
-            sessionStorage.setItem("resumeReport", JSON.stringify(combinedData));
-            setReportData(combinedData);
-            setLoading(false);
-            return;
+      // Build report data:
+      // 1. Resume Summary: Use Candidate_Profiles data (experience, education, skills) - already in profileData
+      // 2. Resume Areas for Improvement: Use resume feedback if available, otherwise empty
+      // 3. Suitable Job Roles: Use resume feedback if available
+      const combinedData: ReportData = {
+        resume_feedback: resumeFeedbackData?.resume_feedback || {
+          overall_resume_score: 0,
+          summary: "",
+          strengths: [],
+          areas_for_improvement: [], // Will be empty if no resume feedback
+          recommendations: {
+            what_to_add: [],
+            what_to_remove: [],
+            formatting_tips: [],
+            tone_and_language: []
           }
-        } catch (err) {
-          console.error("Failed to fetch from API:", err);
+        },
+        career_guidance: resumeFeedbackData?.career_guidance || {
+          suitable_job_roles: [],
+          transferable_skills: [],
+          next_steps: []
+        },
+        resume_summary: {
+          // Resume summary is built from Candidate_Profiles data, not AI
+          // This is just a placeholder structure
+          experience: "",
+          education: "",
+          skills: [],
+          key_achievements: []
         }
+      };
 
-        // Fallback to mock data if API fails
-        const mockData = getMockReportData();
-        setReportData(mockData);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading report:", error);
-        setReportData(getMockReportData());
-        setLoading(false);
+      // Store in sessionStorage for caching
+      sessionStorage.setItem("resumeReport", JSON.stringify(combinedData));
+      setReportData(combinedData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error loading report:", error);
+      setReportData(getMockReportData());
+      setLoading(false);
+    }
+  }, [authSession?.user?.email]);
+
+  // Initial load and reload when authSession changes
+  useEffect(() => {
+    loadReportData();
+  }, [loadReportData]);
+
+  // Listen for profile updates (resume upload or profile settings change)
+  // Only refresh data, don't cause page navigation
+  useEffect(() => {
+    const handleProfileUpdate = (e: Event) => {
+      // Prevent default behavior that might cause page refresh
+      e.stopPropagation();
+      console.log('Profile updated event detected, refreshing Report page data...');
+      // Reload report data when profile is updated (silently, no page refresh)
+      loadReportData();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('profileUpdated', handleProfileUpdate, { passive: true });
+      window.addEventListener('resumeUploaded', handleProfileUpdate, { passive: true });
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('profileUpdated', handleProfileUpdate);
+        window.removeEventListener('resumeUploaded', handleProfileUpdate);
       }
     };
-    loadReportData();
-  }, [authSession]);
+  }, [loadReportData]);
+
+  // Generate areas for improvement based on Candidate_Profiles data
+  const generateAreasForImprovementFromProfile = (profile: any): string[] => {
+    const areas: string[] = [];
+    
+    if (!profile) return areas;
+    
+    // Check experience completeness - ensure it's an array
+    const experiences = Array.isArray(profile.experience) ? profile.experience : 
+                       (profile.experiences && Array.isArray(profile.experiences) ? profile.experiences : []);
+    if (experiences.length === 0) {
+      areas.push("Add work experience to showcase your professional background and skills");
+    } else {
+      // Check if experience entries are complete
+      const incompleteExp = experiences.find((exp: any) => 
+        exp && (!exp.achievements || !exp.achievements.toString().trim() || 
+        !exp.skillsToolsUsed || !exp.skillsToolsUsed.toString().trim())
+      );
+      if (incompleteExp) {
+        areas.push("Enhance experience entries with specific achievements and skills used in each role");
+      }
+    }
+    
+    // Check education completeness - ensure it's an array
+    const educations = Array.isArray(profile.education) ? profile.education : 
+                      (profile.educations && Array.isArray(profile.educations) ? profile.educations : []);
+    if (educations.length === 0) {
+      areas.push("Add your educational background including degree, institution, and graduation year");
+    } else {
+      const incompleteEdu = educations.find((edu: any) => 
+        edu && (!edu.fieldOfStudy || !edu.field_of_study || !edu.institution)
+      );
+      if (incompleteEdu) {
+        areas.push("Complete education details including field of study and institution name");
+      }
+    }
+    
+    // Check skills completeness
+    const hasHardSkills = profile.skills?.hardSkills && Array.isArray(profile.skills.hardSkills) && profile.skills.hardSkills.length > 0;
+    const hasSoftSkills = profile.skills?.softSkills && Array.isArray(profile.skills.softSkills) && profile.skills.softSkills.length > 0;
+    if (!hasHardSkills && !hasSoftSkills) {
+      areas.push("Add technical and soft skills to highlight your capabilities");
+    } else if (!hasHardSkills) {
+      areas.push("Include technical/hard skills relevant to your target roles");
+    } else if (!hasSoftSkills) {
+      areas.push("Add soft skills such as communication, teamwork, and problem-solving");
+    }
+    
+    // Check personal identifiers completeness
+    if (!profile.personal_identifiers?.phoneNumber || !profile.personal_identifiers?.residentialAddress) {
+      areas.push("Complete your contact information for better profile visibility");
+    }
+    
+    // Check if profile completion is low
+    if (profile.profile_completion && profile.profile_completion < 70) {
+      areas.push("Complete more sections of your profile to increase your profile completion score");
+    }
+    
+    return areas;
+  };
 
   const parseMockInterviewFeedback = (feedbackData: any) => {
     if (typeof feedbackData === 'object' && feedbackData !== null) {
@@ -274,9 +402,9 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
         "Pattern recognition skills"
       ],
       areas_for_improvement: [
-        "Communication in team meetings - Practice active participation in smaller group settings first",
-        "Time management under pressure - Use time-blocking techniques and set clear priorities",
-        "Adapting to sudden changes - Work with supervisor to establish change notification protocols"
+        "Add quantifiable achievements and metrics to demonstrate impact",
+        "Include more specific technical skills and certifications",
+        "Enhance project descriptions with measurable outcomes"
       ],
       // recommendations: {
       //   what_to_add: ["Quantifiable achievements", "Leadership examples", "Technical certifications"],
@@ -308,7 +436,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
 
   if (loading || !reportData) {
     return (
-      <div className="w-full flex items-center justify-center">
+      <div className="w-full flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
           <p className="text-[#6f7a80]">Loading your report...</p>
@@ -328,7 +456,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
               backgroundColor: PRIMARY,
               color: 'white',
             }}
-            className="hover:opacity-90 flex items-center gap-2"
+            className="hover:opacity-90 flex items-center gap-2 hover:cursor-pointer"
           >
             <Download className="w-4 h-4" />
             Download Report
@@ -354,41 +482,120 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                   <p className="text-gray-600 mt-1">Comprehensive analysis of your profile and interview performance</p>
                 </div>
               </div>
-              {/* Consolidated: removed duplicate download button to keep single top button */}
             </div>
 
             {/* Strengths & Needs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="px-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Star className="w-5 h-5" style={{ color: PRIMARY }} />
                     <h3 className="text-xl font-bold text-gray-800">Strength</h3>
                   </div>
-                  <div className="space-y-3">
-                    {reportData.resume_feedback.strengths.map((strength, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <span className="mt-1" style={{ color: PRIMARY }}>•</span>
-                        <p className="text-gray-700">{strength}</p>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    {(() => {
+                      // Get strengths from neurodivergent_strengths from database
+                      let strengths: string[] = [];
+                      
+                      // First priority: neurodivergent_strengths from profile database
+                      if (profileData?.neurodivergent_strengths && Array.isArray(profileData.neurodivergent_strengths) && profileData.neurodivergent_strengths.length > 0) {
+                        strengths = profileData.neurodivergent_strengths;
+                        console.log('Using strengths from database (neurodivergent_strengths):', strengths);
+                      }
+                      // Fallback: resume feedback strengths
+                      else if (reportData?.resume_feedback?.strengths && Array.isArray(reportData.resume_feedback.strengths) && reportData.resume_feedback.strengths.length > 0) {
+                        strengths = reportData.resume_feedback.strengths;
+                        console.log('Using strengths from resume feedback:', strengths);
+                      }
+                      
+                      if (strengths.length === 0) {
+                        console.warn('No strengths found - profileData:', profileData, 'reportData:', reportData);
+                        return <p className="text-gray-500 text-sm italic">No strengths data available</p>;
+                      }
+                      
+                      return strengths.map((strength: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <span className="mt-1" style={{ color: PRIMARY }}>•</span>
+                          <p className="text-gray-700">{strength}</p>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="px-6">
                   <div className="flex items-center gap-2 mb-4">
                     <AlertCircle className="w-5 h-5" style={{ color: PRIMARY }} />
                     <h3 className="text-xl font-bold text-gray-800">Needs</h3>
                   </div>
-                  <div className="space-y-3">
-                    {reportData.resume_feedback.areas_for_improvement.slice(0, 3).map((need, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <span className="mt-1" style={{ color: PRIMARY }}>•</span>
-                        <p className="text-gray-700">{need}</p>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    {(() => {
+                      // Get needs from environment preferences if available, otherwise use resume feedback areas for improvement
+                      let needs: string[] = [];
+                      
+                      if (profileData?.environment) {
+                        // Extract needs from environment preferences object
+                        const env = profileData.environment;
+                        
+                        // Check if it's an array (legacy format)
+                        if (Array.isArray(env)) {
+                          needs = env;
+                        } 
+                        // Check for specific array fields
+                        else if (env.preferred_environment && Array.isArray(env.preferred_environment)) {
+                          needs = env.preferred_environment;
+                        } else if (env.workplace_needs && Array.isArray(env.workplace_needs)) {
+                          needs = env.workplace_needs;
+                        } 
+                        // Convert environment object fields to needs list
+                        else if (typeof env === 'object' && env !== null) {
+                          const envNeeds: string[] = [];
+                          
+                          // Extract meaningful preferences as needs
+                          const preferenceFields: Record<string, string> = {
+                            communicationMedium: 'Communication: ',
+                            clarity: 'Clarity preference: ',
+                            teamStyle: 'Team style: ',
+                            presentationComfort: 'Presentation comfort: ',
+                            checkIns: 'Check-ins: ',
+                            jobCoach: 'Job coach: ',
+                            auditory: 'Auditory preference: ',
+                            visual: 'Visual preference: ',
+                            workspace: 'Workspace: ',
+                            workdayStructure: 'Workday structure: '
+                          };
+                          
+                          Object.entries(env).forEach(([key, value]) => {
+                            if (value && typeof value === 'string' && value.trim()) {
+                              const prefix = preferenceFields[key] || '';
+                              envNeeds.push(`${prefix}${value}`);
+                            }
+                          });
+                          
+                          if (envNeeds.length > 0) {
+                            needs = envNeeds;
+                          }
+                        }
+                      }
+                      
+                      // Fallback to resume feedback if no environment needs found
+                      if (needs.length === 0) {
+                        needs = reportData.resume_feedback.areas_for_improvement || [];
+                      }
+                      
+                      if (needs.length === 0) {
+                        return <p className="text-gray-500 text-sm italic">No needs data available</p>;
+                      }
+                      
+                      return needs.slice(0, 3).map((need: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <span className="mt-1" style={{ color: PRIMARY }}>•</span>
+                          <p className="text-gray-700">{need}</p>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -396,81 +603,247 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
 
             {/* Resume Summary + Areas for Improvement */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Resume Summary */}
-              {reportData.resume_summary && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <FileText className="w-5 h-5" style={{ color: PRIMARY }} />
-                      <h3 className="text-xl font-bold text-gray-800">Resume Summary</h3>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Briefcase className="w-4 h-4" style={{ color: PRIMARY }} />
-                          <h4 className="font-semibold text-gray-800">Experience</h4>
-                        </div>
-                        <p className="text-gray-700 text-sm">{reportData.resume_summary.experience}</p>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <GraduationCap className="w-4 h-4" style={{ color: PRIMARY }} />
-                          <h4 className="font-semibold text-gray-800">Education</h4>
-                        </div>
-                        <p className="text-gray-700 text-sm">{reportData.resume_summary.education}</p>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Code className="w-4 h-4" style={{ color: PRIMARY }} />
-                          <h4 className="font-semibold text-gray-800">Skills</h4>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {reportData.resume_summary.skills.map((skill, index) => (
-                            <span
-                              key={index}
-                              className="px-3 py-1 rounded-full text-xs font-medium"
-                              style={{
-                                backgroundColor: PRIMARY_10,
-                                color: PRIMARY,
-                              }}
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Award className="w-4 h-4" style={{ color: PRIMARY }} />
-                          <h4 className="font-semibold text-gray-800">Key Achievements</h4>
-                        </div>
-                        <ul className="space-y-2">
-                          {reportData.resume_summary.key_achievements.map((achievement, index) => (
-                            <li key={index} className="text-gray-700 text-sm flex items-start gap-2">
-                              <span className="mt-1" style={{ color: PRIMARY }}>•</span>
-                              <span>{achievement}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Areas for Improvement + Score */}
+              {/* Resume Summary - from Candidate Profile */}
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="px-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <FileText className="w-5 h-5" style={{ color: PRIMARY }} />
+                    <h3 className="text-xl font-bold text-gray-800">Resume Summary</h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Check if we have any profile data at all */}
+                    {(() => {
+                      // Fallback data based on Resume Ahmad Fawaz bin Rahimi R02.pdf
+                      const fallbackResumeData = {
+                        experience: [
+                          {
+                            title: "CNC Programming Engineer (Mechanical)",
+                            employer: "Tonasco Malaysia",
+                            duration: "2019-2025"
+                          },
+                          {
+                            title: "Project Designer & Coordinator",
+                            employer: "Medi-Care Products",
+                            duration: "2016"
+                          },
+                          {
+                            title: "AI Academy Participant",
+                            employer: "Gamuda AI Academy, Yayasan Gamuda",
+                            duration: "2025-Present"
+                          }
+                        ],
+                        education: [
+                          {
+                            level: "Degree",
+                            fieldOfStudy: "Mechanical Engineering",
+                            institution: "Universiti Tenaga Nasional (UNITEN)",
+                            graduationYear: 2014,
+                            cgpa_grade: "First Class Honours (3.6/4.0)"
+                          },
+                          {
+                            level: "STPM / A-level / Diploma",
+                            fieldOfStudy: "Mechanical Engineering",
+                            institution: "Universiti Tenaga Nasional (UNITEN)",
+                            graduationYear: 2010,
+                            cgpa_grade: "First Class (3.97/4.0)"
+                          }
+                        ],
+                        skills: {
+                          hardSkills: ["Microsoft Excel", "Engineering Design Process", "SolidWorks", "Drafting/Technical Drawing", "SketchUp", "CNC Programming", "HyperMill", "GD&T", "PLC", "CAD/CAM"],
+                          softSkills: ["Problem Solving", "Detail-oriented", "Communication", "Teamwork", "Adaptability", "Project Management", "Technical Communication"]
+                        }
+                      };
+
+                      const hasExperience = Array.isArray(profileData?.experience) && profileData.experience.length > 0;
+                      const hasEducation = Array.isArray(profileData?.education) && profileData.education.length > 0;
+                      const hasSkills = (() => {
+                        if (!profileData?.skills) return false;
+                        if (Array.isArray(profileData.skills)) return profileData.skills.length > 0;
+                        if (profileData.skills.hardSkills && Array.isArray(profileData.skills.hardSkills) && profileData.skills.hardSkills.length > 0) return true;
+                        if (profileData.skills.softSkills && Array.isArray(profileData.skills.softSkills) && profileData.skills.softSkills.length > 0) return true;
+                        if (typeof profileData.skills === 'string' && profileData.skills.trim()) return true;
+                        return false;
+                      })();
+
+                      // Determine if using fallback or profile data
+                      const usingFallback = !hasExperience && !hasEducation && !hasSkills;
+                      
+                      if (usingFallback) {
+                        console.log('📋 Resume Summary: Using FALLBACK data (based on Resume Ahmad Fawaz bin Rahimi R02.pdf)');
+                      } else {
+                        console.log('📋 Resume Summary: Using Candidate_Profile data');
+                        if (hasExperience) console.log('  ✓ Experience:', profileData.experience.length, 'entries');
+                        if (hasEducation) console.log('  ✓ Education:', profileData.education.length, 'entries');
+                        if (hasSkills) console.log('  ✓ Skills: Available');
+                      }
+
+                      // Show fallback if no data at all
+                      if (usingFallback) {
+                        // Use fallback data for display
+                        const displayData = {
+                          experience: fallbackResumeData.experience,
+                          education: fallbackResumeData.education,
+                          skills: fallbackResumeData.skills
+                        };
+                        
+                        return (
+                          <>
+                            {/* Experience from fallback */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <Briefcase className="w-4 h-4" style={{ color: PRIMARY }} />
+                                <h4 className="font-semibold text-gray-800">Experience</h4>
+                              </div>
+                              <div className="space-y-2">
+                                {displayData.experience.map((exp: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{exp.title || 'Position'}</p>
+                                    <p className="text-gray-600">{exp.employer || ''} • {exp.duration || ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Education from fallback */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <GraduationCap className="w-4 h-4" style={{ color: PRIMARY }} />
+                                <h4 className="font-semibold text-gray-800">Education</h4>
+                              </div>
+                              <div className="space-y-2">
+                                {displayData.education.map((edu: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{edu.level || ''} in {edu.fieldOfStudy || ''}</p>
+                                    <p className="text-gray-600">{edu.institution || ''} {edu.graduationYear ? `• ${edu.graduationYear}` : ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Skills from fallback */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <Code className="w-4 h-4" style={{ color: PRIMARY }} />
+                                <h4 className="font-semibold text-gray-800">Skills</h4>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {[...(displayData.skills.hardSkills || []), ...(displayData.skills.softSkills || [])].slice(0, 10).map((skill: string, index: number) => (
+                                  <span
+                                    key={index}
+                                    className="px-3 py-1 rounded-full text-xs font-medium"
+                                    style={{
+                                      backgroundColor: PRIMARY_10,
+                                      color: PRIMARY,
+                                    }}
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {/* Experience from profile */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Briefcase className="w-4 h-4" style={{ color: PRIMARY }} />
+                              <h4 className="font-semibold text-gray-800">Experience</h4>
+                            </div>
+                            {hasExperience ? (
+                              <div className="space-y-2">
+                                {profileData.experience.slice(0, 3).map((exp: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{exp.RoleTitle || exp.roleTitle || exp.title || 'Position'}</p>
+                                    <p className="text-gray-600">{exp.employer || exp.company || ''} • {exp.YearsInRole || exp.yearsInRole || exp.duration || ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">No experience data available</p>
+                            )}
+                          </div>
+
+                          {/* Education from profile */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <GraduationCap className="w-4 h-4" style={{ color: PRIMARY }} />
+                              <h4 className="font-semibold text-gray-800">Education</h4>
+                            </div>
+                            {hasEducation ? (
+                              <div className="space-y-2">
+                                {profileData.education.slice(0, 2).map((edu: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{edu.level || edu.degree || ''} in {edu.fieldOfStudy || edu.field || ''}</p>
+                                    <p className="text-gray-600">{edu.institution || ''} {edu.graduationYear ? `• ${edu.graduationYear}` : ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">No education data available</p>
+                            )}
+                          </div>
+
+                          {/* Skills from profile */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Code className="w-4 h-4" style={{ color: PRIMARY }} />
+                              <h4 className="font-semibold text-gray-800">Skills</h4>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(() => {
+                                let skillsList: string[] = [];
+                                if (profileData.skills?.hardSkills && Array.isArray(profileData.skills.hardSkills)) {
+                                  skillsList = [...skillsList, ...profileData.skills.hardSkills];
+                                }
+                                if (profileData.skills?.softSkills && Array.isArray(profileData.skills.softSkills)) {
+                                  skillsList = [...skillsList, ...profileData.skills.softSkills];
+                                }
+                                if (Array.isArray(profileData.skills)) {
+                                  skillsList = profileData.skills;
+                                }
+                                if (skillsList.length === 0 && typeof profileData.skills === 'string') {
+                                  skillsList = profileData.skills.split(',').map((s: string) => s.trim());
+                                }
+                                return skillsList.length > 0 ? (
+                                  skillsList.slice(0, 10).map((skill: string, index: number) => (
+                                    <span
+                                      key={index}
+                                      className="px-3 py-1 rounded-full text-xs font-medium"
+                                      style={{
+                                        backgroundColor: PRIMARY_10,
+                                        color: PRIMARY,
+                                      }}
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <p className="text-gray-500 text-sm italic">No skills data available</p>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Areas for Improvement + Score - from Candidate Profile */}
+              <Card>
+                <CardContent className="px-6">
                   <div className="flex items-center gap-2 mb-6">
                     <TrendingUp className="w-5 h-5 text-red-600" />
                     <h3 className="text-xl font-bold text-gray-800">Resume Areas for Improvement</h3>
                   </div>
 
-                  {/* Score Circle - SVG (PDF-safe) */}
+                  {/* Score Circle - SVG (PDF-safe) - Fixed rotation */}
                   <div 
                     className="mb-6 p-4 rounded-lg"
                     data-pdf-bg="#f8f5ff"
@@ -478,7 +851,12 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1 pr-6">
                         <h4 className="text-lg font-semibold text-gray-800 mb-1">Overall Resume Score</h4>
-                        <p className="text-gray-600 text-sm">{reportData.resume_feedback.summary}</p>
+                        <p className="text-gray-600 text-sm">
+                          {reportData.resume_feedback.summary || 
+                           (profileData?.profile_completion ? 
+                             `Based on your profile completeness (${profileData.profile_completion}%)` : 
+                             'Based on your profile completeness and experience')}
+                        </p>
                       </div>
 
                       <div className="relative w-28 h-28 flex-shrink-0">
@@ -491,38 +869,64 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                             fill="none"
                             stroke={PRIMARY}
                             strokeWidth="10"
-                            strokeDasharray={`${(reportData.resume_feedback.overall_resume_score / 100) * 283} 283`}
+                            strokeDasharray={`${((reportData.resume_feedback.overall_resume_score || profileData?.profile_completion || 0) / 100) * 283} 283`}
                             strokeLinecap="round"
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-2xl font-bold transform rotate-90" style={{ color: PRIMARY }}>
-                            {reportData.resume_feedback.overall_resume_score}
+                          <span className="text-2xl font-bold" style={{ color: PRIMARY }}>
+                            {reportData.resume_feedback.overall_resume_score || profileData?.profile_completion || 0}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Areas List */}
+                  {/* Areas List - from resume feedback OR generated from Candidate_Profiles */}
                   <div className="space-y-3">
-                    {reportData.resume_feedback.areas_for_improvement.map((area, index) => {
-                      const priority: "High" | "Medium" | "Low" = 
-                        index === 0 ? "High" : index === 1 ? "Medium" : "Low";
-
-                      return (
-                        <div
-                          key={index}
-                          className="p-3 border-l-4 border-red-600 bg-gradient-to-r from-red-50 to-white rounded-lg"
-                          data-pdf-bg="#fff5f5"
-                        >
-                          <div className="flex items-start justify-between">
-                            <p className="text-gray-700 text-sm flex-1 pr-2">{area}</p>
-                            <PriorityBadge priority={priority} />
+                    {(() => {
+                      // Priority 1: Use resume feedback areas for improvement if available
+                      let areas: string[] = [];
+                      
+                      if (reportData?.resume_feedback?.areas_for_improvement && Array.isArray(reportData.resume_feedback.areas_for_improvement) && reportData.resume_feedback.areas_for_improvement.length > 0) {
+                        areas = reportData.resume_feedback.areas_for_improvement;
+                        console.log('Using areas for improvement from resume feedback:', areas);
+                      } else {
+                        // Priority 2: Generate areas for improvement from Candidate_Profiles data
+                        areas = generateAreasForImprovementFromProfile(profileData);
+                        console.log('Generated areas for improvement from Candidate_Profiles:', areas);
+                      }
+                      
+                      // Show fallback if no areas found
+                      if (areas.length === 0) {
+                        return (
+                          <div className="text-center py-6">
+                            <TrendingUp className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+                            <p className="text-gray-500 text-sm italic">
+                              No improvement areas identified. Your profile looks complete!
+                            </p>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      }
+                      
+                      return areas.map((area, index) => {
+                        const priority: "High" | "Medium" | "Low" = 
+                          index === 0 ? "High" : index === 1 ? "Medium" : "Low";
+
+                        return (
+                          <div
+                            key={index}
+                            className="p-3 border-l-4 border-red-600 bg-gradient-to-r from-red-50 to-white rounded-lg"
+                            data-pdf-bg="#fff5f5"
+                          >
+                            <div className="flex items-start justify-between">
+                              <p className="text-gray-700 text-sm flex-1 pr-2">{area}</p>
+                              <PriorityBadge priority={priority} />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -531,7 +935,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
             {/* Suitable Job Roles */}
             {reportData.career_guidance?.suitable_job_roles && reportData.career_guidance.suitable_job_roles.length > 0 && (
               <Card className="mb-6">
-                <CardContent className="p-6">
+                <CardContent className="px-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Briefcase className="w-5 h-5" style={{ color: PRIMARY }} />
                     <h3 className="text-xl font-bold text-gray-800">You Are Suitable to Work As</h3>
@@ -558,8 +962,8 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
             )}
 
             {/* Mock Interview Performance */}
-            <Card className="my-6">
-              <CardContent className="p-6">
+            <Card>
+              <CardContent className="px-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Star className="w-5 h-5" style={{ color: PRIMARY }} />
@@ -577,7 +981,7 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                   <>
                     {mockInterviewDetails && (
                       <div 
-                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"
+                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"
                         data-pdf-bg="#f8f9ff"
                       >
                         <div>
@@ -614,17 +1018,17 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div>
                         <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <Star className="w-5 h-5 text-[#635BFF] mr-2" />
                           Key Strengths
                         </h4>
                         <div className="space-y-3">
                           {mockInterviewFeedback.strengths?.length > 0 ? (
                             mockInterviewFeedback.strengths.map((strength: string, index: number) => (
-                              <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-gray-700 text-sm flex items-start gap-2">
-                                  <span className="text-green-600 mt-0.5">Checkmark</span>
-                                  <span>{strength}</span>
-                                </p>
+                              <div key={index} className="p-4 bg-[#635BFF]/5 border border-[#635BFF]/20 rounded-xl text-gray-800">
+                                <div className="flex items-start">
+                                  <CheckCircle className="w-4 h-4 mr-2 mt-1 text-[#635BFF] flex-shrink-0" />
+                                  <span>{strength.replace(/^[-*•\s]+/, '').replace(/[\s*•-]+$/,'')}</span>
+                                </div>
                               </div>
                             ))
                           ) : (
@@ -635,17 +1039,19 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
 
                       <div>
                         <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          <ArrowUpWideNarrow className="w-5 h-5 text-red-600 mr-2" />
                           Areas to Improve
                         </h4>
                         <div className="space-y-3">
                           {mockInterviewFeedback.areas_for_improvement?.length > 0 ? (
                             mockInterviewFeedback.areas_for_improvement.map((area: string, index: number) => (
-                              <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                <p className="text-gray-700 text-sm flex items-start gap-2">
-                                  <span className="text-orange-600 mt-0.5">Right Arrow</span>
-                                  <span>{area}</span>
-                                </p>
+                              <div key={index} className="p-4 bg-red-50 border border-red-100 rounded-xl">
+                                <div className="flex items-start">
+                                  <div className="flex-shrink-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                                    <span className="text-white text-xs">{index + 1}</span>
+                                  </div>
+                                  <p className="text-gray-800 leading-relaxed ">{area.replace(/^\s*([0-9]+\.|[-*•])\s*/, '').replace(/[\s*•-]+$/,'')}</p>
+                                </div>
                               </div>
                             ))
                           ) : (

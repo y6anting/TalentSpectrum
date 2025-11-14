@@ -797,28 +797,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
             <span className="font-semibold text-gray-800">Interview:</span>{" "}
             {session.selectedPosition?.title} ({session.selectedPosition?.level})
           </div>
-          {!interviewStarted && (
-              <div className="flex items-center justify-start gap-4">
-                <div>
-                  <div className="text-base font-semibold text-gray-700">Ready to start?</div>
-                </div>
-                <Button
-                  onClick={async () => {
-                    const granted = await requestPermissions();
-                    if (granted) {
-                      setInterviewStarted(true);
-                    }
-                  }}
-                  className="w-fit px-4 bg-white py-2 rounded-md 
-                border border-[#635BFF] text-[#635BFF] font-semibold 
-                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] 
-                focus:outline-none focus:ring-2 focus:ring-[#746CFF] focus:ring-opacity-75 
-                transition ease-in-out duration-150 cursor-pointer"
-   >
-                  <Play className="w-4 h-4 mr-2" /> Start Interview
-                </Button>
-              </div>
-          )}
+         
           
         </div>
          
@@ -901,11 +880,34 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
             </div>
 
           {!interviewStarted && (
-            <div className="bg-gradient-to-r from-blue-50 to-gray-50 border border-blue-200 rounded-xl p-4">
+            <div className="bg-gradient-to-r from-indigo-50 to-gray-50 border border-indigo-200 rounded-xl p-4">
               <p className="text-gray-700 text-center">
                 <span className="font-semibold">Take a moment to prepare:</span> You'll be asked to grant camera and microphone permissions. Ensure you're in a quiet space before you start.
               </p>
             </div>
+          )}
+
+           {!interviewStarted && (
+              <div className="flex items-center justify-center gap-4">
+                <div>
+                  <div className="text-base font-semibold text-gray-700">Ready?</div>
+                </div>
+                <Button
+                  onClick={async () => {
+                    const granted = await requestPermissions();
+                    if (granted) {
+                      setInterviewStarted(true);
+                    }
+                  }}
+                  className="w-fit px-4 bg-white py-2 rounded-md 
+                border border-[#635BFF] text-[#635BFF] font-semibold 
+                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] 
+                focus:outline-none focus:ring-2 focus:ring-[#746CFF] focus:ring-opacity-75 
+                transition ease-in-out duration-150 cursor-pointer"
+   >
+                  <Play className="w-4 h-4 mr-2" /> Start Interview
+                </Button>
+              </div>
           )}
 
           {/* Question */}
@@ -1050,9 +1052,11 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                 <Button
                   variant={isRecording ? "destructive" : "outline"}
                   onClick={isRecording ? stopRecording : startRecording}
-                  className="w-fit px-4 py-2 rounded-md 
-                border border-[#635BFF] text-[#635BFF] font-semibold 
-                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                  className={`w-fit px-4 py-2 rounded-md font-semibold cursor-pointer
+                  ${isRecording 
+                    ? "bg-red-500 text-white border-red-500 hover:bg-red-600 hover:border-red-600" 
+                    : "border border-[#635BFF] text-[#635BFF] hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC]"
+                  }`}
                 >
                   {isRecording ? (
                     <> <MicOff className="w-4 h-4 mr-2" /> Stop Recording </>

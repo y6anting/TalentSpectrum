@@ -148,7 +148,7 @@ const AccessibilitySettings: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-[99998] bg-[var(--theme-color,#635BFF)] hover:bg-[var(--theme-color-hover,#524BCC)] text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110"
+        className="hover:cursor-pointer fixed bottom-6 right-6 z-[99998] bg-[var(--theme-color,#635BFF)] hover:bg-[var(--theme-color-hover,#524BCC)] text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110"
         title="Accessibility Settings"
         aria-label="Open accessibility settings"
       >
@@ -177,7 +177,7 @@ const AccessibilitySettings: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="hover:cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors "
                   aria-label="Close settings"
                 >
                   <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
@@ -202,7 +202,7 @@ const AccessibilitySettings: React.FC = () => {
                     className={`p-4 rounded-xl border-2 transition-all ${
                       preferences.theme === 'light'
                         ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
                     }`}
                   >
                     <Sun className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
@@ -216,7 +216,7 @@ const AccessibilitySettings: React.FC = () => {
                     className={`p-4 rounded-xl border-2 transition-all ${
                       preferences.theme === 'dark'
                         ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
                     }`}
                   >
                     <Moon className="w-8 h-8 mx-auto mb-2 text-indigo-500" />
@@ -244,7 +244,7 @@ const AccessibilitySettings: React.FC = () => {
                       className={`p-3 rounded-xl border-2 transition-all ${
                         preferences.fontSize === size
                           ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400  hover:cursor-pointer'
                       }`}
                     >
                       <div className="font-medium text-gray-900 dark:text-white capitalize text-center">
@@ -281,7 +281,7 @@ const AccessibilitySettings: React.FC = () => {
                       className={`w-full p-3 rounded-xl border-2 transition-all text-left flex items-center justify-between ${
                         preferences.fontFamily === font.value
                           ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
                       }`}
                     >
                       <span className="font-medium text-gray-900 dark:text-white">{font.label}</span>
@@ -301,14 +301,14 @@ const AccessibilitySettings: React.FC = () => {
                     Theme Color
                   </h3>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                   {([
                     { value: 'purple', color: '#635BFF', label: 'Purple' },
-                    { value: 'blue', color: '#2196F3', label: 'Blue' },
+                    { value: 'blue', color: '#6ca6f1ff', label: 'Blue' },
                     { value: 'green', color: '#4CAF50', label: 'Green' },
                     { value: 'orange', color: '#FF9800', label: 'Orange' },
                     { value: 'pink', color: '#E91E63', label: 'Pink' },
-                    { value: 'default', color: '#635BFF', label: 'Default' },
+                    // { value: 'default', color: '#ff5bffff', label: 'Default' },
                   ] as const).map((colorOption) => (
                     <button
                       key={colorOption.value}
@@ -316,7 +316,7 @@ const AccessibilitySettings: React.FC = () => {
                       className={`p-3 rounded-xl border-2 transition-all ${
                         preferences.themeColor === colorOption.value
                           ? 'border-gray-900 dark:border-white'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
                       }`}
                       title={colorOption.label}
                     >
@@ -337,13 +337,13 @@ const AccessibilitySettings: React.FC = () => {
                 <Button
                   onClick={resetToDefaults}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 hover:cursor-pointer"
                 >
                   Reset to Defaults
                 </Button>
                 <Button
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 bg-[var(--theme-color,#635BFF)] hover:bg-[var(--theme-color-hover,#524BCC)]"
+                  className="flex-1 bg-[var(--theme-color,#635BFF)] hover:bg-[var(--theme-color-hover,#524BCC)] hover:cursor-pointer"
                 >
                   Save & Close
                 </Button>

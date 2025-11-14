@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import inspect
 from typing import Annotated
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import shutil
 import re
@@ -26,21 +27,59 @@ def sanitize_filename(name: str) -> str:
 
 @router.get("/")
 async def get_jobs(db: DbDep):
+    # Clean up expired jobs before returning
+    cleanup_expired_jobs(db)
     return db.query(Post_Job).all()
 
 @router.get("/employer/{employer_email}")
 async def get_jobs_by_employer(employer_email: str, db: DbDep):
+    # Clean up expired jobs before returning
+    cleanup_expired_jobs(db)
     jobs = db.query(Post_Job).filter(Post_Job.employer_email == employer_email).all()
     return jobs
+
+def cleanup_expired_jobs(db: Session):
+    """Delete jobs that are older than 30 days and set status to expired."""
+    try:
+        expiration_date = datetime.utcnow() - timedelta(days=30)
+        expired_jobs = db.query(Post_Job).filter(
+            Post_Job.created_at < expiration_date,
+            Post_Job.status != "expired"
+        ).all()
+        
+        for job in expired_jobs:
+            db.delete(job)
+        
+        if expired_jobs:
+            db.commit()
+            print(f"Deleted {len(expired_jobs)} expired jobs")
+    except Exception as e:
+        print(f"Error cleaning up expired jobs: {e}")
+        db.rollback()
 
 @router.post("/")
 async def create_job(db: DbDep, job: PostJobRequest):
     try:
-        new_job = Post_Job(**job.model_dump())
+        # Introspect existing table columns to avoid OperationalError if migration not applied
+        inspector = inspect(db.get_bind())
+        try:
+            existing_columns = {c["name"] for c in inspector.get_columns("post_job")}
+        except Exception:
+            existing_columns = set()
+
+        raw_data = job.model_dump()
+        safe_data = {k: v for k, v in raw_data.items() if k in existing_columns}
+
+        missing = [k for k in raw_data.keys() if k not in existing_columns]
+        if missing:
+            # Log which fields were skipped (helpful during incremental migration)
+            print(f"[jobs.create_job] Skipping unmigrated columns: {missing}")
+
+        new_job = Post_Job(**safe_data)
         db.add(new_job)
         db.commit()
         db.refresh(new_job)
-        return {"message": "Job added", "job": new_job}
+        return {"message": "Job added", "job": new_job, "skipped_columns": missing}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating job: {e}")
@@ -50,11 +89,23 @@ async def update_job(db: DbDep, job_id: int, job: PostJobRequest):
     existing = db.query(Post_Job).filter(Post_Job.id == job_id).first()
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
-    for key, value in job.model_dump().items():
+
+    inspector = inspect(db.get_bind())
+    try:
+        existing_columns = {c["name"] for c in inspector.get_columns("post_job")}
+    except Exception:
+        existing_columns = set()
+
+    updates = {k: v for k, v in job.model_dump().items() if k in existing_columns}
+    skipped = [k for k in job.model_dump().keys() if k not in existing_columns]
+    if skipped:
+        print(f"[jobs.update_job] Skipping unmigrated columns: {skipped}")
+
+    for key, value in updates.items():
         setattr(existing, key, value)
     db.commit()
     db.refresh(existing)
-    return {"message": "Job updated", "job": existing}
+    return {"message": "Job updated", "job": existing, "skipped_columns": skipped}
 
 @router.delete("/{job_id}")
 async def delete_job(db: DbDep, job_id: int):

@@ -60,7 +60,7 @@ export function useToast() {
 
 function ToastContainer({ toasts, removeToast }: { toasts: Toast[], removeToast: (id: string) => void }) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-4 z-50 space-y-2 ">
       <AnimatePresence>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
@@ -124,7 +124,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: (id: string) =
         </div>
         <button
           onClick={() => onRemove(toast.id)}
-          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors hover:cursor-pointer"
         >
           <X className="w-4 h-4 text-gray-400" />
         </button>

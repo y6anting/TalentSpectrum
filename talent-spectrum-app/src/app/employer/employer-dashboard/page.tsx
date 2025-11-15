@@ -14,8 +14,6 @@ import { Badge } from "@/app/components/badge";
 import {
   Building,
   Users,
-  Plus,
-  Eye,
   Edit,
   Trash2,
   FileText,
@@ -26,24 +24,18 @@ import {
   DollarSign,
   Settings,
   Shield,
-  Heart,
   Star,
   BarChart3,
   Calculator,
-  UserSearch,
-  X,
   Briefcase,
-  Book,
-  Info,
   XCircle,
   Calendar,
   Search,
-  ArrowUpDown,
   SquarePen, // Added SquarePen icon, 
   BotMessageSquare,
   Filter,
   SortAsc,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -56,20 +48,18 @@ import {
   SelectContent,
   SelectItem,
 } from "@/app/components/select";
-import ViewJobModal from "@/app/employer/component/ViewJobModal";
 import EditJobModal from "@/app/employer/component/EditJobModal";
 import CandidateList from "@/app/employer/component/CandidateSearch";
 import AllCandidates from "@/app/employer/component/AllCandidates";
 import MatchedCandidates from "@/app/employer/component/MatchedCandidates";
+import ApplicantCard from "@/app/employer/component/ApplicantCard";
+import JobViewModeButtons, { ViewMode } from "@/app/employer/component/JobViewModeButtons";
+import ViewProfileDialog from "@/app/employer/component/ViewProfileDialog";
+import ResumeDialog from "@/app/employer/component/ResumeDialog";
+import EmployerOverview from "@/app/employer/component/EmployerOverview";
 import { useToastHelpers } from "@/components/ui/toast";
-
-// Import the PostJob component
-import PostJob from "@/app/employer/post-job/page"; // Adjust this path if necessary based on your file structure
-
-// Assuming these are custom components, if not, replace with standard HTML input/textarea or import from your UI library
-import { Input } from "@/app/components/input"; // Assuming you have an Input component
-import { Checkbox } from "@/app/components/checkbox"; // Assuming you have a Checkbox component
-import { Textarea } from "@/app/components/textarea"; // Assuming you have a Textarea component
+import PostJob from "@/app/employer/post-job/page"; 
+import { Input } from "@/app/components/input"; 
 import * as ChatBot from "@/app/chat-bot";
 
 const SALARY_RANGES = [
@@ -96,6 +86,7 @@ export type JobPosting = {
   soft_skills?: string;
   status?: string; // active, draft, closed, expired
   created_at?: string; // ISO date string
+  application_deadline?: string; // ISO date string
   flexible_work_hour: boolean;
   sensory_friendly_environment: boolean;
   peer_support_system: boolean;
@@ -228,6 +219,9 @@ export default function EmployerDashboard() {
   // Matched candidates states
   const [shortlistedCandidates, setShortlistedCandidates] = useState<any[]>([]);
   const [totalCandidates, setTotalCandidates] = useState<number>(0);
+  
+  // Recent applicants for overview (all applicants, not just shortlisted)
+  const [recentApplicants, setRecentApplicants] = useState<any[]>([]);
 
   // Search states for filtering
   const [jobSearchTerm, setJobSearchTerm] = useState("");
@@ -239,6 +233,21 @@ export default function EmployerDashboard() {
   // Filter states for Shortlisted Applicants
   const [applicantFilterStatus, setApplicantFilterStatus] = useState("all");
   const [applicantSortBy, setApplicantSortBy] = useState("recent");
+
+  // View mode for job details (description, applicants, matched) - per job ID
+  const [jobViewModes, setJobViewModes] = useState<Map<number, ViewMode>>(new Map());
+  
+  // Applicants for selected job
+  const [jobApplicants, setJobApplicants] = useState<any[]>([]);
+  const [loadingApplicants, setLoadingApplicants] = useState(false);
+  const [applicantCurrentPage, setApplicantCurrentPage] = useState(1);
+  const applicantItemsPerPage = 10;
+  
+  // View Profile Dialog state
+  const [selectedCandidateEmail, setSelectedCandidateEmail] = useState<string | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
 
   // Calculator
   const [baseSalary, setBaseSalary] = useState<number>(10000);
@@ -263,16 +272,33 @@ export default function EmployerDashboard() {
       closed: "bg-red-100 text-red-800",
       under_review: "bg-yellow-100 text-yellow-800",
       interview_scheduled: "bg-blue-100 text-blue-800",
-      shortlisted: "bg-purple-100 text-purple-800",
+      shortlisted: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800",
+    };
+    const statusLabels: { [key: string]: string } = {
+      under_review: "Under Review",
+      shortlisted: "Shortlisted",
+      rejected: "Rejected",
+      interview_scheduled: "Interview Scheduled",
+      active: "Active",
+      draft: "Draft",
+      closed: "Closed",
     };
     return (
       <Badge
         variant="secondary"
         className={badgeStyles[status] || "bg-gray-100 text-gray-800"}
       >
-        {status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+        {statusLabels[status] || status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
       </Badge>
     );
+  };
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 90) return "font-bold text-green-600";
+    if (score >= 80) return "font-bold text-blue-600";
+    if (score >= 70) return "font-bold text-yellow-600";
+    return "font-bold text-red-600";
   };
 
   const getStatusIcon = (status: string) => {
@@ -330,6 +356,58 @@ export default function EmployerDashboard() {
 
       if (response.ok) {
         const savedShortlist = await response.json();
+        
+        // Also create an application entry so it appears in applications list
+        try {
+          const applicationResponse = await fetch(`${API_BASE}/applications/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              employer_email: currentEmployerEmail,
+              candidate_email: candidate.candidateSummary.email || "",
+              candidate_name: candidate.candidateSummary.name,
+              job_id: job.id,
+              job_title: candidate.jobTitle,
+              applied_date: new Date().toISOString().split("T")[0],
+              status: "shortlisted",
+              accommodations_requested: candidate.candidateSummary.accommodations.length > 0,
+              accommodation_details: candidate.candidateSummary.accommodations.join(", "),
+              score: candidate.overallMatchPercentage,
+            }),
+          });
+          
+          if (applicationResponse.ok) {
+            // Refresh recent applicants list
+            const applicationsRes = await fetch(`${API_BASE}/applications/employer/${currentEmployerEmail}`);
+            if (applicationsRes.ok) {
+              const applicationsData = await applicationsRes.json();
+              const transformed = Array.isArray(applicationsData)
+                ? applicationsData
+                    .map((item: any) => ({
+                      id: item.id || item.application_id,
+                      candidateName: item.candidate_name || item.candidate_email || "Unknown Candidate",
+                      jobTitle: item.job_title || "",
+                      appliedDate: item.applied_date || new Date().toISOString(),
+                      status: item.status || "under_review",
+                      score: item.score || undefined,
+                      accommodationsRequested: item.accommodations_requested || false,
+                    }))
+                    .sort((a: any, b: any) => {
+                      const dateA = new Date(a.appliedDate).getTime();
+                      const dateB = new Date(b.appliedDate).getTime();
+                      return dateB - dateA;
+                    })
+                : [];
+              setRecentApplicants(transformed);
+            }
+          }
+        } catch (appError) {
+          console.error("Error creating application entry:", appError);
+          // Continue even if application creation fails
+        }
+        
         // Update local state with the saved data
         setShortlistedCandidates((prev) => [...prev, {
           id: savedShortlist.id,
@@ -342,6 +420,30 @@ export default function EmployerDashboard() {
           experience: savedShortlist.experience,
           score: savedShortlist.score,
         }]);
+        
+        // Refresh shortlisted candidates list
+        try {
+          const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${currentEmployerEmail}`);
+          if (shortlistResponse.ok) {
+            const shortlistData = await shortlistResponse.json();
+              const transformedData = shortlistData.map((item: any) => ({
+                id: item.id,
+                candidateName: item.candidate_name,
+                candidateEmail: item.candidate_email || "",
+                jobTitle: item.job_title,
+                appliedDate: item.applied_date,
+                status: item.status,
+                accommodationsRequested: item.accommodations_requested,
+                accommodationDetails: item.accommodation_details,
+                experience: item.experience,
+                score: item.score,
+              }));
+              setShortlistedCandidates(transformedData);
+          }
+        } catch (err) {
+          console.error("Error refreshing shortlisted candidates:", err);
+        }
+        
         success(
           "Candidate Shortlisted",
           `${candidate.candidateSummary.name} has been added to Applicants tab!`
@@ -422,20 +524,26 @@ export default function EmployerDashboard() {
   };
 
   const handleCloseJob = async (jobId: number) => {
+    // Find the job to get its current status
+    const job = jobPostings.find(j => j.id === jobId);
+    if (!job) {
+      showError("Error", "Job not found");
+      return;
+    }
+
+    const isCurrentlyClosed = job.status === 'closed';
+    const newStatus = isCurrentlyClosed ? 'active' : 'closed';
+    const actionText = isCurrentlyClosed ? 'reopen' : 'close';
+
     showConfirm({
-      title: "Close Job Posting",
-      message: "Are you sure you want to close this job posting? Closed jobs won't be visible to candidates.",
-      confirmText: "Close Job",
+      title: isCurrentlyClosed ? "Reopen Job Posting" : "Close Job Posting",
+      message: isCurrentlyClosed 
+        ? "Are you sure you want to reopen this job posting? It will be visible to candidates again."
+        : "Are you sure you want to close this job posting? Closed jobs won't be visible to candidates.",
+      confirmText: isCurrentlyClosed ? "Reopen Job" : "Close Job",
       cancelText: "Cancel",
       onConfirm: async () => {
         try {
-          // Find the job to get its current data
-          const job = jobPostings.find(j => j.id === jobId);
-          if (!job) {
-            showError("Error", "Job not found");
-            return;
-          }
-
           const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
             method: "PUT",
             headers: {
@@ -443,16 +551,16 @@ export default function EmployerDashboard() {
             },
             body: JSON.stringify({
               ...job,
-              status: "closed"
+              status: newStatus
             }),
           });
 
           if (response.ok) {
-            success("Job Closed", "Job posting closed successfully!");
-            // Clear selection if closed job was selected
-            if (selectedJobForApplicants?.id === jobId) {
-              setSelectedJobForApplicants(null);
-            }
+            success(
+              isCurrentlyClosed ? "Job Reopened" : "Job Closed", 
+              `Job posting ${actionText}d successfully!`
+            );
+            // Refresh job postings
             if (currentEmployerEmail) {
               const jobsResponse = await fetch(
                 `${API_BASE}/jobs/employer/${currentEmployerEmail}`
@@ -460,14 +568,21 @@ export default function EmployerDashboard() {
               if (jobsResponse.ok) {
                 const jobsData = await jobsResponse.json();
                 setJobPostings(jobsData);
+                // Update selected job if it's the one that was closed/reopened
+                if (selectedJobForApplicants?.id === jobId) {
+                  const updatedJob = jobsData.find((j: JobPosting) => j.id === jobId);
+                  if (updatedJob) {
+                    setSelectedJobForApplicants(updatedJob);
+                  }
+                }
               }
             }
           } else {
-            showError("Close Failed", "Failed to close job. Please try again.");
+            showError(`${isCurrentlyClosed ? "Reopen" : "Close"} Failed`, `Failed to ${actionText} job. Please try again.`);
           }
         } catch (error) {
-          console.error("Error closing job:", error);
-          showError("Error", "An error occurred while closing the job.");
+          console.error(`Error ${actionText}ing job:`, error);
+          showError("Error", `An error occurred while ${actionText}ing the job.`);
         }
       }
     });
@@ -482,6 +597,211 @@ export default function EmployerDashboard() {
     setSelectedJob(job);
     setEditJobData(job);
     setIsEditModalOpen(true);
+  };
+
+  // Fetch applicants for a specific job
+  const fetchJobApplicants = async (jobId: number, jobTitle: string) => {
+    if (!currentEmployerEmail) return;
+    setLoadingApplicants(true);
+    try {
+      const response = await fetch(`${API_BASE}/applications/employer/${currentEmployerEmail}`);
+      if (response.ok) {
+        const allApplications = await response.json();
+        // Filter applications for this specific job
+        const filtered = Array.isArray(allApplications)
+          ? allApplications.filter((app: any) => 
+              app.job_title === jobTitle || app.job_id === jobId
+            )
+          : [];
+        setJobApplicants(filtered);
+      } else {
+        console.error("Failed to fetch applicants");
+        setJobApplicants([]);
+      }
+    } catch (error) {
+      console.error("Error fetching applicants:", error);
+      setJobApplicants([]);
+    } finally {
+      setLoadingApplicants(false);
+    }
+  };
+
+  // Handle viewing candidate profile
+  const handleViewProfile = (candidateEmail: string) => {
+    setSelectedCandidateEmail(candidateEmail);
+    setShowProfileDialog(true);
+  };
+
+  // Handle viewing resume
+  const handleViewResume = async (candidateEmail: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/profiles/${encodeURIComponent(candidateEmail)}`);
+      if (response.ok) {
+        const profileData = await response.json();
+        if (profileData.resume_url) {
+          setResumeUrl(profileData.resume_url);
+          setShowResumeDialog(true);
+        } else {
+          showError("Resume Not Found", "This candidate has not uploaded a resume.");
+        }
+      } else {
+        showError("Error", "Failed to fetch candidate profile.");
+      }
+    } catch (error) {
+      console.error("Error viewing resume:", error);
+      showError("Error", "An error occurred while fetching the resume.");
+    }
+  };
+
+  // Handle updating application status
+  const handleUpdateStatus = async (applicationId: number | string | undefined, newStatus: string) => {
+    if (!applicationId) {
+      showError("Update Failed", "No application ID provided");
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/applications/${applicationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        const statusLabels: Record<string, string> = {
+          'shortlisted': 'Shortlisted',
+          'under_review': 'Under Review',
+          'rejected': 'Rejected'
+        };
+        success("Status Updated", `Application status updated to ${statusLabels[newStatus] || newStatus}`);
+        
+        // Dispatch event for notification system
+        window.dispatchEvent(new CustomEvent('applicationStatusUpdated', {
+          detail: {
+            applicationId,
+            newStatus,
+            timestamp: new Date().toISOString()
+          }
+        }));
+        
+        // Refresh applicants for the current job
+        if (selectedJobForApplicants) {
+          await fetchJobApplicants(selectedJobForApplicants.id, selectedJobForApplicants.job_title);
+        }
+        
+        // If status changed to shortlisted, create/update shortlist entry
+        if (newStatus === 'shortlisted' && currentEmployerEmail) {
+          try {
+            // Get the application details to create shortlist entry
+            const applicationResponse = await fetch(`${API_BASE}/applications/${applicationId}`);
+            if (applicationResponse.ok) {
+              const applicationData = await applicationResponse.json();
+              
+              // Create or update shortlist entry
+              const shortlistData = {
+                employer_email: currentEmployerEmail,
+                candidate_id: applicationData.candidate_id || 0,
+                candidate_name: applicationData.candidate_name || applicationData.candidate_email || "",
+                candidate_email: applicationData.candidate_email || "",
+                job_id: applicationData.job_id || 0,
+                job_title: applicationData.job_title || "",
+                applied_date: applicationData.applied_date || new Date().toISOString().split("T")[0],
+                status: "shortlisted",
+                accommodations_requested: applicationData.accommodations_requested || false,
+                accommodation_details: applicationData.accommodation_details || "",
+                experience: applicationData.experience || "",
+                score: applicationData.score || 0,
+              };
+              
+              // Check if shortlist entry already exists
+              const existingShortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${currentEmployerEmail}`);
+              if (existingShortlistResponse.ok) {
+                const existingShortlists = await existingShortlistResponse.json();
+                const existingEntry = existingShortlists.find((item: any) => 
+                  item.candidate_email === shortlistData.candidate_email && 
+                  item.job_id === shortlistData.job_id
+                );
+                
+                if (existingEntry) {
+                  // Update existing entry
+                  await fetch(`${API_BASE}/shortlist/${existingEntry.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'shortlisted' }),
+                  });
+                } else {
+                  // Create new shortlist entry
+                  await fetch(`${API_BASE}/shortlist/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(shortlistData),
+                  });
+                }
+              }
+              
+              // Refresh shortlisted candidates list
+              const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${currentEmployerEmail}`);
+              if (shortlistResponse.ok) {
+                const shortlistData = await shortlistResponse.json();
+                const transformedData = shortlistData.map((item: any) => ({
+                  id: item.id,
+                  candidateName: item.candidate_name,
+                  candidateEmail: item.candidate_email || "",
+                  jobTitle: item.job_title,
+                  appliedDate: item.applied_date,
+                  status: item.status,
+                  accommodationsRequested: item.accommodations_requested,
+                  accommodationDetails: item.accommodation_details,
+                  experience: item.experience,
+                  score: item.score,
+                }));
+                setShortlistedCandidates(transformedData);
+              }
+            }
+          } catch (err) {
+            console.error("Error creating/updating shortlist entry:", err);
+          }
+        }
+        
+        // Refresh recent applicants list
+        if (currentEmployerEmail) {
+          try {
+            const applicationsRes = await fetch(`${API_BASE}/applications/employer/${currentEmployerEmail}`);
+            if (applicationsRes.ok) {
+              const applicationsData = await applicationsRes.json();
+              const transformed = Array.isArray(applicationsData)
+                ? applicationsData
+                    .map((item: any) => ({
+                      id: item.id || item.application_id,
+                      candidateName: item.candidate_name || item.candidate_email || "Unknown Candidate",
+                      jobTitle: item.job_title || "",
+                      appliedDate: item.applied_date || new Date().toISOString(),
+                      status: item.status || "under_review",
+                      score: item.score || undefined,
+                      accommodationsRequested: item.accommodations_requested || false,
+                    }))
+                    .sort((a: any, b: any) => {
+                      const dateA = new Date(a.appliedDate).getTime();
+                      const dateB = new Date(b.appliedDate).getTime();
+                      return dateB - dateA;
+                    })
+                : [];
+              setRecentApplicants(transformed);
+            }
+          } catch (err) {
+            console.error("Error refreshing recent applicants:", err);
+          }
+        }
+      } else {
+        const errorText = await response.text();
+        showError("Update Failed", errorText || "Failed to update application status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      showError("Error", "An error occurred while updating the status.");
+    }
   };
 
   // Refresh the employer's job postings from the backend
@@ -790,24 +1110,70 @@ const handleSaveEditJob = async () => {
         // Fetch shortlisted candidates
         try {
           const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${employerEmail}`);
+          console.log("Shortlisted candidates API response status:", shortlistResponse.status);
           if (shortlistResponse.ok) {
             const shortlistData = await shortlistResponse.json();
+            console.log("Shortlisted candidates raw data:", shortlistData);
             // Transform backend data to match frontend state structure
-            const transformedData = shortlistData.map((item: any) => ({
+            const transformedData = Array.isArray(shortlistData) ? shortlistData.map((item: any) => ({
               id: item.id,
-              candidateName: item.candidate_name,
-              jobTitle: item.job_title,
-              appliedDate: item.applied_date,
-              status: item.status,
-              accommodationsRequested: item.accommodations_requested,
-              accommodationDetails: item.accommodation_details,
-              experience: item.experience,
-              score: item.score,
-            }));
+              candidateName: item.candidate_name || item.candidateName || "Unknown Candidate",
+              candidateEmail: item.candidate_email || item.candidateEmail || "",
+              jobTitle: item.job_title || item.jobTitle || "",
+              appliedDate: item.applied_date || item.appliedDate || new Date().toISOString(),
+              status: item.status || "shortlisted",
+              accommodationsRequested: item.accommodations_requested || item.accommodationsRequested || false,
+              accommodationDetails: item.accommodation_details || item.accommodationDetails || "",
+              experience: item.experience || "",
+              score: item.score || 0,
+            })) : [];
+            console.log("Shortlisted candidates transformed:", transformedData.length, transformedData);
             setShortlistedCandidates(transformedData);
+          } else {
+            const errorText = await shortlistResponse.text();
+            console.error("Failed to fetch shortlisted candidates. Status:", shortlistResponse.status, "Error:", errorText);
+            setShortlistedCandidates([]);
           }
         } catch (err) {
           console.error("Error fetching shortlisted candidates:", err);
+          setShortlistedCandidates([]);
+        }
+
+        // Fetch recent applicants (all applicants for overview)
+        try {
+          const applicationsResponse = await fetch(`${API_BASE}/applications/employer/${employerEmail}`);
+          console.log("Recent applicants API response status:", applicationsResponse.status);
+          if (applicationsResponse.ok) {
+            const applicationsData = await applicationsResponse.json();
+            console.log("Recent applicants raw data:", applicationsData);
+            // Transform and sort by applied_date (most recent first)
+            const transformed = Array.isArray(applicationsData)
+              ? applicationsData
+                  .map((item: any) => ({
+                    id: item.id || item.application_id,
+                    candidateName: item.candidate_name || item.candidate_email || "Unknown Candidate",
+                    jobTitle: item.job_title || "",
+                    appliedDate: item.applied_date || new Date().toISOString(),
+                    status: item.status || "under_review",
+                    score: item.score || undefined,
+                    accommodationsRequested: item.accommodations_requested || false,
+                  }))
+                  .sort((a: any, b: any) => {
+                    const dateA = new Date(a.appliedDate).getTime();
+                    const dateB = new Date(b.appliedDate).getTime();
+                    return dateB - dateA; // Most recent first
+                  })
+              : [];
+            console.log("Recent applicants transformed:", transformed.length, transformed);
+            setRecentApplicants(transformed);
+          } else {
+            const errorText = await applicationsResponse.text();
+            console.error("Failed to fetch recent applicants. Status:", applicationsResponse.status, "Error:", errorText);
+            setRecentApplicants([]);
+          }
+        } catch (err) {
+          console.error("Error fetching recent applicants:", err);
+          setRecentApplicants([]);
         }
 
         // Fetch total candidates count
@@ -828,6 +1194,45 @@ const handleSaveEditJob = async () => {
     };
     fetchData();
   }, [session, status, router]);
+
+  // Refresh shortlisted candidates when applications tab is activated
+  useEffect(() => {
+    if (activeTab === "applications" && currentEmployerEmail) {
+      const fetchShortlistedCandidates = async () => {
+        try {
+          console.log("Fetching shortlisted candidates for:", currentEmployerEmail);
+          const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${currentEmployerEmail}`);
+          console.log("Shortlist response status:", shortlistResponse.status);
+          if (shortlistResponse.ok) {
+            const shortlistData = await shortlistResponse.json();
+            console.log("Shortlist data received:", shortlistData);
+            const transformedData = Array.isArray(shortlistData) ? shortlistData.map((item: any) => ({
+              id: item.id,
+              candidateName: item.candidate_name || item.candidateName || "Unknown Candidate",
+              candidateEmail: item.candidate_email || item.candidateEmail || "",
+              jobTitle: item.job_title || item.jobTitle || "",
+              appliedDate: item.applied_date || item.appliedDate || new Date().toISOString(),
+              status: item.status || "shortlisted",
+              accommodationsRequested: item.accommodations_requested || item.accommodationsRequested || false,
+              accommodationDetails: item.accommodation_details || item.accommodationDetails || "",
+              experience: item.experience || "",
+              score: item.score || 0,
+            })) : [];
+            console.log("Transformed shortlisted candidates:", transformedData);
+            setShortlistedCandidates(transformedData);
+          } else {
+            const errorText = await shortlistResponse.text();
+            console.error("Failed to fetch shortlisted candidates. Status:", shortlistResponse.status, "Error:", errorText);
+            setShortlistedCandidates([]);
+          }
+        } catch (err) {
+          console.error("Error refreshing shortlisted candidates:", err);
+          setShortlistedCandidates([]);
+        }
+      };
+      fetchShortlistedCandidates();
+    }
+  }, [activeTab, currentEmployerEmail, API_BASE]);
 
   // Auto-select the first job when job postings update (after edit, delete, or refresh)
   useEffect(() => {
@@ -870,12 +1275,7 @@ const handleSaveEditJob = async () => {
 
   const jobPostingsSortModes = [
     "Newest",
-    "Oldest",
-    "A-Z",
-    "Work Mode",
-    "Job Type",
-    "Experience Level",
-    "Salary"
+    "Oldest"
   ]
 
   const sortedJobPostings = [...jobPostings]
@@ -887,9 +1287,13 @@ const handleSaveEditJob = async () => {
         job.location.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
         job.work_mode.toLowerCase().includes(jobSearchTerm.toLowerCase());
       
-      // Status filter
+      // Status filter - include expired jobs
       const matchesStatus = jobFilterStatus === "all" || 
-        (job.status && job.status.toLowerCase() === jobFilterStatus.toLowerCase());
+        (job.status && job.status.toLowerCase() === jobFilterStatus.toLowerCase()) ||
+        (jobFilterStatus === "expired" && (
+          job.status === "expired" || 
+          (job.application_deadline && new Date(job.application_deadline) < new Date())
+        ));
       
       return matchesSearch && matchesStatus;
     })
@@ -899,16 +1303,6 @@ const handleSaveEditJob = async () => {
           return b.id - a.id; // higher ID = newer
         case "Oldest":
           return a.id - b.id; // lower ID = older
-        case "A-Z":
-          return a.job_title.localeCompare(b.job_title);
-        case "Work Mode":
-          return a.work_mode.localeCompare(b.work_mode);
-        case "Job Type":
-          return a.job_type.localeCompare(b.job_type);
-        case "Experience Level":
-          return a.experience_level.localeCompare(b.experience_level);
-        case "Salary":
-          return b.salary_range - a.salary_range;
         default:
           return 0;
       }
@@ -918,24 +1312,28 @@ const handleSaveEditJob = async () => {
     .filter((app) => {
       // Search filter
       const matchesSearch = !applicantSearchTerm || 
-        app.candidateName.toLowerCase().includes(applicantSearchTerm.toLowerCase()) ||
-        app.jobTitle.toLowerCase().includes(applicantSearchTerm.toLowerCase()) ||
-        app.status.toLowerCase().includes(applicantSearchTerm.toLowerCase());
+        (app.candidateName && app.candidateName.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
+        (app.jobTitle && app.jobTitle.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
+        (app.status && app.status.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
+        (app.candidateEmail && app.candidateEmail.toLowerCase().includes(applicantSearchTerm.toLowerCase()));
       
-      // Status filter
+      // Status filter - for shortlisted tab, show all candidates by default
+      // But allow filtering by other statuses if needed
       const matchesStatus = applicantFilterStatus === "all" || 
-        app.status.toLowerCase() === applicantFilterStatus.toLowerCase();
+        (app.status && app.status.toLowerCase() === applicantFilterStatus.toLowerCase());
       
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       switch (applicantSortBy) {
         case "recent":
-          return new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime();
+          const dateA = a.appliedDate ? new Date(a.appliedDate).getTime() : 0;
+          const dateB = b.appliedDate ? new Date(b.appliedDate).getTime() : 0;
+          return dateB - dateA;
         case "match":
           return (b.score || 0) - (a.score || 0);
         case "name":
-          return a.candidateName.localeCompare(b.candidateName);
+          return (a.candidateName || "").localeCompare(b.candidateName || "");
         default:
           return 0;
       }
@@ -1043,13 +1441,14 @@ const handleSaveEditJob = async () => {
 
                     { id: "post-job", label: "Post New Job", icon: SquarePen },
                     { id: "jobs", label: "Job Postings", icon: FileText },
+                     { id: "applications", label: "Shortlisted Applicants", icon: Users },
                     {
                       id: "search-candidates",
-                      label: "Search Applicants",
+                      label: "Talent Pool",
                       icon: Search,
                     },
                     
-                    { id: "applications", label: "Shortlisted Applicants", icon: Users },
+                   
                     // { id: "all-candidates", label: "Candidate Pool", icon: UserSearch  },
                     {
                       id: "tax-calculator",
@@ -1090,156 +1489,15 @@ const handleSaveEditJob = async () => {
           {/* Main Content */}
           <div>
             {activeTab === "overview" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043]">
-                    Overview
-                  </h2>
-                  {/* <Button
-                    onClick={handleRunAiMatching}
-                    disabled={isRunningAiMatch}
-                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
-                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button> */}
-                </div>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {[
-                    {
-                      icon: FileText,
-                      iconColor: "text-[#635bff]",
-                      title: "Active Jobs",
-                      value: jobPostings.length,
-                      onClick: () => setActiveTab("jobs"),
-                    },
-                    {
-                      icon: Users,
-                      iconColor: "text-blue-600",
-                      title: "Total Applicants",
-                      value: totalCandidates,
-                      onClick: () => setActiveTab("search-candidates"),
-                    },
-                    {
-                      icon: Eye,
-                      iconColor: "text-green-600",
-                      title: "Total Views",
-                      value: 0,
-                    },
-                  ].map((card) => (
-                    <Card
-                      key={card.title}
-                      onClick={card.onClick}
-                      className="cursor-pointer hover:bg-gray-50 transition-colors"
-                    >
-                      <CardContent className="p-6 text-center">
-                        <card.icon
-                          className={`h-8 w-8 mx-auto mb-2 ${card.iconColor}`}
-                        />
-                        <h3 className="font-semibold text-[#3a4043] mb-1">
-                          {card.value}
-                        </h3>
-                        <p className="text-sm text-gray-600">{card.title}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Recent Applicants</CardTitle>
-                      <div
-                        className="text-sm text-[#635bff] font-medium hover:underline hover:cursor-pointer"
-                        onClick={() => setActiveTab("applications")}
-                      >
-                        View More
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {shortlistedCandidates.slice(0, 3).map((app) => (
-                        <motion.div
-                          key={app.id}
-                          whileHover={{
-                            boxShadow: "2px 2px 4px rgba(99,91,255,0.3)",
-                          }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 20,
-                          }}
-                          className="flex items-center justify-between p-4 border border-[#9d95bd] rounded-xl overflow-hidden bg-white hover:cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(app.status)}
-                            <div>
-                              <h4 className="font-medium text-[#3a4043]">
-                                {app.candidateName}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {app.jobTitle} • {app.experience}
-                              </p>
-                            </div>
-                            {app.accommodationsRequested && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-purple-100 text-purple-800 flex items-center gap-1"
-                              >
-                                <Shield className="h-3 w-3 mr-1" /> Accommodations
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(app.status)}
-                            <p className="text-xs text-gray-500 mt-1">
-                              Score: {app.score}%
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
-                      {shortlistedCandidates.length === 0 && (
-                        <p className="text-center text-gray-500 py-4">
-                          No applicants yet. Start matching candidates!
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-emerald-600" /> Inclusion
-                      Certifications
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {companyProfile?.certifications &&
-                        JSON.parse(companyProfile.certifications).length > 0 ? (
-                        JSON.parse(companyProfile.certifications).map(
-                          (cert: string) => (
-                            <Badge
-                              key={cert}
-                              variant="secondary"
-                              className="bg-emerald-100 text-emerald-800"
-                            >
-                              <CheckCircle className="h-3 w-3 mr-1" /> {cert}
-                            </Badge>
-                          )
-                        )
-                      ) : (
-                        <p className="text-sm text-gray-500">
-                          No certifications listed.
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <EmployerOverview
+                activeJobs={jobPostings.filter(j => j.status === 'active').length}
+                totalApplicants={recentApplicants.length}
+                totalViews={0}
+                recentApplicants={recentApplicants}
+                handleTabChange={setActiveTab}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+              />
             )}
 
             {/* Job Postings Tab - Split View with Matched Candidates */}
@@ -1288,6 +1546,7 @@ const handleSaveEditJob = async () => {
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="draft">Draft</SelectItem>
                             <SelectItem value="closed">Closed</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
                           </SelectContent>
                         </Select>
 
@@ -1319,10 +1578,10 @@ const handleSaveEditJob = async () => {
                 </div>
 
                 {/* Job Cards (Left) and Job Details (Right) */}
-                <div className="grid lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
                   {/* Left Side - Job Postings List */}
-                  <div className="lg:col-span-1 space-y-4">
-                    <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-visible pr-5">
+                  <div className="lg:col-span-1 xl:col-span-2 space-y-4">
+                    <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#c5c4d4] scrollbar-track-transparent overflow-visible">
                     {isLoading ? (
                       <Card>
                         <CardContent className="p-4 text-center">
@@ -1345,51 +1604,89 @@ const handleSaveEditJob = async () => {
                         </CardContent>
                       </Card>
                     ) : (
-                      sortedJobPostings.map((job) => (
-                        <motion.div key={job.id} whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300 }}>
+                      sortedJobPostings.map((job, index) => (
+                        <motion.div 
+                          key={job.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
                           <Card
-                            className={`cursor-pointer transition-all ${selectedJobForApplicants?.id === job.id
-                              ? "border-2 border-[#635bff] bg-violet-50"
-                              : "hover:border-[#635bff]/50"
+                            className={`transition-all duration-300 hover:shadow-lg bg-[#F8F8FC] cursor-pointer ${
+                              selectedJobForApplicants?.id === job.id
+                                ? "ring-2 ring-[#635bff] bg-[#635bff]/5 "
+                                : "hover:shadow-md"
                               }`}
-                            onClick={() => setSelectedJobForApplicants(job)}
                           >
-                            <CardContent className="p-4">
-                              <h3 className="font-semibold text-[#3a4043] mb-1 truncate">
-                                {job.job_title}
-                              </h3>
+                            <CardContent className="p-4 flex flex-col h-full">
+                              <div 
+                                className="flex flex-col sm:flex-row justify-between gap-4 h-full cursor-pointer flex-1"
+                                onClick={() => {
+                                  setSelectedJobForApplicants(job);
+                                  if (!jobViewModes.has(job.id)) {
+                                    const newModes = new Map(jobViewModes);
+                                    newModes.set(job.id, "description");
+                                    setJobViewModes(newModes);
+                                  }
+                                }}
+                              >
+                                {/* LEFT CONTENT */}
+                                <div className="flex-1 min-w-0">
+                                  {/* Top Row: Job Title and Status Badge */}
+                                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                    <h3 className="text-lg font-semibold text-[#3a4043] truncate">{job.job_title}</h3>
+                                    {getStatusBadge(job.status || "active")}
+                                  </div>
 
-                              <p className="text-sm text-[#635bff] mb-2 truncate">
-                                {job.job_type}
-                              </p>
+                                  {/* Second Row: Company, Location, Type */}
+                                  <div className="flex flex-wrap items-center gap-4 text-sm text-[#3a4043] mb-3">
+                                    <span className="flex items-center gap-1">
+                                      <Building className="h-4 w-4" />
+                                      {companyProfile?.name || "Company"}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-4 w-4" />
+                                      {job.location}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-4 w-4" />
+                                      {job.job_type}
+                                    </span>
+                                  </div>
 
-                              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 overflow-hidden whitespace-nowrap">
-                                <span className="flex items-center gap-1 truncate">
-                                  <MapPin className="h-3 w-3 flex-shrink-0" />
-                                  <span className="truncate">{job.location}</span>
-                                </span>
+                                  {/* Third Row: Salary */}
+                                  <div className="flex items-center gap-1 text-sm text-[#3a4043] mb-3">
+                                    <DollarSign className="h-4 w-4" />
+                                    <span>{SALARY_RANGES[job.salary_range] ?? job.salary_range}</span>
+                                  </div>
+
+                                  {/* Fourth Row: Description */}
+                                  <p className="text-[#3a4043] text-sm mb-3 line-clamp-2 overflow-hidden">
+                                    {job.job_summary || "No description available"}
+                                  </p>
+
+                                  {/* Bottom Row: Posted Date */}
+                                  <div className="flex items-center gap-4 text-xs text-[#3a4043]">
+                                    {job.created_at && (
+                                      <span>Posted: {new Date(job.created_at).toISOString().split('T')[0]}</span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-
-                              <div className="flex items-center gap-2 text-xs text-gray-600 overflow-hidden whitespace-nowrap">
-                                <span className="flex items-center gap-1 truncate">
-                                  <DollarSign className="h-3 w-3 flex-shrink-0" />
-                                  <span className="truncate">
-                                    {SALARY_RANGES[job.salary_range] ?? job.salary_range}
-                                  </span>
-                                </span>
-                              </div>
-
-                              {(job.flexible_work_hour ||
-                                job.sensory_friendly_environment ||
-                                job.mental_health_support) && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="bg-purple-100 text-purple-800 mt-2 text-xs"
-                                  >
-                                    <Shield className="h-3 w-3 mr-1" />
-                                    Inclusive
-                                  </Badge>
-                                )}
+                              {/* View Mode Buttons - At Bottom */}
+                              <JobViewModeButtons
+                                jobId={job.id}
+                                currentMode={jobViewModes.get(job.id) || "description"}
+                                onModeChange={(mode) => {
+                                  setSelectedJobForApplicants(job);
+                                  const newModes = new Map(jobViewModes);
+                                  newModes.set(job.id, mode);
+                                  setJobViewModes(newModes);
+                                }}
+                                onApplicantsClick={async () => {
+                                  await fetchJobApplicants(job.id, job.job_title);
+                                }}
+                              />
                             </CardContent>
                           </Card>
                         </motion.div>
@@ -1399,94 +1696,347 @@ const handleSaveEditJob = async () => {
                 </div>
 
                 {/* Right Side - Selected Job Details & Matched Candidates */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-1 xl:col-span-3 space-y-4">
                   {selectedJobForApplicants ? (
                     <>
                       {/* Job Details Card */}
-                      <Card>
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-2xl">
+                      <Card className="sticky top-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                        <CardHeader className="pb-4 relative">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-2xl font-bold text-[#3a4043] mb-2">
                                 {selectedJobForApplicants.job_title}
                               </CardTitle>
-                              <p className="text-[#635bff] font-medium mt-1">
-                                {selectedJobForApplicants.job_type}
-                              </p>
+                              <div className="flex items-center gap-4 text-[#6f7a80] mb-4">
+                                <span className="flex items-center gap-1">
+                                  <Building className="h-4 w-4" />
+                                  {companyProfile?.name || "Company"}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4" />
+                                  {selectedJobForApplicants.location}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-[#6f7a80]">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  {selectedJobForApplicants.job_type}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-4 w-4" />
+                                  {SALARY_RANGES[selectedJobForApplicants.salary_range] ?? selectedJobForApplicants.salary_range}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Briefcase className="h-4 w-4" />
+                                  {selectedJobForApplicants.experience_level}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              {/* <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleViewJob(selectedJobForApplicants)
-                                }
-                              >
-                                <Eye className="h-4 w-4 mr-1" /> View
-                              </Button> */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleEditJob(selectedJobForApplicants)
-                                }
-                                className="border border-gray-400 hover:cursor-pointer bg-white"
-                              >
-                                <Edit className="h-4 w-4 mr-1" /> Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-red-600 text-red-600 hover:bg-red-50 hover:cursor-pointer hover:text-red-700"
-                                onClick={() => handleCloseJob(selectedJobForApplicants.id)}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" /> Close Job
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleDeleteJob(selectedJobForApplicants.id)
-                                }
-                                className="bg-red-600 hover:bg-red-700 text-white hover:text-white hover:cursor-pointer"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" /> Delete
-                              </Button>
+                            <div className="flex items-center gap-3 ml-4">
+                              {getStatusBadge(selectedJobForApplicants.status || "active")}
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleEditJob(selectedJobForApplicants)
+                                  }
+                                  className="border border-gray-400 hover:cursor-pointer bg-white"
+                                >
+                                  <Edit className="h-4 w-4 mr-1" /> Edit
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className={`${
+                                    selectedJobForApplicants.status === 'closed'
+                                      ? "border-green-600 text-green-600 hover:bg-green-50 hover:cursor-pointer hover:text-green-700"
+                                      : "border-red-600 text-red-600 hover:bg-red-50 hover:cursor-pointer hover:text-red-700"
+                                  }`}
+                                  onClick={() => handleCloseJob(selectedJobForApplicants.id)}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" /> {selectedJobForApplicants.status === 'closed' ? 'Reopen' : 'Close'}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleDeleteJob(selectedJobForApplicants.id)
+                                  }
+                                  className="bg-red-600 hover:bg-red-700 text-white hover:text-white hover:cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </CardHeader>
-                        <CardContent>
-                          <div className="grid md:grid-cols-2 gap-4 text-sm mb-4">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <MapPin className="h-4 w-4" />
-                              {selectedJobForApplicants.location}
+                        <CardContent className="space-y-6">
+                          {(jobViewModes.get(selectedJobForApplicants.id) || "description") === "description" && (
+                            <>
+                          {/* Job Description */}
+                          <div>
+                            <h4 className="font-semibold text-[#3a4043] mb-3">Job Description</h4>
+                            <p className="text-[#6f7a80] break-words leading-relaxed whitespace-pre-line">
+                              {selectedJobForApplicants.job_summary || "No description available."}
+                            </p>
+                          </div>
+
+                          {/* Requirements */}
+                          {selectedJobForApplicants.job_requirements && (
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Requirements</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedJobForApplicants.job_requirements.split(',').map((req: string, reqIndex: number) => (
+                                  <Badge key={reqIndex} variant="secondary" className="text-xs">
+                                    {req.trim()}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Clock className="h-4 w-4" />
-                              {selectedJobForApplicants.work_mode}
+                          )}
+
+                          {/* Accommodations Offered */}
+                          {(selectedJobForApplicants.flexible_work_hour ||
+                            selectedJobForApplicants.sensory_friendly_environment ||
+                            selectedJobForApplicants.peer_support_system ||
+                            selectedJobForApplicants.dedicated_workspace ||
+                            selectedJobForApplicants.neurodiversity_awareness_training ||
+                            selectedJobForApplicants.regular_supervisor_check_in ||
+                            selectedJobForApplicants.zero_tolerance_bullying_mobbing_policy ||
+                            selectedJobForApplicants.augmentative_alternative_communication ||
+                            selectedJobForApplicants.quiet_room ||
+                            selectedJobForApplicants.sensory_aids ||
+                            selectedJobForApplicants.provide_visual_guidance ||
+                            selectedJobForApplicants.uses_project_management_tools ||
+                            selectedJobForApplicants.optional_social_event ||
+                            selectedJobForApplicants.mental_health_support ||
+                            selectedJobForApplicants.near_public_transport) && (
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">Accommodations Offered</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedJobForApplicants.flexible_work_hour && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Flexible Work Hours
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.quiet_room && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Quiet Room/Space
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.sensory_friendly_environment && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Sensory-Friendly Environment
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.peer_support_system && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Peer Support System
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.dedicated_workspace && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Dedicated Workspace
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.sensory_aids && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Sensory Aids Allowed
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.neurodiversity_awareness_training && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Neurodiversity Awareness Training
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.provide_visual_guidance && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Visual Project-Tracking Tool
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.regular_supervisor_check_in && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Regular Check-in with Supervisor
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.optional_social_event && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    No Forced Social Events
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.zero_tolerance_bullying_mobbing_policy && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Zero Tolerance Policy for Bullying & Mobbing
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.mental_health_support && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Mental Health Support
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.augmentative_alternative_communication && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Alternative Communication App Allowed
+                                  </Badge>
+                                )}
+                                {selectedJobForApplicants.near_public_transport && (
+                                  <Badge variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
+                                    Near Public Transport
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <DollarSign className="h-4 w-4" />
-                              {SALARY_RANGES[
-                                selectedJobForApplicants.salary_range
-                              ] ?? selectedJobForApplicants.salary_range}
-                            </div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Briefcase className="h-4 w-4" />
-                              {selectedJobForApplicants.experience_level}
+                          )}
+
+                          {/* Company Info */}
+                          <div>
+                            <h4 className="font-semibold text-[#3a4043] mb-3">Company Information</h4>
+                            <div className="space-y-2 text-sm text-[#6f7a80]">
+                              <div className="flex justify-between">
+                                <span>Industry:</span>
+                                <span>{companyProfile?.industry || "Not specified"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Company Size:</span>
+                                <span>{companyProfile?.size || "Not specified"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Posted:</span>
+                                <span>{selectedJobForApplicants.created_at ? new Date(selectedJobForApplicants.created_at).toISOString().split('T')[0] : "Recently"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Work Mode:</span>
+                                <span>{selectedJobForApplicants.work_mode || "Not specified"}</span>
+                              </div>
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 line-clamp-3">
-                            {selectedJobForApplicants.job_summary}
-                          </p>
+                          </>
+                          )}
+
+                          {(jobViewModes.get(selectedJobForApplicants.id) || "description") === "applicants" && (
+                            <div>
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-semibold text-[#3a4043]">Applicants</h4>
+                                {/* Search Bar for Applicants */}
+                                {jobApplicants.length > 0 && (
+                                  <div className="relative w-64">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
+                                    <Input
+                                      placeholder="Search applicants..."
+                                      value={applicantSearchTerm}
+                                      onChange={(e) => {
+                                        setApplicantSearchTerm(e.target.value);
+                                        setApplicantCurrentPage(1);
+                                      }}
+                                      className="pl-10"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              {loadingApplicants ? (
+                                <div className="text-center py-8">
+                                  <p className="text-[#6f7a80]">Loading applicants...</p>
+                                </div>
+                              ) : (() => {
+                                // Filter applicants by search term
+                                const filteredApplicants = jobApplicants.filter((app: any) => {
+                                  if (!applicantSearchTerm) return true;
+                                  const search = applicantSearchTerm.toLowerCase();
+                                  return (
+                                    (app.candidate_name && app.candidate_name.toLowerCase().includes(search)) ||
+                                    (app.candidate_email && app.candidate_email.toLowerCase().includes(search)) ||
+                                    (app.job_title && app.job_title.toLowerCase().includes(search))
+                                  );
+                                });
+
+                                // Pagination
+                                const applicantTotalPages = Math.ceil(filteredApplicants.length / applicantItemsPerPage);
+                                const applicantStartIndex = (applicantCurrentPage - 1) * applicantItemsPerPage;
+                                const applicantEndIndex = applicantStartIndex + applicantItemsPerPage;
+                                const paginatedApplicants = filteredApplicants.slice(applicantStartIndex, applicantEndIndex);
+
+                                return filteredApplicants.length === 0 ? (
+                                  <div className="text-center py-8">
+                                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-[#6f7a80]">
+                                      {applicantSearchTerm ? "No applicants match your search." : "No applicants for this job yet."}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="space-y-3">
+                                      {paginatedApplicants.map((applicant: any, index: number) => (
+                                        <ApplicantCard
+                                          key={index}
+                                          applicant={applicant}
+                                          onViewProfile={handleViewProfile}
+                                          onViewResume={handleViewResume}
+                                          onUpdateStatus={handleUpdateStatus}
+                                          getStatusBadge={getStatusBadge}
+                                          getMatchScoreColor={getMatchScoreColor}
+                                        />
+                                      ))}
+                                    </div>
+                                    {/* Pagination for Applicants */}
+                                    {applicantTotalPages > 1 && (
+                                      <div className="mt-6 flex justify-center items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setApplicantCurrentPage(p => Math.max(1, p - 1))}
+                                          disabled={applicantCurrentPage === 1}
+                                          className="hover:cursor-pointer"
+                                        >
+                                          Previous
+                                        </Button>
+                                        <div className="flex gap-1">
+                                          {Array.from({ length: applicantTotalPages }, (_, i) => (
+                                            <Button
+                                              key={i + 1}
+                                              size="sm"
+                                              variant={applicantCurrentPage === i + 1 ? "default" : "outline"}
+                                              onClick={() => setApplicantCurrentPage(i + 1)}
+                                              className={applicantCurrentPage === i + 1 
+                                                ? "bg-[#635bff] text-white hover:bg-[#524aff] cursor-pointer" 
+                                                : "hover:cursor-pointer"
+                                              }
+                                            >
+                                              {i + 1}
+                                            </Button>
+                                          ))}
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setApplicantCurrentPage(p => Math.min(applicantTotalPages, p + 1))}
+                                          disabled={applicantCurrentPage === applicantTotalPages}
+                                          className="hover:cursor-pointer"
+                                        >
+                                          Next
+                                        </Button>
+                                      </div>
+                                    )}
+                                    <div className="mt-4 text-sm text-[#6f7a80] text-center">
+                                      Showing {applicantStartIndex + 1}-{Math.min(applicantEndIndex, filteredApplicants.length)} of {filteredApplicants.length} applicant{filteredApplicants.length !== 1 ? 's' : ''}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {(jobViewModes.get(selectedJobForApplicants.id) || "description") === "matched" && (
+                            <div>
+                              <h4 className="font-semibold text-[#3a4043] mb-3">AI Matched Candidates</h4>
+                              <MatchedCandidates
+                                jobTitle={selectedJobForApplicants.job_title}
+                                onShortlist={handleShortlist}
+                              />
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
-
-                      {/* Matched Candidates Section */}
-                      <MatchedCandidates
-                        jobTitle={selectedJobForApplicants.job_title}
-                        onShortlist={handleShortlist}
-                      />
                     </>
                   ) : (
                     <Card className="h-full">
@@ -1512,7 +2062,7 @@ const handleSaveEditJob = async () => {
             {activeTab === "search-candidates" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043]">Search Applicants</h2>
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Talent Pool</h2>
                   <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
@@ -1534,7 +2084,7 @@ const handleSaveEditJob = async () => {
               </div>
             )}
 
-            {/* Applicants Tab */}
+            {/* Shortlisted Applicants Tab */}
             {activeTab === "applications" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -1603,6 +2153,13 @@ const handleSaveEditJob = async () => {
                   <p className="text-[#6f7a80] text-sm">
                     Showing {filteredShortlistedCandidates.length} of {shortlistedCandidates.length} shortlisted applicants
                   </p>
+                  {/* Debug info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Debug: Total candidates: {shortlistedCandidates.length}, Filtered: {filteredShortlistedCandidates.length}, 
+                      Search: "{applicantSearchTerm}", Status filter: "{applicantFilterStatus}"
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -1616,12 +2173,17 @@ const handleSaveEditJob = async () => {
                                 {app.candidateName}
                               </h3>
                               <p className="text-[#635bff] font-medium mb-2">
-                                Applied for: {app.jobTitle}
+                                Applied for: {app.jobTitle || "No job specified"}
                               </p>
+                              {app.candidateEmail && (
+                                <p className="text-sm text-gray-500 mb-2">
+                                  Email: {app.candidateEmail}
+                                </p>
+                              )}
                               <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Experience: {app.experience}</span>
-                                <span>Match Score: {app.score}%</span>
-                                <span>Shortlisted: {app.appliedDate}</span>
+                                <span>Experience: {app.experience || "Not specified"}</span>
+                                <span>Match Score: {app.score || 0}%</span>
+                                <span>Shortlisted: {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString() : "N/A"}</span>
                               </div>
                             </div>
                             <div className="text-right">
@@ -1661,20 +2223,26 @@ const handleSaveEditJob = async () => {
                               </span>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => app.candidateEmail && handleViewProfile(app.candidateEmail)}
+                                className="cursor-pointer"
+                                disabled={!app.candidateEmail}
+                              >
                                 View Profile
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="border-green-600 text-green-600 hover:bg-green-50"
+                                className="border-green-600 text-green-600 hover:bg-green-50 cursor-pointer"
                               >
                                 <Calendar className="h-4 w-4 mr-1" />
                                 Schedule Interview
                               </Button>
                               <Button
                                 size="sm"
-                                className="bg-[#635bff] hover:bg-[#5346e6] text-white"
+                                className="bg-[#635bff] hover:bg-[#5346e6] text-white cursor-pointer"
                               >
                                 Contact
                               </Button>
@@ -2159,10 +2727,21 @@ const handleSaveEditJob = async () => {
           </div>
         </div>
       </div>
+
+      {/* View Profile Dialog */}
+      <ViewProfileDialog
+        open={showProfileDialog}
+        onOpenChange={setShowProfileDialog}
+        candidateEmail={selectedCandidateEmail}
+        API_BASE={API_BASE}
+      />
+
+      {/* Resume Dialog */}
+      <ResumeDialog
+        open={showResumeDialog}
+        onOpenChange={setShowResumeDialog}
+        resumeUrl={resumeUrl}
+      />
     </div>
   );
-}
-
-function fetchEmployerJobs(currentEmployerEmail: string) {
-  throw new Error("Function not implemented.");
 }

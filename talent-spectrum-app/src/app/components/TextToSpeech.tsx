@@ -14,6 +14,10 @@ const TextToSpeech: React.FC = () => {
   const [position, setPosition] = useState<Position | null>(null);
   const [isReading, setIsReading] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
+  const [ttsPitch, setTtsPitch] = useState<number>(1.0);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isCancellingRef = useRef<boolean>(false);
   const buttonRef = useRef<HTMLDivElement>(null);
@@ -105,6 +109,93 @@ const TextToSpeech: React.FC = () => {
     }
   }, [isReading]);
 
+  // Load available voices and get saved preference
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+      
+      // Get saved voice preference, speed, and pitch from accessibility settings
+      const savedPrefs = localStorage.getItem('accessibility-preferences');
+      let savedVoiceName = '';
+      let savedSpeed = 1.0;
+      let savedPitch = 1.0;
+      if (savedPrefs) {
+        try {
+          const parsed = JSON.parse(savedPrefs);
+          savedVoiceName = parsed.ttsVoice || '';
+          savedSpeed = parsed.ttsSpeed !== undefined && parsed.ttsSpeed !== null ? Number(parsed.ttsSpeed) : 1.0;
+          savedPitch = parsed.ttsPitch !== undefined && parsed.ttsPitch !== null ? Number(parsed.ttsPitch) : 1.0;
+        } catch (e) {
+          console.error('Failed to parse accessibility preferences:', e);
+        }
+      }
+      
+      // Set voice from saved preference or default
+      if (!selectedVoice && voices.length > 0) {
+        let voiceToUse: SpeechSynthesisVoice | null = null;
+        
+        if (savedVoiceName) {
+          voiceToUse = voices.find(voice => voice.name === savedVoiceName) || null;
+        }
+        
+        if (!voiceToUse) {
+          // Fallback to default preference
+          voiceToUse = voices.find(voice => 
+            voice.lang.startsWith('en') && voice.name.includes('Female')
+          ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        }
+        
+        if (voiceToUse) {
+          setSelectedVoice(voiceToUse);
+        }
+      }
+      // Always set speed and pitch from saved preferences (even if voice is already set)
+      setTtsSpeed(savedSpeed);
+      setTtsPitch(savedPitch);
+    };
+    
+    loadVoices();
+    // Voices may load asynchronously
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    // Listen for accessibility preference changes
+    const handleStorageChange = () => {
+      const savedPrefs = localStorage.getItem('accessibility-preferences');
+      if (savedPrefs) {
+        try {
+          const parsed = JSON.parse(savedPrefs);
+          if (parsed.ttsVoice) {
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name === parsed.ttsVoice);
+            if (voice) {
+              setSelectedVoice(voice);
+            }
+          }
+          // Always update speed and pitch, even if they're the same value
+          if (parsed.ttsSpeed !== undefined && parsed.ttsSpeed !== null) {
+            setTtsSpeed(Number(parsed.ttsSpeed));
+          }
+          if (parsed.ttsPitch !== undefined && parsed.ttsPitch !== null) {
+            setTtsPitch(Number(parsed.ttsPitch));
+          }
+        } catch (e) {
+          console.error('Failed to parse accessibility preferences:', e);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event (for same-tab updates)
+    window.addEventListener('accessibilityPreferencesUpdated', handleStorageChange);
+    
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('accessibilityPreferencesUpdated', handleStorageChange);
+    };
+  }, []);
+
   // Listen for text selection
   useEffect(() => {
     const handleMouseUp = (event: MouseEvent) => {
@@ -173,11 +264,26 @@ const TextToSpeech: React.FC = () => {
     const utterance = new SpeechSynthesisUtterance(selectedText);
     utteranceRef.current = utterance;
 
-    // Configure speech settings for better clarity
-    utterance.rate = 0.9; // Slightly slower for better comprehension
-    utterance.pitch = 1.0; // Normal pitch
+    // Configure speech settings from preferences
+    // Ensure values are valid numbers (rate: 0.1-10, pitch: 0-2)
+    utterance.rate = Math.max(0.1, Math.min(10, Number(ttsSpeed) || 1.0)); // Use saved speed preference
+    utterance.pitch = Math.max(0, Math.min(2, Number(ttsPitch) || 1.0)); // Use saved pitch preference
     utterance.volume = 1.0; // Full volume
-    utterance.lang = 'en-US'; // Set language
+    utterance.lang = selectedVoice?.lang || 'en-US'; // Set language
+    
+    // Set selected voice if available
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    
+    // Debug logging
+    console.log('TTS Settings:', {
+      rate: utterance.rate,
+      pitch: utterance.pitch,
+      voice: selectedVoice?.name,
+      speed: ttsSpeed,
+      pitchValue: ttsPitch
+    });
 
     // Event handlers
     utterance.onstart = () => {
@@ -211,7 +317,7 @@ const TextToSpeech: React.FC = () => {
     };
 
     window.speechSynthesis.speak(utterance);
-  }, [selectedText]);
+  }, [selectedText, selectedVoice, ttsSpeed, ttsPitch]);
 
   // Function to pause/resume speech
   const togglePause = useCallback((e?: React.MouseEvent) => {
@@ -341,7 +447,7 @@ const TextToSpeech: React.FC = () => {
             onMouseDown={(e) => e.preventDefault()}
             size="sm"
             variant="outline"
-            className="px-3 py-1.5 text-xs border-red-500 text-red-500 hover:bg-red-50 transition-all font-medium"
+            className="px-3 py-1.5 text-xs border-red-500 text-red-500 hover:bg-red-50 transition-all font-medium hover:cursor-pointer"
             title="Stop and close"
           >
             <X className="w-4 h-4 mr-1.5" />

@@ -53,7 +53,7 @@ export async function generateInterviewQuestions(
 // Text-to-Speech service using Edge TTS with browser fallback
 export async function generateSpeechFromText(
   text: string,
-  voice: string = "en-US-AriaNeural",
+  voice: string = "en-SG-LunaNeural", // Singapore female voice
   rate: number = 0,
   volume: number = 1.0,
   pitch?: string,
@@ -301,7 +301,7 @@ export async function generateLipSyncVideo(
 // Text-to-Speech with audio blob generation using Edge TTS with browser fallback
 export async function generateSpeechAudio(
   text: string,
-  voice: string = "en-US-AriaNeural",
+  voice: string = "en-SG-LunaNeural", // Singapore female voice
   rate: number = 0,
   volume: number = 1.0,
   pitch?: string,

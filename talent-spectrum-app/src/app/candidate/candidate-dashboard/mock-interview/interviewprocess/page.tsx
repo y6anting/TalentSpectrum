@@ -454,8 +454,17 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
     utterance.volume = 0.9;
 
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find((v) => v.lang.startsWith("en") && v.name.includes("Neural")) ||
-                     voices.find((v) => v.lang.startsWith("en"));
+    // Prefer female voices - look for female voices first
+    const preferred = voices.find((v) => v.lang.startsWith("en") && (
+      v.name.toLowerCase().includes("female") || 
+      v.name.toLowerCase().includes("samantha") ||
+      v.name.toLowerCase().includes("karen") ||
+      v.name.toLowerCase().includes("susan") ||
+      v.name.toLowerCase().includes("zira") ||
+      v.name.toLowerCase().includes("linda") ||
+      v.name.toLowerCase().includes("luna")
+    )) || voices.find((v) => v.lang.startsWith("en") && v.name.includes("Neural")) ||
+           voices.find((v) => v.lang.startsWith("en"));
     if (preferred) utterance.voice = preferred;
 
     utterance.onstart = () => {
@@ -502,7 +511,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       const res = await fetch("/api/edge-tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "en-US-AriaNeural" }),
+        body: JSON.stringify({ text, voice: "en-SG-LunaNeural" }), // Singapore female voice
       });
 
       if (!res.ok) throw new Error("Edge-TTS failed");
@@ -620,7 +629,8 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       }
     } catch (e) {
       // Only fallback if Edge TTS API call itself failed
-      console.log("TTS: Edge-TTS API failed → fallback to Browser TTS", e);
+      console.warn("TTS: Edge-TTS API failed → fallback to Browser TTS", e);
+      console.log("Edge TTS error details:", e);
       browserSpeakQuestion(text);
     }
   };
@@ -820,6 +830,15 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                       onClick={async () => {
                         const granted = await requestPermissions();
                         if (granted) {
+                          // Set startTime when interview actually starts
+                          if (session) {
+                            const updatedSession = { ...session, startTime: new Date() };
+                            setSession(updatedSession);
+                            sessionStorage.setItem("mockInterviewSession", JSON.stringify({
+                              ...updatedSession,
+                              startTime: updatedSession.startTime.toISOString()
+                            }));
+                          }
                           setInterviewStarted(true);
                         }
                       }}
@@ -896,13 +915,22 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   onClick={async () => {
                     const granted = await requestPermissions();
                     if (granted) {
+                      // Set startTime when interview actually starts
+                      if (session) {
+                        const updatedSession = { ...session, startTime: new Date() };
+                        setSession(updatedSession);
+                        sessionStorage.setItem("mockInterviewSession", JSON.stringify({
+                          ...updatedSession,
+                          startTime: updatedSession.startTime.toISOString()
+                        }));
+                      }
                       setInterviewStarted(true);
                     }
                   }}
                   className="w-fit px-4 bg-white py-2 rounded-md 
                 border border-[#635BFF] text-[#635BFF] font-semibold 
                 hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] 
-                focus:outline-none focus:ring-2 focus:ring-[#746CFF] focus:ring-opacity-75 
+                focus:outline-none focus:ring-1 focus:ring-[#746CFF] focus:ring-opacity-75 
                 transition ease-in-out duration-150 cursor-pointer"
    >
                   <Play className="w-4 h-4 mr-2" /> Start Interview
@@ -989,10 +1017,11 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
                   {isRecording && (
                     <div className="flex items-center gap-2 text-red-600 animate-pulse">
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                      <span className="text-sm">Recording {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}</span>
+                      {/* <span className="text-sm">Recording ...</span> */}
+                      {/* <span className="text-sm">Recording {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}</span> */}
                     </div>
                   )}
-                  {isListening && <span className="text-blue-600 animate-pulse text-sm">Listening...</span>}
+                  {isListening && <span className="text-red-600 animate-pulse text-sm">Listening...</span>}
                   {isTranscribing && (
                     <div className="flex items-center gap-2 text-green-600 animate-pulse">
                       <div className="animate-spin h-3 w-3 border-b-2 border-green-600 rounded-full" />

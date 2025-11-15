@@ -77,6 +77,9 @@ interface Job {
   optional_social_event: boolean;
   mental_health_support: boolean;
   near_public_transport: boolean;
+  created_at?: string; // ISO date string
+  application_deadline?: string; // ISO date string
+  status?: string; // Job status (active, closed, expired)
 }
 
 // Frontend job interface for display
@@ -103,6 +106,8 @@ interface DisplayJob {
   primaryMatchScore?: number;
   secondaryMatchScore?: number;
   tertiaryMatchScore?: number;
+  work_mode?: string; // Work mode (Remote, Hybrid, On-site)
+  status?: string; // Job status (active, closed, expired)
 }
 
 const SALARY_RANGES = [
@@ -131,6 +136,8 @@ export default function CandidateJobListingContent() {
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Map<string, number>>(new Map());
   const [expandedMatchingScore, setExpandedMatchingScore] = useState<string | null>(null);
+  const [matchResults, setMatchResults] = useState<Map<string, any>>(new Map()); // Store AI match results by job_id
+  const { data: session } = useSession();
 
   // Check if user has a profile/resume
   const checkUserProfile = async (userEmail: string): Promise<boolean> => {
@@ -204,7 +211,7 @@ export default function CandidateJobListingContent() {
   };
 
   // Transform database job to display job
-  const transformJob = (job: Job): DisplayJob => {
+  const transformJob = (job: Job, aiMatchScore?: any): DisplayJob => {
     // Calculate accommodations friendly based on multiple factors
     const accommodationsFriendly = 
       job.flexible_work_hour ||
@@ -243,12 +250,43 @@ export default function CandidateJobListingContent() {
     if (job.augmentative_alternative_communication) accommodations.push("Alternative Communication App Allowed");
     if (job.near_public_transport) accommodations.push("Near Public Transport");
 
-    // Calculate match score (simplified - in real app this would be more sophisticated)
-    let matchScore = 70; // Base score
-    if (accommodationsFriendly) matchScore += 15;
-    if (job.work_mode === "Remote") matchScore += 5;
-    if (job.flexible_work_hour) matchScore += 5;
-    if (job.neurodiversity_awareness_training) matchScore += 5;
+    // Use AI match scores if available, otherwise calculate static score
+    let matchScore, primaryScore, secondaryScore, tertiaryScore;
+    
+    if (aiMatchScore) {
+      // Use AI-generated scores from database
+      matchScore = Math.round(aiMatchScore.total_score);
+      primaryScore = aiMatchScore.primary_score;
+      secondaryScore = aiMatchScore.secondary_score;
+      tertiaryScore = aiMatchScore.tertiary_score;
+    } else {
+      // Fallback to static calculation if no AI score available
+      matchScore = 70; // Base score
+      if (accommodationsFriendly) matchScore += 15;
+      if (job.work_mode === "Remote") matchScore += 5;
+      if (job.flexible_work_hour) matchScore += 5;
+      if (job.neurodiversity_awareness_training) matchScore += 5;
+      matchScore = Math.min(matchScore, 100);
+      
+      primaryScore = matchScore;
+      secondaryScore = Math.min(matchScore - 5, 95);
+      tertiaryScore = Math.min(matchScore - 10, 90);
+    }
+
+    // Use actual dates from backend if available, otherwise use defaults
+    const postedDate = job.created_at 
+      ? new Date(job.created_at).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    
+    const applicationDeadline = job.application_deadline
+      ? new Date(job.application_deadline).toISOString().split('T')[0]
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days from now as fallback
+
+    // Determine job status - check if expired based on deadline
+    let jobStatus = job.status || 'active';
+    if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+      jobStatus = 'expired';
+    }
 
     return {
       id: job.id.toString(),
@@ -256,10 +294,10 @@ export default function CandidateJobListingContent() {
       company: job.employer_email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Extract company name from email
       location: job.location,
       type: job.job_type,
-      salary: SALARY_RANGES[job.salary_range] || `RM${job.salary_range}k - RM${job.salary_range + 20}k / annum`,
+      salary: SALARY_RANGES[job.salary_range] || `RM${job.salary_range}k - RM${job.salary_range + 20}k / month`,
       salaryRange: job.salary_range, // Store the index for SALARY_RANGES
-      postedDate: new Date().toISOString().split('T')[0], // Current date as placeholder
-      matchScore: Math.min(matchScore, 100),
+      postedDate,
+      matchScore,
       accommodationsFriendly,
       description: job.job_summary,
       requirements: [...requirements, ...softSkills],
@@ -267,46 +305,114 @@ export default function CandidateJobListingContent() {
       accommodations: accommodations, // Also store in accommodations field
       companySize: "50-500 employees", // Default placeholder
       industry: "Technology", // Default placeholder
-      applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      applicationDeadline,
       neurodivergentFriendly: accommodationsFriendly,
-      primaryMatchScore: Math.min(matchScore, 100),
-      secondaryMatchScore: Math.min(matchScore - 5, 95),
-      tertiaryMatchScore: Math.min(matchScore - 10, 90),
+      primaryMatchScore: primaryScore,
+      secondaryMatchScore: secondaryScore,
+      tertiaryMatchScore: tertiaryScore,
+      work_mode: job.work_mode, // Include work_mode for filtering
+      status: jobStatus, // Include job status
     };
   };
 
-  // Fetch jobs from API
+  // Fetch jobs from API - fetch immediately without waiting for session
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setIsLoading(true);
         setFetchError(null);
         
+        // Fetch jobs immediately (don't wait for session)
         const response = await fetch('/api/jobs');
         if (!response.ok) {
           throw new Error('Failed to fetch jobs');
         }
-        
         const jobsData: Job[] = await response.json();
-        const transformedJobs = jobsData.map(transformJob);
         
+        // Transform jobs first (without AI scores for now)
+        const transformedJobs = jobsData.map((job: Job) => transformJob(job));
+        
+        // Set jobs immediately so UI can render
         setJobs(transformedJobs);
         if (transformedJobs.length > 0) {
           setSelectedJob(transformedJobs[0]);
         }
+        
+        // Set loading to false after jobs are displayed
+        setIsLoading(false);
       } catch (err) {
         console.error('Error fetching jobs:', err);
         setFetchError(err instanceof Error ? err.message : 'Failed to fetch jobs');
-      } finally {
         setIsLoading(false);
       }
     };
 
     fetchJobs();
-  }, []);
+  }, []); // Fetch immediately on mount
+
+  // Fetch match results when session becomes available (non-blocking)
+  useEffect(() => {
+    if (!session?.user?.email || jobs.length === 0) return;
+    
+    const fetchMatchResults = async () => {
+      try {
+        const matchResponse = await fetch(`/api/match-results?candidate_email=${encodeURIComponent(session.user.email)}`);
+        if (!matchResponse.ok) {
+          return;
+        }
+        
+        const matchData = await matchResponse.json();
+        const matchResultsMap = new Map();
+        matchData.forEach((match: any) => {
+          matchResultsMap.set(match.job_id.toString(), match);
+        });
+        setMatchResults(matchResultsMap);
+        
+        // Update jobs with AI scores if available
+        setJobs(currentJobs => {
+          return currentJobs.map((job: DisplayJob) => {
+            const aiMatch = matchResultsMap.get(job.id);
+            if (aiMatch) {
+              // Find original job data - we need to re-fetch or store it
+              // For now, update the match score directly
+              return {
+                ...job,
+                matchScore: Math.round(aiMatch.total_score),
+                primaryMatchScore: aiMatch.primary_score,
+                secondaryMatchScore: aiMatch.secondary_score,
+                tertiaryMatchScore: aiMatch.tertiary_score,
+              };
+            }
+            return job;
+          });
+        });
+        
+        // Update selected job with AI scores
+        setSelectedJob(currentSelected => {
+          if (!currentSelected) return currentSelected;
+          const aiMatch = matchResultsMap.get(currentSelected.id);
+          if (aiMatch) {
+            return {
+              ...currentSelected,
+              matchScore: Math.round(aiMatch.total_score),
+              primaryMatchScore: aiMatch.primary_score,
+              secondaryMatchScore: aiMatch.secondary_score,
+              tertiaryMatchScore: aiMatch.tertiary_score,
+            };
+          }
+          return currentSelected;
+        });
+        
+        console.log(`Loaded ${matchData.length} AI match results for candidate`);
+      } catch (matchErr) {
+        console.warn('Failed to fetch match results, using static scores:', matchErr);
+      }
+    };
+    
+    fetchMatchResults();
+  }, [session?.user?.email, jobs.length]); // Fetch when session is available
 
   // Load applied and saved jobs status using authenticated session email
-  const { data: session } = useSession();
   useEffect(() => {
     const loadJobStatus = async () => {
       try {
@@ -341,6 +447,70 @@ export default function CandidateJobListingContent() {
     loadJobStatus();
   }, [session]);
 
+  // Listen for job status changes and refresh jobs
+  useEffect(() => {
+    const handleJobStatusChanged = () => {
+      // Refetch jobs to get updated status
+      const fetchJobs = async () => {
+        try {
+          setIsLoading(true);
+          setFetchError(null);
+          
+          const response = await fetch('/api/jobs');
+          if (!response.ok) {
+            throw new Error('Failed to fetch jobs');
+          }
+          const jobsData: Job[] = await response.json();
+          
+          // Fetch match results if user is logged in
+          let matchResultsMap = new Map();
+          if (session?.user?.email) {
+            try {
+              const matchResponse = await fetch(`/api/match-results?candidate_email=${encodeURIComponent(session.user.email)}`);
+              if (matchResponse.ok) {
+                const matchData = await matchResponse.json();
+                matchData.forEach((match: any) => {
+                  matchResultsMap.set(match.job_id.toString(), match);
+                });
+                setMatchResults(matchResultsMap);
+              }
+            } catch (matchErr) {
+              console.warn('Failed to fetch match results:', matchErr);
+            }
+          }
+          
+          // Transform jobs with AI scores if available
+          const transformedJobs = jobsData.map((job: Job) => {
+            const aiMatch = matchResultsMap.get(job.id.toString());
+            return transformJob(job, aiMatch);
+          });
+          
+          setJobs(transformedJobs);
+          if (transformedJobs.length > 0 && (!selectedJob || !transformedJobs.find(j => j.id === selectedJob.id))) {
+            setSelectedJob(transformedJobs[0]);
+          } else if (selectedJob) {
+            // Update selected job with new status
+            const updatedJob = transformedJobs.find(j => j.id === selectedJob.id);
+            if (updatedJob) {
+              setSelectedJob(updatedJob);
+            }
+          }
+        } catch (err) {
+          console.error('Error refreshing jobs:', err);
+          setFetchError(err instanceof Error ? err.message : 'Failed to refresh jobs');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchJobs();
+    };
+
+    window.addEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+    return () => {
+      window.removeEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+    };
+  }, [session, selectedJob]);
+
   // Handle apply to job
   const handleApplyToJob = async (job: DisplayJob) => {
     console.log('Apply button clicked for job:', job.title);
@@ -349,6 +519,13 @@ export default function CandidateJobListingContent() {
     try {
       if (appliedJobs.has(jobKey)) {
         info('Already Applied', 'You have already applied to this job.');
+        return;
+      }
+      
+      // Check if job is closed or expired
+      const isExpired = job.applicationDeadline && new Date(job.applicationDeadline) < new Date();
+      if (job.status === 'closed' || isExpired) {
+        showError('Job Unavailable', 'This job is closed or expired and no longer accepting applications.');
         return;
       }
       
@@ -542,16 +719,62 @@ export default function CandidateJobListingContent() {
     return "font-bold text-red-600";
   };
 
-  const filteredJobs = jobs.filter((job) => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesLocation = filterLocation === "all" || job.location.includes(filterLocation);
-    const matchesType = filterType === "all" || job.type === filterType;
-    
-    return matchesSearch && matchesLocation && matchesType;
-  });
+  const filteredJobs = jobs
+    .filter((job) => {
+      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           job.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Location filter: check both location field and work_mode for Remote/Hybrid
+      let matchesLocation = true;
+      if (filterLocation !== "all") {
+        if (filterLocation === "Remote") {
+          matchesLocation = job.location.toLowerCase().includes("remote") || 
+                          job.work_mode?.toLowerCase() === "remote";
+        } else if (filterLocation === "Hybrid") {
+          matchesLocation = job.location.toLowerCase().includes("hybrid") || 
+                          job.work_mode?.toLowerCase() === "hybrid";
+        } else {
+          matchesLocation = job.location.includes(filterLocation);
+        }
+      }
+      
+      // Work type filter: check both type field and work_mode for Remote
+      // Make comparison case-insensitive
+      let matchesType = true;
+      if (filterType !== "all") {
+        const jobTypeLower = job.type?.toLowerCase() || '';
+        const filterTypeLower = filterType.toLowerCase();
+        
+        if (filterTypeLower === "remote") {
+          matchesType = jobTypeLower.includes("remote") || 
+                       job.work_mode?.toLowerCase() === "remote";
+        } else {
+          // Case-insensitive comparison for other types
+          matchesType = jobTypeLower === filterTypeLower || 
+                       jobTypeLower.includes(filterTypeLower) ||
+                       job.work_mode?.toLowerCase() === filterTypeLower;
+        }
+      }
+      
+      return matchesSearch && matchesLocation && matchesType;
+    })
+    .sort((a, b) => {
+      // Handle sortBy filter
+      if (sortBy === "match") {
+        return (b.matchScore || 0) - (a.matchScore || 0);
+      } else if (sortBy === "salary") {
+        return (b.salaryRange || 0) - (a.salaryRange || 0);
+      } else if (sortBy === "company") {
+        return a.company.localeCompare(b.company);
+      }
+      // Default: recent (sort by postedDate, most recent first)
+      const aDate = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+      const bDate = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+      
+      // Most recent first (descending order)
+      return bDate - aDate;
+    });
 
   // Set default selected job when filtered jobs change
   useEffect(() => {
@@ -613,46 +836,46 @@ export default function CandidateJobListingContent() {
               {/* Filters */}
               <div className="flex gap-4">
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
-                  <SelectTrigger className="w-42">
+                  <SelectTrigger className="w-fit cursor-pointer">
                     <MapPin className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
-                    <SelectItem value="Petaling Jaya">Petaling Jaya</SelectItem>
-                    <SelectItem value="George Town">George Town</SelectItem>
-                    <SelectItem value="Johor Bahru">Johor Bahru</SelectItem>
-                    <SelectItem value="Remote">Remote</SelectItem>
-                    <SelectItem value="Hybrid">Hybrid</SelectItem>
-                    <SelectItem value="Malaysia">Malaysia</SelectItem>
+                    <SelectItem value="all" className="cursor-pointer">All Locations</SelectItem>
+                    <SelectItem value="Kuala Lumpur" className="cursor-pointer">Kuala Lumpur</SelectItem>
+                    <SelectItem value="Petaling Jaya" className="cursor-pointer">Petaling Jaya</SelectItem>
+                    <SelectItem value="George Town" className="cursor-pointer">George Town</SelectItem>
+                    <SelectItem value="Johor Bahru" className="cursor-pointer">Johor Bahru</SelectItem>
+                    <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
+                    <SelectItem value="Hybrid" className="cursor-pointer">Hybrid</SelectItem>
+                    <SelectItem value="Malaysia" className="cursor-pointer">Malaysia</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-42">
+                  <SelectTrigger className="w-fit cursor-pointer">
                     <Clock className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
-                    <SelectItem value="Contract">Contract</SelectItem>
-                    <SelectItem value="Remote">Remote</SelectItem>
+                    <SelectItem value="all" className="cursor-pointer">All Types</SelectItem>
+                    <SelectItem value="Full-time" className="cursor-pointer">Full-time</SelectItem>
+                    <SelectItem value="Part-time" className="cursor-pointer">Part-time</SelectItem>
+                    <SelectItem value="Contract" className="cursor-pointer">Contract</SelectItem>
+                    <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-42">
+                  <SelectTrigger className="w-fit cursor-pointer">
                     <SortAsc className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="recent">Most Recent</SelectItem>
-                    <SelectItem value="match">Best Match</SelectItem>
-                    <SelectItem value="salary">Salary</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
+                    <SelectItem value="recent" className="cursor-pointer">Most Recent</SelectItem>
+                    <SelectItem value="match" className="cursor-pointer">Best Match</SelectItem>
+                    <SelectItem value="salary" className="cursor-pointer">Highest Salary</SelectItem>
+                    {/* <SelectItem value="company">Company</SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>
@@ -732,17 +955,30 @@ export default function CandidateJobListingContent() {
                                     <Button
                                     size="sm"
                                     className={`w-full sm:w-auto ${
-                                        appliedJobs.has(`${job.title}-${job.company}`)
-                                        ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white"
+                                        appliedJobs.has(`${job.title}-${job.company}`) ||
+                                        job.status === 'closed' ||
+                                        (job.applicationDeadline && new Date(job.applicationDeadline) < new Date())
+                                        ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white cursor-not-allowed"
                                         : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
                                     }`}
-                                    disabled={applyingJobId === `${job.title}-${job.company}` || appliedJobs.has(`${job.title}-${job.company}`)}
+                                    disabled={
+                                        applyingJobId === `${job.title}-${job.company}` || 
+                                        appliedJobs.has(`${job.title}-${job.company}`) ||
+                                        job.status === 'closed' ||
+                                        !!(job.applicationDeadline && new Date(job.applicationDeadline) < new Date())
+                                    }
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleApplyToJob(job);
                                     }}
                                     >
-                                    {applyingJobId === `${job.title}-${job.company}` ? "Applying..." : (appliedJobs.has(`${job.title}-${job.company}`) ? "Applied" : "Apply")}
+                                    {applyingJobId === `${job.title}-${job.company}` 
+                                        ? "Applying..." 
+                                        : appliedJobs.has(`${job.title}-${job.company}`) 
+                                            ? "Applied" 
+                                            : (job.status === 'closed' || (job.applicationDeadline && new Date(job.applicationDeadline) < new Date()))
+                                                ? "Closed"
+                                                : "Apply"}
                                     </Button>
                                     <button
                                     className={`p-2 rounded-md transition-colors cursor-pointer ${
@@ -767,27 +1003,31 @@ export default function CandidateJobListingContent() {
                     ))}
 
               {/* No Results */}
-              {filteredJobs.length === 0 && (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-base font-semibold text-gray-600 mb-2">No jobs found</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Try adjusting your search criteria or filters to find more opportunities.
-                    </p>
-                    <Button 
-                      size="sm"
-                      className="bg-[#635bff] hover:bg-[#5748e5] text-white"
-                      onClick={() => {
-                        setSearchTerm("");
-                        setFilterLocation("all");
-                        setFilterType("all");
-                      }}
-                    >
-                      Clear Filters
-                    </Button>
-                  </CardContent>
-                </Card>
+              {filteredJobs.length === 0 && !isLoading && (
+                <div className="w-full flex items-center justify-center py-20 col-span-full">
+                  <Card className="max-w-md border border-gray-200">
+                    <CardContent className="p-8 text-center">
+                      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Briefcase className="w-12 h-12 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No Jobs Found</h3>
+                      <p className="text-[#6f7a80] text-sm mb-6">
+                        Try adjusting your search criteria or filters to find more opportunities.
+                      </p>
+                      <Button 
+                        className="bg-[#635bff] hover:bg-[#524aff] text-white"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setFilterLocation("all");
+                          setFilterType("all");
+                          setSortBy("recent");
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           </div>
@@ -871,7 +1111,7 @@ export default function CandidateJobListingContent() {
                   <div className="flex flex-wrap gap-2">
                     {selectedJob?.accommodations && selectedJob.accommodations.length > 0 ? (
                       selectedJob.accommodations.map((accommodation, accommodationIndex) => (
-                        <Badge key={accommodationIndex} variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
+                        <Badge key={accommodationIndex} variant="outline" className="text-xs border-[#635BFF]/30 text-[#635BFF] bg-[#635BFF]/10">
                           {accommodation}
                         </Badge>
                       ))
@@ -1126,15 +1366,28 @@ export default function CandidateJobListingContent() {
                 <div className="flex flex-row gap-3 pt-4 border-t border-[#e8e6f0]">
                   <Button 
                     className={`w-[50%] ${
-                      appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)
-                      ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white"
-                                        : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
+                      appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ||
+                      selectedJob?.status === 'closed' ||
+                      (selectedJob?.applicationDeadline && new Date(selectedJob.applicationDeadline) < new Date())
+                      ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white cursor-not-allowed"
+                      : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
                     }`}
-                    disabled={applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` || appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`)}
+                    disabled={
+                      applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` || 
+                      appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ||
+                      selectedJob?.status === 'closed' ||
+                      !!(selectedJob?.applicationDeadline && new Date(selectedJob.applicationDeadline) < new Date())
+                    }
                     onClick={() => selectedJob && handleApplyToJob(selectedJob)}
                   >
                     <Briefcase className="w-4 h-4 mr-2" />
-                    {applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` ? "Applying..." : (appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) ? "Applied" : "Apply Now")}
+                    {applyingJobId === `${selectedJob?.title}-${selectedJob?.company}` 
+                      ? "Applying..." 
+                      : appliedJobs.has(`${selectedJob?.title}-${selectedJob?.company}`) 
+                        ? "Applied" 
+                        : (selectedJob?.status === 'closed' || (selectedJob?.applicationDeadline && new Date(selectedJob.applicationDeadline) < new Date()))
+                          ? "Closed"
+                          : "Apply Now"}
                   </Button>
                   <Button variant="outline" className="w-[50%] border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer">
                     <Share className="w-4 h-4 mr-2" />

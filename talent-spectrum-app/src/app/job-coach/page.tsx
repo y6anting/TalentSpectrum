@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/app/components/button";
 import { Card, CardContent } from "@/app/components/card";
 import { Badge } from "@/app/components/badge";
 import { Input } from "@/app/components/input";
+import { Textarea } from "@/app/components/textarea";
 import {
   Select,
   SelectContent,
@@ -37,147 +39,328 @@ import {
   Save,
   Camera,
   Upload,
+  Sparkles,
+  X,
+  Download,
+  FileText,
+  GraduationCap,
+  Code,
 } from "lucide-react";
 import { motion } from "motion/react";
 import AppointmentPage from "@/app/candidate/candidate-dashboard/Appointment/page";
+import JobCoachAppointmentPage from "@/app/job-coach/Appointment/page";
+import { useToastHelpers } from "@/components/ui/toast";
+import { useRef, ChangeEvent } from "react";
+import * as ChatBot from "@/app/chat-bot";
 
 export default function JobCoachDashboard() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
+  const { success, error: showError } = useToastHelpers();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [activeTab, setActiveTab] = useState("candidates");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
   const [profileData, setProfileData] = useState({
-    name: "Dr. Sarah Chen",
-    jobTitle: "Job Coach",
-    specialization: "ADHD Expert",
-    email: "jobcoach@gamuda.com",
+    name: "",
+    organization: "",
+    specializations: [] as string[],
+    certifications: [] as string[],
+    bio: "",
+    experience_years: null as number | null,
+    email: "",
+    profile_picture_url: "" as string | undefined,
   });
+  const [assignedCandidates, setAssignedCandidates] = useState<string[]>([]);
+  const [candidateReports, setCandidateReports] = useState<any[]>([]);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // View Profile Dialog state
+  const [selectedCandidateEmail, setSelectedCandidateEmail] = useState<string | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [candidateReportData, setCandidateReportData] = useState<any>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
-  // Mock data for job coach candidate overview
-  const candidateStats = {
-    totalCandidates: 24,
-    activeCandidates: 18,
-    completedCandidates: 6,
-    needsHelp: 3,
+  // Fetch job coach profile and data on mount
+  useEffect(() => {
+    const fetchJobCoachData = async () => {
+      if (sessionStatus === "loading") {
+        return;
+      }
+      
+      if (sessionStatus === "unauthenticated") {
+        router.push("/login");
+        return;
+      }
+
+      const coachEmail = session?.user?.email;
+      if (!coachEmail) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Fetch profile
+        const profileResponse = await fetch(`/api/job-coach/profile?coachEmail=${encodeURIComponent(coachEmail)}`);
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json();
+          if (profile) {
+            setProfileData({
+              name: profile.name || "",
+              organization: profile.organization || "",
+              specializations: profile.specializations || [],
+              certifications: profile.certifications || [],
+              bio: profile.bio || "",
+              experience_years: profile.experience_years || null,
+              email: coachEmail,
+              profile_picture_url: profile.profile_picture_url || "",
+            });
+            setProfilePictureUrl(profile.profile_picture_url || "");
+          } else {
+            // Profile doesn't exist, use defaults
+            setProfileData({
+              name: session.user.name || "",
+              organization: "",
+              specializations: [],
+              certifications: [],
+              bio: "",
+              experience_years: null,
+              email: coachEmail,
+              profile_picture_url: "",
+            });
+          }
+        }
+
+        // Fetch assigned candidates
+        const candidatesResponse = await fetch(`/api/job-coach/candidates?coachEmail=${encodeURIComponent(coachEmail)}`);
+        if (candidatesResponse.ok) {
+          const candidatesData = await candidatesResponse.json();
+          setAssignedCandidates(candidatesData.assigned_candidates || []);
+        }
+
+        // Fetch candidate reports
+        const reportsResponse = await fetch(`/api/job-coach/candidate-reports?coachEmail=${encodeURIComponent(coachEmail)}`);
+        if (reportsResponse.ok) {
+          const reports = await reportsResponse.json();
+          setCandidateReports(reports || []);
+        }
+      } catch (error) {
+        console.error("Error fetching job coach data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobCoachData();
+  }, [session, sessionStatus, router]);
+
+  // Fetch all candidates from database
+  useEffect(() => {
+    const fetchAllCandidates = async () => {
+      try {
+        setLoadingCandidates(true);
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const response = await fetch(`${API_BASE}/profiles/`);
+        
+        if (!response.ok) {
+          console.error("Failed to fetch candidates:", response.status);
+          return;
+        }
+
+        const profilesData = await response.json();
+        const allProfiles = Array.isArray(profilesData) ? profilesData : [];
+
+        // Transform profiles to match the candidate structure expected by the UI
+        const transformedCandidates = allProfiles.map((profile: any, index: number) => {
+          const email = profile.candidate_email || profile.email || "";
+          const name = profile.name || profile.personal_identifiers?.name || email.split('@')[0] || "Unknown";
+          const personalIdentifiers = profile.personal_identifiers || {};
+          
+          // Get location from profile
+          const location = personalIdentifiers.location || profile.location || "Not specified";
+          
+          // Get job title/position from experience or profile
+          const experiences = profile.experiences || [];
+          const currentJob = experiences.find((exp: any) => exp.is_current) || experiences[0];
+          const title = currentJob?.job_title || profile.desired_position || "Not specified";
+          
+          // Get mock interview results from candidate reports
+          const candidateReport = candidateReports.find((r: any) => r.candidate_email === email);
+          const overallScore = candidateReport?.overall_score;
+          const mockInterviewResult = overallScore !== undefined && overallScore !== null
+            ? `Overall Score: ${overallScore}/100`
+            : "No interview data yet";
+          
+          // Calculate progress (placeholder - can be enhanced based on profile completion)
+          const profileCompletion = profile.profile_completion || 0;
+          const progress = Math.min(profileCompletion, 100);
+          
+          // Determine status based on assigned candidates
+          const isAssigned = assignedCandidates.includes(email);
+          const status = isAssigned ? "active" : "available";
+          
+          return {
+            id: email || `candidate-${index}`,
+            email: email,
+            name: name,
+            title: title,
+            location: location,
+            status: status,
+            lastSession: candidateReport?.created_at 
+              ? new Date(candidateReport.created_at).toLocaleDateString()
+              : "No sessions yet",
+            nextSession: null, // Can be enhanced with appointment data
+            progress: progress,
+            needsHelp: progress < 50,
+            growthTrend: progress > 75 ? "up" : progress > 50 ? "stable" : "down",
+            keyStrengths: profile.strengths || ["Profile in progress"],
+            areasForImprovement: profile.areas_for_improvement || ["Complete profile"],
+            matchScore: candidateReport?.overall_score || 0,
+            experience: currentJob ? `${new Date().getFullYear() - (new Date(currentJob.start_date || new Date()).getFullYear())} years` : "Not specified",
+            accommodations: personalIdentifiers.accommodations || [],
+            mockInterviewResult: mockInterviewResult,
+          };
+        });
+
+        setCandidates(transformedCandidates);
+      } catch (error) {
+        console.error("Error fetching candidates:", error);
+      } finally {
+        setLoadingCandidates(false);
+      }
+    };
+
+    // Fetch candidates when component mounts or when assignedCandidates/candidateReports change
+    if (session?.user?.email) {
+      fetchAllCandidates();
+    }
+  }, [session?.user?.email, assignedCandidates, candidateReports]);
+
+  // Function to handle profile picture upload
+  const handleProfilePictureUpload = async (file: File) => {
+    const coachEmail = session?.user?.email;
+    if (!coachEmail) {
+      showError("Not Logged In", "Please log in to upload a profile picture.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        `/api/job-coach/profile/${encodeURIComponent(coachEmail)}/upload-profile-picture`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newPictureUrl = data.profile_picture_url;
+        
+        console.log("Profile picture uploaded successfully. Backend returned:", newPictureUrl);
+        
+        // Update profile picture state immediately - the key prop on img will force re-render
+        setProfilePictureUrl(newPictureUrl);
+        
+        // Update profileData state with the new profile_picture_url
+        setProfileData(prev => ({
+          ...prev,
+          profile_picture_url: newPictureUrl
+        }));
+        
+        success("Profile Picture Uploaded", "Profile picture uploaded successfully!");
+      } else {
+        const errorText = await response.text();
+        console.error("Error uploading profile picture:", errorText);
+        showError("Upload Failed", `Failed to upload profile picture: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Network error during profile picture upload:", error);
+      showError("Network Error", "An error occurred during profile picture upload.");
+    }
   };
 
-  const candidates = [
-    {
-      id: "1",
-      name: "Alex Johnson",
-      title: "Software Developer",
-      location: "San Francisco, CA",
-      status: "active",
-      lastSession: "2025-10-20",
-      nextSession: "2025-11-10",
-      progress: 75,
-      needsHelp: true,
-      growthTrend: "up",
-      keyStrengths: ["Problem-solving", "Attention to detail"],
-      areasForImprovement: ["Interview confidence", "Networking"],
-      matchScore: 92,
-      experience: "3 years",
-      accommodations: ["Flexible schedule", "Quiet workspace"],
-      mockInterviewResult:
-        "Strong technical answers, needs work on articulation - 7.5/10",
-    },
-    {
-      id: "2",
-      name: "Sam Chen",
-      title: "UX Designer",
-      location: "Seattle, WA",
-      status: "active",
-      lastSession: "2025-10-28",
-      nextSession: "2025-11-12",
-      progress: 90,
-      needsHelp: false,
-      growthTrend: "up",
-      keyStrengths: ["Creative thinking", "User empathy"],
-      areasForImprovement: ["Portfolio presentation"],
-      matchScore: 88,
-      experience: "2 years",
-      accommodations: ["Remote work", "Extended deadlines"],
-      mockInterviewResult:
-        "Excellent portfolio presentation, great communication - 9/10",
-    },
-    {
-      id: "3",
-      name: "Jordan Smith",
-      title: "Data Analyst",
-      location: "Austin, TX",
-      status: "completed",
-      lastSession: "2025-10-15",
-      nextSession: null,
-      progress: 100,
-      needsHelp: false,
-      growthTrend: "stable",
-      keyStrengths: ["Analytical thinking", "Pattern recognition"],
-      areasForImprovement: [],
-      matchScore: 95,
-      experience: "4 years",
-      accommodations: ["Structured environment", "Clear instructions"],
-      mockInterviewResult: "Outstanding performance across all areas - 9.5/10",
-    },
-    {
-      id: "4",
-      name: "Maria Garcia",
-      title: "Frontend Developer",
-      location: "Los Angeles, CA",
-      status: "active",
-      lastSession: "2025-10-25",
-      nextSession: "2025-11-08",
-      progress: 65,
-      needsHelp: false,
-      growthTrend: "up",
-      keyStrengths: ["UI implementation", "Responsive design"],
-      areasForImprovement: ["Time management", "Code optimization"],
-      matchScore: 85,
-      experience: "2 years",
-      accommodations: ["Written instructions", "Flexible hours"],
-      mockInterviewResult:
-        "Good technical knowledge, could improve communication - 7/10",
-    },
-    {
-      id: "5",
-      name: "James Wilson",
-      title: "Product Manager",
-      location: "New York, NY",
-      status: "active",
-      lastSession: "2025-10-18",
-      nextSession: "2025-11-05",
-      progress: 80,
-      needsHelp: false,
-      growthTrend: "up",
-      keyStrengths: ["Strategic thinking", "Stakeholder management"],
-      areasForImprovement: ["Technical depth", "Agile methodologies"],
-      matchScore: 90,
-      experience: "5 years",
-      accommodations: ["Clear expectations", "Regular check-ins"],
-      mockInterviewResult:
-        "Strong leadership skills, solid product knowledge - 8.5/10",
-    },
-    {
-      id: "6",
-      name: "Emily Brown",
-      title: "Marketing Specialist",
-      location: "Boston, MA",
-      status: "active",
-      lastSession: "2025-10-30",
-      nextSession: "2025-11-15",
-      progress: 70,
-      needsHelp: true,
-      growthTrend: "up",
-      keyStrengths: ["Content creation", "Social media strategy"],
-      areasForImprovement: ["Data analysis", "Presentation skills"],
-      matchScore: 82,
-      experience: "3 years",
-      accommodations: ["Quiet workspace", "Visual aids"],
-      mockInterviewResult:
-        "Creative approach, needs confidence in delivery - 7/10",
-    },
-  ];
+  // Handler for when a file is selected
+  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      handleProfilePictureUpload(event.target.files[0]);
+      // Clear the file input so the same file can be selected again
+      event.target.value = '';
+    }
+  };
+
+  // Function to handle profile save
+  const handleProfileSave = async () => {
+    const coachEmail = session?.user?.email;
+    if (!coachEmail) {
+      showError("Not Logged In", "Please log in to save your profile.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(
+        `/api/job-coach/profile?coachEmail=${encodeURIComponent(coachEmail)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: profileData.name,
+            organization: profileData.organization,
+            specializations: profileData.specializations,
+            certifications: profileData.certifications,
+            bio: profileData.bio,
+            experience_years: profileData.experience_years,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const savedProfile = await response.json();
+        console.log("Profile saved successfully:", savedProfile);
+        
+        // Update local state with saved data
+        setProfileData(prev => ({
+          ...prev,
+          ...savedProfile,
+        }));
+        
+        success("Profile Saved", "Your profile has been saved successfully!");
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Failed to save profile" }));
+        console.error("Error saving profile:", errorData);
+        showError("Save Failed", errorData.error || errorData.detail || "Failed to save profile. Please try again.");
+      }
+    } catch (error) {
+      console.error("Network error during profile save:", error);
+      showError("Network Error", "An error occurred while saving your profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Calculate candidate stats from fetched data
+  const candidateStats = {
+    totalCandidates: candidates.length,
+    activeCandidates: candidates.filter(c => c.status === "active").length,
+    completedCandidates: candidates.filter(c => c.status === "completed").length,
+    needsHelp: candidates.filter(c => c.needsHelp).length,
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -211,9 +394,13 @@ export default function JobCoachDashboard() {
     }
   };
 
-  const filteredCandidates = candidates.filter((candidate) => {
+  // Use fetched candidates
+  const candidatesToDisplay = candidates;
+  
+  const filteredCandidates = candidatesToDisplay.filter((candidate) => {
     const matchesSearch =
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.location.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -223,31 +410,135 @@ export default function JobCoachDashboard() {
     return matchesSearch && matchesStatus;
   });
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
-      <div className="page-wrap py-8">
-        <div className="mb-8">
-          {/* <h1 className="text-3xl font-bold text-[#3a4043] mb-2">
-            Welcome back, Dr. Sarah Chen
-          </h1>
-          <p className="text-[#6f7a80]">Here's your session management</p> */}
-        </div>
+  // Sort filtered candidates
+  const sortedCandidates = [...filteredCandidates].sort((a, b) => {
+    switch (sortBy) {
+      case "recent":
+        const dateA = a.lastSession ? new Date(a.lastSession).getTime() : 0;
+        const dateB = b.lastSession ? new Date(b.lastSession).getTime() : 0;
+        return dateB - dateA; // Most recent first
+      case "name":
+        return (a.name || "").localeCompare(b.name || "");
+      case "score":
+        return (b.matchScore || 0) - (a.matchScore || 0); // Highest score first
+      default:
+        return 0;
+    }
+  });
 
-        <div className="grid lg:grid-cols-4 gap-8">
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedCandidates.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCandidates = sortedCandidates.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, sortBy]);
+
+  // Handle View Profile - fetch candidate report
+  const handleViewProfile = async (candidateEmail: string) => {
+    setSelectedCandidateEmail(candidateEmail);
+    setShowProfileDialog(true);
+    setLoadingReport(true);
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      // Fetch candidate profile and mock interview report
+      const [profileResponse, mockInterviewResponse] = await Promise.all([
+        fetch(`${API_BASE}/profiles/${encodeURIComponent(candidateEmail)}`),
+        fetch(`/api/mock-interview/reports/highest-score?email=${encodeURIComponent(candidateEmail)}`)
+      ]);
+      
+      const profileData = profileResponse.ok ? await profileResponse.json() : null;
+      const mockInterviewData = mockInterviewResponse.ok ? await mockInterviewResponse.json() : null;
+      
+      const reportData = {
+        profile: profileData,
+        mockInterview: mockInterviewData,
+      };
+      
+      setCandidateReportData(reportData);
+    } catch (error) {
+      console.error("Error fetching candidate report:", error);
+      setCandidateReportData({
+        profile: null,
+        mockInterview: null,
+      });
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
+        <div className="page-wrap py-8">
+          <div className="grid lg:grid-cols-[300px_1fr] gap-8 py-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-8">
+          <div className="lg:sticky lg:top-[calc(var(--app-header-height)+32px)] lg:self-start lg:max-h-[calc(100vh-var(--app-header-height)-64px)] lg:overflow-y-auto">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold">
-                      JC
+                    <div className="relative w-12 h-12 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
+                      {(() => {
+                        const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                        const cleanUrl = picUrl?.split('#')[0]; // Remove any hash we added for refresh
+                        return cleanUrl && cleanUrl.trim() !== "";
+                      })() ? (
+                        <img
+                          key={`sidebar-profile-img-${profilePictureUrl || profileData.profile_picture_url || 'default'}`}
+                          src={
+                            (() => {
+                              const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                              const cleanUrl = picUrl?.split('#')[0] || picUrl; // Remove hash if present
+                              if (!cleanUrl) return '';
+                              if (cleanUrl.startsWith("http")) {
+                                return `${cleanUrl}?t=${Date.now()}`;
+                              }
+                              const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                              return `${API_BASE}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}?t=${Date.now()}`;
+                            })()
+                          }
+                          alt="Profile Picture"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                            console.error("Profile picture failed to load:", picUrl);
+                            (e.target as HTMLImageElement).style.display = "none";
+                            const parentDiv = e.currentTarget.parentElement;
+                            if (parentDiv && !parentDiv.querySelector('.fallback-initials')) {
+                              const fallback = document.createElement("div");
+                              fallback.className = "fallback-initials w-full h-full flex items-center justify-center text-white text-sm font-semibold";
+                              fallback.textContent = profileData.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'JC';
+                              parentDiv.appendChild(fallback);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span>{profileData.name.split(' ').map(n => n[0]).join('') || 'JC'}</span>
+                      )}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={onFileChange}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+                        title="Upload profile picture"
+                      >
+                        <Camera className="h-5 w-5 text-white" />
+                      </button>
                     </div>
                     <div>
                       <h3 className="font-semibold text-[#635bff]">
-                        Job Coach
+                        {profileData.name || "Job Coach"}
                       </h3>
-                      <p className="text-sm text-gray-600">Adhd Expert</p>
+                      <p className="text-sm text-gray-600">{profileData.organization || "Job Coach"}</p>
                     </div>
                   </div>
                   <nav className="space-y-2">
@@ -268,7 +559,7 @@ export default function JobCoachDashboard() {
                         icon: Users,
                       },
                       {
-                        id: "AI Consult",
+                        id: "consult-ai",
                         label: "AI Consult",
                         icon: Users,
                       },
@@ -292,30 +583,31 @@ export default function JobCoachDashboard() {
                   </nav>
                 </CardContent>
               </Card>
-            </div>
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div className="w-full">
             {activeTab === "candidates" && (
               <div className="space-y-6">
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-[#3a4043] mb-2">
-                    Candidate Overview
+                    Candidate List
                   </h2>
                   <p className="text-[#6f7a80]">
-                    Manage and track your candidates' progress and development
+                    View and manage all candidates in the talent pool
                   </p>
                 </div>
 
-                <Card className="mb-8">
+                {/* Search and Filters - Matching Talent Pool format */}
+                <Card className="mb-3">
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Search */}
                       <div className="flex-1">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
                           <Input
-                            placeholder="Search candidates by name, title, or location..."
+                            placeholder="Search by candidate name, or email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -323,112 +615,177 @@ export default function JobCoachDashboard() {
                         </div>
                       </div>
 
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-64">
-                          <SortAsc className="w-4 h-4 mr-2" />
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="recent">
-                            Most Recent Session
-                          </SelectItem>
-                          <SelectItem value="name">Name A-Z</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {/* Sort */}
+                      <div className="flex gap-4">
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger className="w-fit cursor-pointer">
+                            <SortAsc className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recent" className="cursor-pointer">Most Recent</SelectItem>
+                            <SelectItem value="name" className="cursor-pointer">Name A-Z</SelectItem>
+                            <SelectItem value="score" className="cursor-pointer">Best Match</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="pb-6">
-                  <p className="text-[#6f7a80]">
-                    Showing {filteredCandidates.length} of {candidates.length}{" "}
-                    candidates
-                  </p>
+                {/* Results Summary */}
+                <div className="mb-6 ml-2">
+                  {loadingCandidates ? (
+                    <p className="text-[#6f7a80]">Loading...</p>
+                  ) : (
+                    <p className="text-[#6f7a80] text-sm">
+                      {sortedCandidates.length === 0 
+                        ? "No candidates found."
+                        : `Showing ${sortedCandidates.length} candidate${sortedCandidates.length !== 1 ? 's' : ''}`
+                      }
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  {filteredCandidates.map((candidate) => (
-                    <Card
-                      key={candidate.id}
-                      className="hover:shadow-md transition-all"
-                    >
-                      <CardContent className="p-5">
-                        <div className="flex items-center gap-6">
-                          {/* Left: Name and Title */}
-                          <div className="flex-1 min-w-[200px]">
-                            <h3 className="text-base font-semibold text-[#3a4043] mb-1">
-                              {candidate.name}
-                            </h3>
-                            <p className="text-sm text-[#6f7a80] mb-1">
-                              {candidate.title}
-                            </p>
-                            <div className="flex items-center gap-1 text-xs text-[#6f7a80]">
-                              <Clock className="h-3 w-3" />
-                              Last session: {candidate.lastSession}
-                            </div>
-                          </div>
-
-                          {/* Middle: Interview Score and Strengths - Fixed width columns */}
-                          <div className="flex items-center gap-12">
-                            <div className="w-32 text-center">
-                              <div className="text-xs text-[#6f7a80] mb-2">
-                                Interview Score
+                {loadingCandidates ? (
+                  <div className="w-full flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+                      <p className="text-[#6f7a80]">Loading candidates...</p>
+                    </div>
+                  </div>
+                ) : sortedCandidates.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Users className="h-16 w-16 text-[#6f7a80] mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-[#3a4043] mb-2">No results found</h3>
+                      <p className="text-[#6f7a80] mb-4">
+                        Try adjusting your search criteria or filters to find more results.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setSearchTerm("");
+                          setFilterStatus("all");
+                        }}
+                        className="cursor-pointer"
+                      >
+                        Clear Filters
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div>
+                    {/* Two columns grid layout - Matching Talent Pool */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {paginatedCandidates.map((candidate, index) => (
+                        <motion.div
+                          key={candidate.id || candidate.email}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                        >
+                          <Card className="hover:shadow-lg transition-all duration-300 h-full border border-gray-300">
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h3 className="text-lg font-semibold text-[#3a4043] mb-2">
+                                    {candidate.name}
+                                  </h3>
+                                  <p className="text-[#635bff] font-medium mb-2 text-sm">
+                                    {candidate.email}
+                                  </p>
+                                  <div className="flex items-center gap-3 mb-3">
+                                    {getStatusBadge(candidate.status)}
+                                    {candidate.matchScore > 0 && (
+                                      <div className={`text-sm font-medium ${
+                                        candidate.matchScore >= 80 ? "text-green-600" :
+                                        candidate.matchScore >= 60 ? "text-blue-600" :
+                                        "text-yellow-600"
+                                      }`}>
+                                        {candidate.matchScore}% match
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
+                                    {candidate.lastSession && (
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        {candidate.lastSession}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2 flex-shrink-0">
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer whitespace-nowrap"
+                                    onClick={() => handleViewProfile(candidate.email)}
+                                  >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Profile
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer whitespace-nowrap"
+                                    onClick={() => setActiveTab("appointment")}
+                                  >
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    Schedule
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="text-2xl font-bold text-[#635bff]">
-                                {candidate.mockInterviewResult
-                                  .split("-")[1]
-                                  ?.trim() || "8/10"}
-                              </div>
-                            </div>
-
-                            <div className="w-52">
-                              <div className="text-xs text-[#6f7a80] mb-2">
-                                Strengths
-                              </div>
-                              <div className="space-y-1">
-                                {candidate.keyStrengths
-                                  .slice(0, 2)
-                                  .map((strength, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="text-xs text-green-700"
-                                    >
-                                      • {strength}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 ml-auto">
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
+                    
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-8 flex justify-center items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="hover:cursor-pointer"
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex gap-1">
+                          {Array.from({ length: totalPages }, (_, i) => (
                             <Button
+                              key={i + 1}
                               size="sm"
-                              className="bg-[#635bff] hover:bg-[#524aff] text-white"
-                              onClick={() =>
-                                router.push(
-                                  `/job-coach/Candidate/${candidate.id}`
-                                )
+                              variant={currentPage === i + 1 ? "default" : "outline"}
+                              onClick={() => setCurrentPage(i + 1)}
+                              className={currentPage === i + 1 
+                                ? "bg-[#635bff] text-white hover:bg-[#524aff] cursor-pointer" 
+                                : "hover:cursor-pointer"
                               }
                             >
-                              <Eye className="w-3 h-3 mr-1" />
-                              View Details
+                              {i + 1}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-gray-300 hover:cursor-pointer"
-                              onClick={() => setActiveTab("appointment")}
-                            >
-                              <Calendar className="w-3 h-3 mr-1" />
-                              Schedule
-                            </Button>
-                          </div>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="hover:cursor-pointer"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                    <div className="mt-4 text-sm text-[#6f7a80] text-center">
+                      Showing {startIndex + 1}-{Math.min(endIndex, sortedCandidates.length)} of {sortedCandidates.length} candidate{sortedCandidates.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -455,24 +812,62 @@ export default function JobCoachDashboard() {
                           </div>
                         </label>
                         <div className="flex items-center gap-4">
-                          <div className="w-20 h-20 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold text-2xl">
-                            JC
+                          <div className="relative w-20 h-20 bg-[#635bff] rounded-full flex items-center justify-center text-white font-semibold text-2xl overflow-hidden">
+                            {(() => {
+                              const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                              const cleanUrl = picUrl?.split('#')[0]; // Remove any hash we added for refresh
+                              return cleanUrl && cleanUrl.trim() !== "";
+                            })() ? (
+                              <img
+                                key={`profile-img-${profilePictureUrl || profileData.profile_picture_url || 'default'}`}
+                                src={
+                                  (() => {
+                                    const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                                    const cleanUrl = picUrl?.split('#')[0] || picUrl; // Remove hash if present
+                                    if (!cleanUrl) return '';
+                                    if (cleanUrl.startsWith("http")) {
+                                      return `${cleanUrl}?t=${Date.now()}`;
+                                    }
+                                    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                                    return `${API_BASE}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}?t=${Date.now()}`;
+                                  })()
+                                }
+                                alt="Profile Picture"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const picUrl = profilePictureUrl || profileData.profile_picture_url;
+                                  console.error("Profile picture failed to load:", picUrl);
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                  const parentDiv = e.currentTarget.parentElement;
+                                  if (parentDiv && !parentDiv.querySelector('.fallback-initials')) {
+                                    const fallback = document.createElement("div");
+                                    fallback.className = "fallback-initials w-full h-full flex items-center justify-center text-white text-sm font-semibold";
+                                    fallback.textContent = profileData.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'JC';
+                                    parentDiv.appendChild(fallback);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span>{profileData.name.split(' ').map(n => n[0]).join('') || 'JC'}</span>
+                            )}
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={onFileChange}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer"
+                              title="Upload profile picture"
+                            >
+                              <Camera className="h-5 w-5 text-white" />
+                            </button>
                           </div>
                           <div className="flex-1">
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  // Handle file upload here
-                                  console.log("File selected:", file.name);
-                                }
-                              }}
-                              className="w-full"
-                            />
-                            <p className="text-xs text-[#6f7a80] mt-1">
-                              Upload a profile picture (JPG, PNG, max 5MB)
+                            <p className="text-xs text-[#6f7a80]">
+                              Click on the profile picture to upload a new one (JPG, PNG, max 5MB)
                             </p>
                           </div>
                         </div>
@@ -511,15 +906,15 @@ export default function JobCoachDashboard() {
                         </label>
                         <Input
                           type="text"
-                          name="jobTitle"
-                          value={profileData.jobTitle}
+                          name="organization"
+                          value={profileData.organization}
                           onChange={(e) =>
                             setProfileData({
                               ...profileData,
-                              jobTitle: e.target.value,
+                              organization: e.target.value,
                             })
                           }
-                          placeholder="Enter your job title"
+                          placeholder="Enter your organization"
                           className="w-full"
                         />
                       </div>
@@ -534,15 +929,84 @@ export default function JobCoachDashboard() {
                         </label>
                         <Input
                           type="text"
-                          name="specialization"
-                          value={profileData.specialization}
+                          name="specializations"
+                          value={profileData.specializations.join(", ")}
                           onChange={(e) =>
                             setProfileData({
                               ...profileData,
-                              specialization: e.target.value,
+                              specializations: e.target.value.split(",").map(s => s.trim()).filter(s => s),
                             })
                           }
-                          placeholder="e.g., ADHD Expert, Autism Specialist"
+                          placeholder="e.g., ADHD Expert, Autism Specialist (comma-separated)"
+                          className="w-full"
+                        />
+                      </div>
+
+                      {/* Certifications Field */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-[#635bff]" />
+                            Certifications
+                          </div>
+                        </label>
+                        <Input
+                          type="text"
+                          name="certifications"
+                          value={profileData.certifications.join(", ")}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              certifications: e.target.value.split(",").map(s => s.trim()).filter(s => s),
+                            })
+                          }
+                          placeholder="e.g., Certified ADHD Coach (comma-separated)"
+                          className="w-full"
+                        />
+                      </div>
+
+                      {/* Bio Field */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-2">
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4 text-[#635bff]" />
+                            Bio
+                          </div>
+                        </label>
+                        <Textarea
+                          name="bio"
+                          value={profileData.bio}
+                          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                            setProfileData({
+                              ...profileData,
+                              bio: e.target.value,
+                            })
+                          }
+                          placeholder="A short description about yourself and your coaching philosophy"
+                          className="w-full min-h-[100px]"
+                          rows={4}
+                        />
+                      </div>
+
+                      {/* Experience Years Field */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#3a4043] mb-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#635bff]" />
+                            Years of Experience
+                          </div>
+                        </label>
+                        <Input
+                          type="number"
+                          name="experience_years"
+                          value={profileData.experience_years ?? ""}
+                          onChange={(e) =>
+                            setProfileData({
+                              ...profileData,
+                              experience_years: parseInt(e.target.value) || null,
+                            })
+                          }
+                          placeholder="e.g., 5"
                           className="w-full"
                         />
                       </div>
@@ -572,36 +1036,216 @@ export default function JobCoachDashboard() {
                           Your professional email address
                         </p>
                       </div>
-
-                      {/* Save Button */}
-                      <div className="pt-4">
-                        <Button
-                          onClick={async () => {
-                            setIsSaving(true);
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 1000)
-                            );
-                            setIsSaving(false);
-                          }}
-                          disabled={isSaving}
-                          className="w-full bg-[#635bff] hover:bg-[#524aff] text-white"
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          {isSaving ? "Saving..." : "Save Changes"}
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
+                
+                {/* Save Button - Right Corner */}
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={handleProfileSave}
+                    disabled={isSaving}
+                    className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? "Saving..." : "Save Profile"}
+                  </Button>
+                </div>
               </div>
             )}
 
             {activeTab === "appointment" && (
-              <AppointmentPage />
+              <JobCoachAppointmentPage />
             )}
+
+            {activeTab === "consult-ai" && (
+              <div className="flex flex-col h-[calc(100vh-200px)]">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
+                    Consult AI
+                  </h2>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ChatBot.Chat />
+                </div>
+              </div>  
+            )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      
+      {/* View Profile Modal - Full Candidate Report */}
+      {showProfileDialog && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowProfileDialog(false)}
+          />
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-[60vw] max-h-[95vh] overflow-hidden flex flex-col z-[100000]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+              <div>
+                <h2 className="text-2xl font-bold text-[#3a4043]">Candidate Feedback Report</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedCandidateEmail && `Comprehensive analysis for ${candidateReportData?.profile?.name || selectedCandidateEmail}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowProfileDialog(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingReport ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+                  <p className="text-[#6f7a80]">Loading candidate report...</p>
+                </div>
+              ) : candidateReportData ? (
+                <div className="space-y-6">
+                  {/* Strengths & Needs */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Strengths */}
+                    <Card>
+                      <CardContent className="px-6 py-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Star className="w-5 h-5 text-[#635bff]" />
+                          <h3 className="text-xl font-bold text-gray-800">Strengths</h3>
+                        </div>
+                        <div className="space-y-1">
+                          {candidateReportData.profile?.neurodivergent_strengths && Array.isArray(candidateReportData.profile.neurodivergent_strengths) && candidateReportData.profile.neurodivergent_strengths.length > 0 ? (
+                            candidateReportData.profile.neurodivergent_strengths.map((strength: string, index: number) => (
+                              <div key={index} className="flex items-start gap-2">
+                                <span className="mt-1 text-[#635bff]">•</span>
+                                <p className="text-gray-700">{strength}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">No strengths data available</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Needs */}
+                    <Card>
+                      <CardContent className="px-6 py-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <AlertCircle className="w-5 h-5 text-[#635bff]" />
+                          <h3 className="text-xl font-bold text-gray-800">Needs</h3>
+                        </div>
+                        <div className="space-y-1">
+                          {candidateReportData.profile?.environment ? (
+                            (() => {
+                              const env = candidateReportData.profile.environment;
+                              let needs: string[] = [];
+                              if (Array.isArray(env)) {
+                                needs = env;
+                              } else if (env.preferred_environment && Array.isArray(env.preferred_environment)) {
+                                needs = env.preferred_environment;
+                              }
+                              return needs.length > 0 ? (
+                                needs.slice(0, 5).map((need: string, index: number) => (
+                                  <div key={index} className="flex items-start gap-2">
+                                    <span className="mt-1 text-[#635bff]">•</span>
+                                    <p className="text-gray-700">{need}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-gray-500 text-sm italic">No needs data available</p>
+                              );
+                            })()
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">No needs data available</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Mock Interview Results */}
+                  {candidateReportData.mockInterview && (
+                    <Card>
+                      <CardContent className="px-6 py-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <MessageCircle className="w-5 h-5 text-[#635bff]" />
+                          <h3 className="text-xl font-bold text-gray-800">Mock Interview Results</h3>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-gray-700">
+                            <span className="font-semibold">Overall Score: </span>
+                            {candidateReportData.mockInterview.overall_score || 'N/A'}%
+                          </p>
+                          {candidateReportData.mockInterview.overall_feedback && (
+                            <p className="text-gray-700">{candidateReportData.mockInterview.overall_feedback}</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Profile Summary */}
+                  {candidateReportData.profile && (
+                    <Card>
+                      <CardContent className="px-6 py-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <FileText className="w-5 h-5 text-[#635bff]" />
+                          <h3 className="text-xl font-bold text-gray-800">Profile Summary</h3>
+                        </div>
+                        <div className="space-y-4">
+                          {candidateReportData.profile.experiences && Array.isArray(candidateReportData.profile.experiences) && candidateReportData.profile.experiences.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-[#635bff]" />
+                                Experience
+                              </h4>
+                              <div className="space-y-2">
+                                {candidateReportData.profile.experiences.slice(0, 3).map((exp: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{exp.job_title || exp.title || 'Position'}</p>
+                                    <p className="text-gray-600">{exp.company || exp.employer || ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {candidateReportData.profile.educations && Array.isArray(candidateReportData.profile.educations) && candidateReportData.profile.educations.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4 text-[#635bff]" />
+                                Education
+                              </h4>
+                              <div className="space-y-2">
+                                {candidateReportData.profile.educations.slice(0, 2).map((edu: any, index: number) => (
+                                  <div key={index} className="text-gray-700 text-sm">
+                                    <p className="font-medium">{edu.degree || edu.level || ''} in {edu.field || edu.fieldOfStudy || ''}</p>
+                                    <p className="text-gray-600">{edu.institution || ''}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500">No report data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

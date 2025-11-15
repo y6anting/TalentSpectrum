@@ -200,6 +200,55 @@ async def get_employer_applications(employer_email: str, db: DbDep):
 class StatusUpdateRequest(BaseModel):
     status: str
 
+@router.get("/{application_id}")
+async def get_application(application_id: int, db: DbDep):
+    """Get a single application by ID"""
+    try:
+        application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+        
+        if not application:
+            raise HTTPException(status_code=404, detail="Application not found")
+        
+        # Find candidate profile by email
+        candidate = db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_email == application.candidate_email
+        ).first()
+        
+        # Format dates as ISO strings
+        applied_date_str = application.applied_date.strftime("%Y-%m-%d") if application.applied_date else None
+        interview_date_str = application.interview_date.strftime("%Y-%m-%d") if application.interview_date else None
+        
+        # Get job details if job_id exists
+        job_id = None
+        job_title = application.job_title
+        if hasattr(application, 'job_id') and application.job_id:
+            job_id = application.job_id
+        
+        return {
+            "id": application.id,
+            "candidate_id": candidate.id if candidate else None,
+            "candidate_name": candidate.name if candidate else "Unknown",
+            "candidate_email": application.candidate_email,
+            "job_id": job_id,
+            "job_title": job_title,
+            "applied_date": applied_date_str,
+            "status": application.status,
+            "accommodations_requested": application.accommodations_requested,
+            "accommodation_details": getattr(application, 'accommodation_details', None) or "",
+            "score": application.score,
+            "interview_date": interview_date_str,
+            "location": application.location,
+            "salary": application.salary,
+            "experience": getattr(application, 'experience', None) or "",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error fetching application: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error fetching application: {e}")
+
 @router.patch("/{application_id}")
 async def update_application_status(application_id: int, db: DbDep, status_data: StatusUpdateRequest):
     """Update application status (shortlisted, rejected, under_review)"""
@@ -320,6 +369,26 @@ async def get_saved_jobs(candidate_email: str, db: DbDep):
         print(f"Error fetching saved jobs: {e}")
         # Return empty array instead of 500 error
         return []
+
+@router.delete("/{application_id}")
+async def delete_application(application_id: int, db: DbDep):
+    """Delete/withdraw a job application"""
+    try:
+        application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+        if not application:
+            raise HTTPException(status_code=404, detail="Application not found")
+
+        db.delete(application)
+        db.commit()
+
+        return {"message": "Application withdrawn successfully"}
+
+    except HTTPException as e:
+        db.rollback()
+        raise e
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error withdrawing application: {e}")
 
 @router.delete("/saved/{saved_job_id}")
 async def unsave_job(saved_job_id: int, db: DbDep):

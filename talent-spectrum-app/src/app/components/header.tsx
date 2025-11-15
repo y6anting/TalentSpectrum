@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 interface HeaderProps {
   setCurrentPage?: (page: string) => void;
@@ -132,7 +133,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
       // { href: "/employer/JobCoach", label: "Job Coach" },
       // { href: "/employer/candidate-list", label: "Candidate List" },
       { href: "/candidate/community", label: "Community" },
-      { href: "/candidate/ecommerce", label: "E-Commerce" },
+      { href: "/marketplace", label: "Marketplace" },
     ];
   } else if (role === "CANDIDATE") {
     navItems = [
@@ -141,14 +142,21 @@ export default function Header({ setCurrentPage }: HeaderProps) {
       // { href: "/candidate/JobListing", label: "Find Jobs" },
       // { href: "/candidate/JobCoach", label: "Job Coach" },
       { href: "/candidate/community", label: "Community" },
-      { href: "/candidate/ecommerce", label: "E-Commerce" },
+      { href: "/candidate/ecommerce", label: "Seller Center" },
+      { href: "/marketplace", label: "Marketplace"},
     ];
   } else if (role === "JOB_COACH") {
-    navItems = [];
+    navItems = [
+      { href: "/job-coach/dashboard", label: "Dashboard" },
+      { href: "/candidate/community", label: "Community" },
+      { href: "/marketplace", label: "Marketplace" },
+    ];
   } else {
     // Default (no session)
     navItems = [
-      { href: "/candidate/JobListing", label: "Find Jobs" },
+      { href: "/candidate/community", label: "Community" },
+      { href: "/marketplace", label: "Marketplace"},
+      // { href: "/candidate/JobListing", label: "Find Jobs" },
       { href: "/contact", label: "Contact" },
     ];
   }
@@ -206,6 +214,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
           <div className="hidden md:flex items-center space-x-4">
             {session?.user ? (
               <>
+                <NotificationBell />
                 <span className="text-[#3a4043]">
                   Hi,{" "}
                   <span className="font-semibold">
@@ -278,6 +287,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
               <div className="pt-4 border-t border-violet-100 flex flex-col gap-2">
                 {session?.user ? (
                   <>
+                    <div className="flex items-center justify-center gap-2 py-2 hover: cursor-pointer">
+                      <NotificationBell />
+                    </div>
                     <span className="text-center text-[#3a4043] py-2">
                       Hi,{" "}
                       <span className="font-semibold">

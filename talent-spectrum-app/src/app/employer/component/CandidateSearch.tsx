@@ -46,15 +46,9 @@ import {
   Award,
   ArrowUpWideNarrow,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { useToastHelpers } from "@/components/ui/toast";
 
 // Priority Badge Component (same as Report tab)
@@ -102,6 +96,7 @@ interface Applicant {
   status: string;
   score?: number;
   accommodations_requested: boolean;
+  neurodivergent_strengths?: string[]; // Neurodivergent strengths for Talent Pool display
 }
 
 export default function CandidateList() {
@@ -115,6 +110,10 @@ export default function CandidateList() {
   const [sortBy, setSortBy] = useState("recent");
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  
+  // Pagination state for Talent Pool
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; 
 
   // Jobs with applicants
   const [jobsWithApplicants, setJobsWithApplicants] = useState<JobWithApplicants[]>([]);
@@ -197,77 +196,86 @@ export default function CandidateList() {
   };
 
   useEffect(() => {
-    const fetchJobsAndApplicants = async () => {
+    const fetchAllCandidateProfiles = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
         const employerEmail = session?.user?.email;
-        console.log("CandidateSearch: Fetching data for employer:", employerEmail);
+        console.log("CandidateSearch: Fetching all candidate profiles (talent pool)");
         
         if (!employerEmail) {
-          setError("Please sign in to view applicants");
+          setError("Please sign in to view candidates");
           setIsLoading(false);
           return;
         }
 
-        // Fetch jobs and applications in parallel
-        const jobsUrl = `${API_BASE}/jobs/employer/${employerEmail}`;
-        const applicationsUrl = `${API_BASE}/applications/employer/${employerEmail}`;
+        // Fetch all candidate profiles (talent pool)
+        const profilesUrl = `${API_BASE}/profiles/`;
         
-        console.log("CandidateSearch: Fetching jobs from:", jobsUrl);
-        console.log("CandidateSearch: Fetching applications from:", applicationsUrl);
+        console.log("CandidateSearch: Fetching all profiles from:", profilesUrl);
         
-        const [jobsResponse, applicationsResponse] = await Promise.all([
-          fetch(jobsUrl),
-          fetch(applicationsUrl)
-        ]);
+        const profilesResponse = await fetch(profilesUrl);
 
-        console.log("CandidateSearch: Jobs response status:", jobsResponse.status);
-        console.log("CandidateSearch: Applications response status:", applicationsResponse.status);
+        console.log("CandidateSearch: Profiles response status:", profilesResponse.status);
 
-        // Handle errors gracefully - don't show error messages to users
-        if (!jobsResponse.ok) {
-          const errorText = await jobsResponse.text();
-          console.error("CandidateSearch: Failed to fetch jobs:", jobsResponse.status, errorText);
-          // Don't throw - just log and continue with empty data
-          console.log("CandidateSearch: Continuing with empty jobs data");
-        }
-        
-        if (!applicationsResponse.ok) {
-          const errorText = await applicationsResponse.text();
-          console.error("CandidateSearch: Failed to fetch applications:", applicationsResponse.status, errorText);
-          // Don't throw - just log and continue with empty data
-          console.log("CandidateSearch: Continuing with empty applications data");
+        if (!profilesResponse.ok) {
+          const errorText = await profilesResponse.text();
+          console.error("CandidateSearch: Failed to fetch profiles:", profilesResponse.status, errorText);
+          setError("Failed to load candidate profiles");
+          setIsLoading(false);
+          return;
         }
 
-        // Parse JSON only if response was OK, otherwise use empty arrays
-        const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
-        const applicationsData = applicationsResponse.ok ? await applicationsResponse.json() : [];
+        // Parse JSON
+        const profilesData = await profilesResponse.json();
+        const allProfiles = Array.isArray(profilesData) ? profilesData : [];
 
-        console.log("CandidateSearch: Jobs data:", jobsData);
-        console.log("CandidateSearch: Applications data:", applicationsData);
-        console.log("CandidateSearch: Jobs count:", Array.isArray(jobsData) ? jobsData.length : 0);
-        console.log("CandidateSearch: Applications count:", Array.isArray(applicationsData) ? applicationsData.length : 0);
+        console.log("CandidateSearch: Total profiles fetched:", allProfiles.length);
 
-        // Process jobs and applicants using helper function
-        const processed = processJobsAndApplicants(jobsData, applicationsData);
-        console.log("CandidateSearch: Final jobs with applicants:", processed.jobs.map(j => ({ id: j.id, title: j.job_title, applicants: j.applicants.length })));
-        console.log("CandidateSearch: Final unique applicants:", processed.uniqueApplicants.size);
+        // Transform profiles to match the expected structure
+        const transformedProfiles = new Map<string, Applicant>();
+        const jobsMap = new Map<number, JobWithApplicants>();
 
-        setJobsWithApplicants(processed.jobs);
-        setUniqueApplicants(processed.uniqueApplicants);
+        allProfiles.forEach((profile: any) => {
+          const email = profile.candidate_email || profile.email || "";
+          if (email) {
+            transformedProfiles.set(email, {
+              id: email,
+              candidate_email: email,
+              candidate_name: profile.name || email.split('@')[0],
+              applied_date: profile.created_at || new Date().toISOString(),
+              status: "available", // All profiles are available in talent pool
+              score: undefined,
+              accommodations_requested: profile.accommodations && Array.isArray(profile.accommodations) && profile.accommodations.length > 0,
+              neurodivergent_strengths: profile.neurodivergent_strengths || [], // Store strengths for display
+            });
+          }
+        });
+
+        // Create a dummy job for "Talent Pool" to display all candidates
+        jobsMap.set(0, {
+          id: 0,
+          job_title: "Talent Pool - All Candidates",
+          location: "All Locations",
+          job_type: "All Types",
+          applicants: Array.from(transformedProfiles.values()),
+        });
+
+        console.log("CandidateSearch: Transformed profiles count:", transformedProfiles.size);
+
+        setJobsWithApplicants(Array.from(jobsMap.values()));
+        setUniqueApplicants(transformedProfiles);
       } catch (err: any) {
-        console.error("CandidateSearch: Error fetching data:", err);
-        // Don't set error state - just log it and show empty state
-        // setError(err.message || "Failed to load data");
+        console.error("CandidateSearch: Error fetching candidate profiles:", err);
+        setError(err.message || "Failed to load candidate profiles");
       } finally {
         setIsLoading(false);
       }
     };
     
     if (session?.user?.email) {
-      fetchJobsAndApplicants();
+      fetchAllCandidateProfiles();
     } else {
       console.log("CandidateSearch: No session email, skipping fetch");
       setIsLoading(false);
@@ -325,6 +333,33 @@ export default function CandidateList() {
     const matchesFilter = filterStatus === "all" || applicant.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  // Sort filtered applicants
+  const sortedUniqueApplicants = [...filteredUniqueApplicants].sort((a, b) => {
+    switch (sortBy) {
+      case "recent":
+        const dateA = a.applied_date ? new Date(a.applied_date).getTime() : 0;
+        const dateB = b.applied_date ? new Date(b.applied_date).getTime() : 0;
+        return dateB - dateA; // Most recent first
+      case "name":
+        return (a.candidate_name || "").localeCompare(b.candidate_name || "");
+      case "score":
+        return (b.score || 0) - (a.score || 0); // Highest score first
+      default:
+        return 0;
+    }
+  });
+
+  // Pagination for Talent Pool
+  const totalPages = Math.ceil(sortedUniqueApplicants.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedApplicants = sortedUniqueApplicants.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, sortBy]);
 
   const handleSelectCandidate = (candidateId: string) => {
     setSelectedCandidates(prev => 
@@ -676,7 +711,7 @@ export default function CandidateList() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
                   <Input
-                    placeholder="Search by job title, location, candidate name, or email..."
+                    placeholder="Search by candidate name, or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -686,7 +721,7 @@ export default function CandidateList() {
 
               {/* Filters */}
               <div className="flex gap-4">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="w-40">
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Status" />
@@ -698,7 +733,7 @@ export default function CandidateList() {
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="accepted">Accepted</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select> */}
 
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-40">
@@ -708,7 +743,7 @@ export default function CandidateList() {
                   <SelectContent>
                     <SelectItem value="recent">Most Recent</SelectItem>
                     <SelectItem value="name">Name A-Z</SelectItem>
-                    <SelectItem value="score">Best Match</SelectItem>
+                    {/* <SelectItem value="score">Best Match</SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>
@@ -742,240 +777,130 @@ export default function CandidateList() {
           {isLoading && <p className="text-[#6f7a80]">Loading...</p>}
           {!isLoading && (
             <p className="text-[#6f7a80] text-sm">
-              {filteredJobs.length === 0 && filteredUniqueApplicants.length === 0 
-                ? "No jobs or applicants found. Post jobs to start receiving applications."
-                : `Showing ${filteredUniqueApplicants.length} unique applicant(s) across ${filteredJobs.length} job(s)`
+              {sortedUniqueApplicants.length === 0 
+                ? "No candidates found."
+                : `Showing ${sortedUniqueApplicants.length} candidate${sortedUniqueApplicants.length !== 1 ? 's' : ''}`
               }
             </p>
           )}
         </div>
 
-        {/* Jobs with Applicants - Two columns layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredJobs.length === 0 && !isLoading && (
-            <Card className="lg:col-span-2">
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-[#3a4043] mb-2">No Jobs Posted Yet</h3>
-                <p className="text-[#6f7a80]">
-                  Post jobs to start receiving applications from candidates.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          {filteredJobs.map((job, index) => (
-            <motion.div
-              key={job.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <Card className="hover:shadow-lg transition-all duration-300">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">{job.job_title}</CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-[#6f7a80]">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {job.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Briefcase className="h-4 w-4" />
-                          {job.job_type}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-sm">
-                        {job.applicants.length} applicant{job.applicants.length !== 1 ? 's' : ''}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleJobExpansion(job.id)}
-                        className="hover:bg-gray-100 cursor-pointer"
-                      >
-                        {expandedJobs.has(job.id) ? (
-                          <>
-                            <ChevronUp className="h-4 w-4 mr-2" />
-                            Hide Applicants
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-4 w-4 mr-2" />
-                            Show Applicants
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                {expandedJobs.has(job.id) && (
-                  <CardContent>
-                    {job.applicants.length === 0 ? (
-                      <p className="text-[#6f7a80] text-sm text-center py-4">No applicants for this job yet</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {job.applicants.map((applicant) => (
-                          <Card key={applicant.id} className="bg-gray-50">
-                            <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-2">
-                        <input
-                          type="checkbox"
-                                      checked={selectedCandidates.includes(applicant.candidate_email)}
-                                      onChange={() => handleSelectCandidate(applicant.candidate_email)}
-                          className="mt-1"
-                        />
-                                    <h4 className="font-semibold text-[#3a4043]">{applicant.candidate_name}</h4>
-                                    {getStatusBadge(applicant.status)}
-                                    {applicant.score && (
-                                      <div className={`text-sm font-medium ${getMatchScoreColor(applicant.score)}`}>
-                                        {applicant.score}% match
-                              </div>
-                            )}
-                          </div>
-                                  <p className="text-sm text-[#6f7a80] mb-2">{applicant.candidate_email}</p>
-                                  <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
-                            <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      Applied: {new Date(applicant.applied_date).toLocaleDateString()}
-                            </span>
-                          </div>
-                            </div>
-                                <div className="flex flex-col gap-2 ml-4">
-                                  <Button 
-                                    size="sm" 
-                                    className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
-                                    onClick={() => handleViewProfile(applicant.candidate_email)}
-                                  >
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Profile
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => handleViewResume(applicant.candidate_email)}
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Resume
-                                  </Button>
-                                  <Select
-                                    value={applicant.status || 'under_review'}
-                                    onValueChange={(value) => handleUpdateStatus(applicant.applicationId || applicant.id, value)}
-                                  >
-                                    <SelectTrigger className="w-full text-xs h-8">
-                                      <SelectValue placeholder="Update Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="under_review">Under Review</SelectItem>
-                                      <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                                      <SelectItem value="rejected">Rejected</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                          </div>
-                            </div>
-                            </CardContent>
-                          </Card>
-                              ))}
-                            </div>
-                    )}
-                  </CardContent>
-                )}
-              </Card>
-            </motion.div>
-          ))}
-                          </div>
-
-        {/* Unique Applicants List */}
-        {filteredUniqueApplicants.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-[#3a4043] mb-4">All Unique Applicants ({filteredUniqueApplicants.length})</h2>
-            <div className="space-y-4">
-              {filteredUniqueApplicants.map((applicant, index) => (
+        {/* All Candidates List - Two columns grid */}
+        {sortedUniqueApplicants.length > 0 && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {paginatedApplicants.map((applicant, index) => (
                 <motion.div
                   key={applicant.candidate_email}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                  <Card className="hover:shadow-lg transition-all duration-300">
+                  <Card className="hover:shadow-lg transition-all duration-300 h-full border border-gray-300">
                     <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3 mb-2">
                             <input
                               type="checkbox"
                               checked={selectedCandidates.includes(applicant.candidate_email)}
                               onChange={() => handleSelectCandidate(applicant.candidate_email)}
                               className="mt-1"
                             />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xl font-semibold text-[#3a4043]">{applicant.candidate_name}</h3>
-                                {getStatusBadge(applicant.status)}
-                                {applicant.score && (
-                                  <div className={`text-sm font-medium ${getMatchScoreColor(applicant.score)}`}>
-                                    {applicant.score}% match
+                            <h3 className="text-lg font-semibold text-[#3a4043]">{applicant.candidate_name}</h3>
+                          </div>
+                          <p className="text-[#635bff] font-medium mb-3 text-sm">{applicant.candidate_email}</p>
+                          {/* Display strengths */}
+                          {applicant.neurodivergent_strengths && applicant.neurodivergent_strengths.length > 0 && (
+                            <div className="mb-3">
+                              <div className="flex flex-wrap gap-2">
+                                {applicant.neurodivergent_strengths.slice(0, 3).map((strength: string, idx: number) => (
+                                  <Badge key={idx} variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+                                    {strength}
+                                  </Badge>
+                                ))}
+                                {applicant.neurodivergent_strengths.length > 3 && (
+                                  <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+                                    +{applicant.neurodivergent_strengths.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           )}
-                            </div>
-                              <p className="text-[#635bff] font-medium mb-2">{applicant.candidate_email}</p>
-                              <div className="flex items-center gap-4 text-sm text-[#6f7a80]">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  Applied: {new Date(applicant.applied_date).toLocaleDateString()}
-                                </span>
-                            </div>
-                            </div>
-                            </div>
-                          </div>
-                    <div className="flex flex-col gap-2 ml-4">
+                        </div>
+                        <div className="flex flex-col gap-2 flex-shrink-0">
                           <Button 
                             size="sm" 
-                            className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
+                            className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer whitespace-nowrap"
                             onClick={() => handleViewProfile(applicant.candidate_email)}
                           >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Profile
-                      </Button>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Profile
+                          </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                            className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer whitespace-nowrap"
                             onClick={() => handleViewResume(applicant.candidate_email)}
                           >
-                        <Download className="w-4 h-4 mr-2" />
-                        Resume
-                      </Button>
-                          <Select
-                            value={applicant.status || 'under_review'}
-                            onValueChange={(value) => handleUpdateStatus(applicant.applicationId || applicant.id, value)}
-                          >
-                            <SelectTrigger className="w-full text-xs h-8">
-                              <SelectValue placeholder="Update Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="under_review">Under Review</SelectItem>
-                              <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                            </SelectContent>
-                          </Select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                            <Download className="w-4 h-4 mr-2" />
+                            Resume
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="hover:cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <Button
+                      key={i + 1}
+                      size="sm"
+                      variant={currentPage === i + 1 ? "default" : "outline"}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={currentPage === i + 1 
+                        ? "bg-[#635bff] text-white hover:bg-[#524aff] cursor-pointer" 
+                        : "hover:cursor-pointer"
+                      }
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="hover:cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+            <div className="mt-4 text-sm text-[#6f7a80] text-center">
+              Showing {startIndex + 1}-{Math.min(endIndex, sortedUniqueApplicants.length)} of {sortedUniqueApplicants.length} candidate{sortedUniqueApplicants.length !== 1 ? 's' : ''}
+            </div>
           </div>
         )}
 
         {/* No Results */}
-        {filteredJobs.length === 0 && filteredUniqueApplicants.length === 0 && !isLoading && (
+        {filteredJobs.length === 0 && sortedUniqueApplicants.length === 0 && !isLoading && (
           <Card>
             <CardContent className="p-12 text-center">
               <Users className="w-16 h-16 text-[#6f7a80] mx-auto mb-4" />
@@ -997,21 +922,40 @@ export default function CandidateList() {
           </Card>
         )}
 
-        {/* View Profile Dialog - Full Candidate Report */}
-        <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-          <DialogContent className="max-w-[98vw] w-[98vw] max-h-[95vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">Candidate Feedback Report</DialogTitle>
-              <DialogDescription>
-                {selectedCandidateEmail && `Comprehensive analysis for ${candidateReportData?.profile?.name || selectedCandidateEmail}`}
-              </DialogDescription>
-            </DialogHeader>
-            {loadingReport ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
-                <p className="text-[#6f7a80]">Loading candidate report...</p>
+        {/* View Profile Modal - Full Candidate Report */}
+        {showProfileDialog && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowProfileDialog(false)}
+            />
+            {/* Modal Content */}
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-[60vw] max-h-[95vh] overflow-hidden flex flex-col z-[100000]">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+                <div>
+                  <h2 className="text-2xl font-bold text-[#3a4043]">Candidate Feedback Report</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedCandidateEmail && `Comprehensive analysis for ${candidateReportData?.profile?.name || selectedCandidateEmail}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowProfileDialog(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-6 h-6 text-gray-600" />
+                </button>
               </div>
-            ) : candidateReportData ? (
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {loadingReport ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+                    <p className="text-[#6f7a80]">Loading candidate report...</p>
+                  </div>
+                ) : candidateReportData ? (
               <div className="space-y-6">
                 {/* Strengths & Needs */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1578,9 +1522,11 @@ export default function CandidateList() {
               <p className="text-[#6f7a80] text-center py-8">
                 Unable to load candidate report data.
               </p>
-            )}
-          </DialogContent>
-        </Dialog>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

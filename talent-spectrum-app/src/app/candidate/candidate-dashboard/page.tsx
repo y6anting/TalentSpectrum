@@ -8,7 +8,7 @@ import { Badge } from "@/app/components/badge";
 import { useToastHelpers } from "@/components/ui/toast";
 import {
   User, Briefcase, Heart, Eye, Settings, Book, House, Clock, CheckCircle, XCircle, MapPin, DollarSign, Shield, Plus, X, BrainCircuit,
-  HandFist, LetterTextIcon, UserStar, MessagesSquare, CalendarClock, FileText, LayoutDashboard, Search, Calendar, Video, Building, Bookmark, Share, Sparkles, Camera
+  Camera, LayoutDashboard, Search, LetterTextIcon, HandFist, UserStar, MessagesSquare, CalendarClock, FileText, Bookmark, Share
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -299,10 +299,19 @@ export default function CandidateDashboard() {
   const [savedJobIds, setSavedJobIds] = useState<Map<string, number>>(new Map());
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
   
+  // State for tracking applied jobs (for Apply button functionality)
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
+  
   // Search and filter states
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
   const [savedJobsSearchTerm, setSavedJobsSearchTerm] = useState("");
   const [applicationFilterStatus, setApplicationFilterStatus] = useState("all");
+  const [applicationFilterLocation, setApplicationFilterLocation] = useState("all");
+  const [applicationFilterType, setApplicationFilterType] = useState("all");
+  const [applicationSortBy, setApplicationSortBy] = useState("recent");
+  const [savedJobsFilterLocation, setSavedJobsFilterLocation] = useState("all");
+  const [savedJobsFilterType, setSavedJobsFilterType] = useState("all");
   const [savedJobsSortBy, setSavedJobsSortBy] = useState("recent");
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [selectedSavedJob, setSelectedSavedJob] = useState<any | null>(null);
@@ -874,49 +883,6 @@ export default function CandidateDashboard() {
     };
   }, []);
 
-  // Listen for job applied event to refresh applications
-  useEffect(() => {
-    const handler = () => {
-      const sessionEmail = session?.user?.email;
-      if (sessionEmail) {
-        // Refetch applications
-        fetch(`/api/applications?candidateEmail=${encodeURIComponent(sessionEmail)}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        })
-          .then(res => res.json())
-          .then(data => {
-            const mapped = Array.isArray(data)
-              ? data.map((app: any) => ({
-                  id: app.id ?? app.application_id ?? undefined,
-                  jobTitle: app.jobTitle ?? app.job_title ?? '',
-                  company: app.company ?? app.employer ?? '',
-                  appliedDate: app.appliedDate ?? app.applied_date ?? '',
-                  status: app.status ?? 'under_review',
-                  location: app.location ?? '',
-                  salary: app.salary ?? '',
-                  accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
-                  score: app.score ?? undefined,
-                }))
-              : [];
-            setApplications(mapped);
-            if (mapped.length > 0 && !selectedApplication) {
-              setSelectedApplication(mapped[0]);
-            }
-          })
-          .catch(err => console.error('Error refreshing applications:', err));
-      }
-    };
-    if (typeof window !== 'undefined') {
-      window.addEventListener('jobApplied', handler as EventListener);
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('jobApplied', handler as EventListener);
-      }
-    };
-  }, [session, selectedApplication]);
-
   // Listen for job saved event to refresh saved jobs
   useEffect(() => {
     const handler = () => {
@@ -986,6 +952,26 @@ export default function CandidateDashboard() {
       console.log('Applications data:', applicationsData);
       console.log('Jobs data count:', jobsData.length);
 
+      // Fetch match results for applications
+      let matchResultsMap = new Map();
+      if (email) {
+        try {
+          const matchResponse = await fetch(`${API_BASE}/match_results/candidate/${encodeURIComponent(email)}`);
+          if (matchResponse.ok) {
+            const matchData = await matchResponse.json();
+            if (Array.isArray(matchData)) {
+              matchData.forEach((match: any) => {
+                if (match.job_id) {
+                  matchResultsMap.set(match.job_id.toString(), match);
+                }
+              });
+            }
+          }
+        } catch (matchErr) {
+          console.warn('Failed to fetch match results for applications:', matchErr);
+        }
+      }
+
       // Import transform utilities
       const { transformJob, findMatchingJob } = await import('./utils/jobTransform');
 
@@ -1001,9 +987,13 @@ export default function CandidateDashboard() {
             
             console.log(`Match found:`, matchingJob ? 'YES' : 'NO', matchingJob ? `Job ID: ${matchingJob.id}` : '');
             
+            // Get AI match score if available
+            const aiMatchScore = matchingJob?.id ? matchResultsMap.get(matchingJob.id.toString()) : null;
+            
             // Base application data - ensure status is properly included
             const baseApp = {
               id: app.id ?? app.application_id ?? undefined,
+              job_id: app.job_id ?? (matchingJob as any)?.id ?? undefined, // Add job_id for saving
               jobTitle: appJobTitle,
               company: appCompany,
               appliedDate: app.appliedDate ?? app.applied_date ?? '',
@@ -1023,6 +1013,7 @@ export default function CandidateDashboard() {
                 requirements: transformedJob.requirements?.length,
                 accommodations: transformedJob.accommodations?.length,
               });
+              
               return {
                 ...baseApp,
                 // Override with transformed job data
@@ -1035,11 +1026,14 @@ export default function CandidateDashboard() {
                 applicationDeadline: transformedJob.applicationDeadline,
                 salaryRange: transformedJob.salaryRange,
                 salary: transformedJob.salary, // Use formatted salary from transformJob
-                primaryMatchScore: transformedJob.primaryMatchScore,
-                secondaryMatchScore: transformedJob.secondaryMatchScore,
-                tertiaryMatchScore: transformedJob.tertiaryMatchScore,
+                // Use AI match scores if available, otherwise use transformed job scores
+                primaryMatchScore: aiMatchScore ? aiMatchScore.primary_score : transformedJob.primaryMatchScore,
+                secondaryMatchScore: aiMatchScore ? aiMatchScore.secondary_score : transformedJob.secondaryMatchScore,
+                tertiaryMatchScore: aiMatchScore ? aiMatchScore.tertiary_score : transformedJob.tertiaryMatchScore,
+                score: aiMatchScore ? Math.round(aiMatchScore.total_score) : (app.score ?? transformedJob.matchScore),
                 accommodationsFriendly: transformedJob.accommodationsFriendly,
                 type: transformedJob.type,
+                jobStatus: transformedJob.status, // Include job status separately
               };
             }
 
@@ -1077,12 +1071,80 @@ export default function CandidateDashboard() {
     }
   }, [activeTab, session, fetchApplicationsData]);
 
+  // Listen for job applied event to refresh applications
+  useEffect(() => {
+    const handler = () => {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        // Refetch applications
+        fetch(`/api/applications?candidateEmail=${encodeURIComponent(sessionEmail)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        })
+          .then(res => res.json())
+          .then(data => {
+            const mapped = Array.isArray(data)
+              ? data.map((app: any) => ({
+                  id: app.id ?? app.application_id ?? undefined,
+                  jobTitle: app.jobTitle ?? app.job_title ?? '',
+                  company: app.company ?? app.employer ?? '',
+                  appliedDate: app.appliedDate ?? app.applied_date ?? '',
+                  status: app.status ?? 'under_review',
+                  location: app.location ?? '',
+                  salary: app.salary ?? '',
+                  accommodationsRequested: app.accommodationsRequested ?? app.accommodations_requested ?? false,
+                  score: app.score ?? undefined,
+                }))
+              : [];
+            setApplications(mapped);
+            if (mapped.length > 0 && !selectedApplication) {
+              setSelectedApplication(mapped[0]);
+            }
+          })
+          .catch(err => console.error('Error refreshing applications:', err));
+      }
+    };
+    
+    const handleJobStatusChanged = () => {
+      // Refetch applications to get updated job status
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        fetchApplicationsData(sessionEmail);
+      }
+    };
+
+    const handleApplicationWithdrawn = () => {
+      // Refetch applications after withdrawal
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        fetchApplicationsData(sessionEmail);
+      }
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jobApplied', handler as EventListener);
+      window.addEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+      window.addEventListener('applicationWithdrawn', handleApplicationWithdrawn as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('jobApplied', handler as EventListener);
+        window.removeEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+        window.removeEventListener('applicationWithdrawn', handleApplicationWithdrawn as EventListener);
+      }
+    };
+  }, [session, selectedApplication, fetchApplicationsData]);
+
+  // Track if saved jobs have been loaded
+  const [savedJobsLoaded, setSavedJobsLoaded] = useState(false);
+
   // Fetch saved jobs data from database via Next.js API route
   useEffect(() => {
     const fetchSavedJobsData = async (email: string) => {
       try {
-        // Fetch both saved jobs and all jobs in parallel
-        const [savedJobsResponse, jobsResponse] = await Promise.all([
+        setSavedJobsLoaded(false);
+        // Fetch saved jobs, all jobs, and match results in parallel
+        const [savedJobsResponse, jobsResponse, matchResponse] = await Promise.all([
           fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
@@ -1090,17 +1152,36 @@ export default function CandidateDashboard() {
           fetch('/api/jobs', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-          })
+          }),
+          fetch(`${API_BASE}/match_results/candidate/${encodeURIComponent(email)}`).catch(() => null)
         ]);
 
         if (!savedJobsResponse.ok) {
           console.error('Failed to fetch saved jobs:', savedJobsResponse.status);
           setSavedJobs([]);
+          setSavedJobsLoaded(true);
           return;
         }
 
         const savedJobsData = await savedJobsResponse.json();
         const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
+        
+        // Build match results map
+        let matchResultsMap = new Map();
+        if (matchResponse && matchResponse.ok) {
+          try {
+            const matchData = await matchResponse.json();
+            if (Array.isArray(matchData)) {
+              matchData.forEach((match: any) => {
+                if (match.job_id) {
+                  matchResultsMap.set(match.job_id.toString(), match);
+                }
+              });
+            }
+          } catch (matchErr) {
+            console.warn('Failed to parse match results:', matchErr);
+          }
+        }
 
         // Import transform utilities
         const { transformJob, findMatchingJob } = await import('./utils/jobTransform');
@@ -1110,9 +1191,16 @@ export default function CandidateDashboard() {
               // Find matching job from all jobs
               const matchingJob = findMatchingJob(jobsData, job.jobTitle ?? job.job_title ?? job.title ?? '', job.company ?? job.employer ?? '');
               
+              // Extract job_id - this is the actual job posting ID needed for applications
+              const actualJobId = job.job_id ?? (matchingJob as any)?.id ?? (matchingJob as any)?.job_id ?? undefined;
+              
+              // Get AI match score if available
+              const aiMatchScore = actualJobId ? matchResultsMap.get(actualJobId.toString()) : null;
+              
               // Base saved job data
               const baseJob = {
-                id: job.id ?? job.saved_job_id ?? job.job_id ?? undefined,
+                id: job.id ?? job.saved_job_id ?? actualJobId,
+                job_id: actualJobId, // Store the actual job ID for applying
                 jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
                 company: job.company ?? job.employer ?? '',
                 location: job.location ?? '',
@@ -1137,11 +1225,14 @@ export default function CandidateDashboard() {
                   applicationDeadline: transformedJob.applicationDeadline,
                   salaryRange: transformedJob.salaryRange,
                   salary: transformedJob.salary, // Use formatted salary from transformJob
-                  primaryMatchScore: transformedJob.primaryMatchScore,
-                  secondaryMatchScore: transformedJob.secondaryMatchScore,
-                  tertiaryMatchScore: transformedJob.tertiaryMatchScore,
+                  // Use AI match scores if available, otherwise use transformed job scores
+                  primaryMatchScore: aiMatchScore ? aiMatchScore.primary_score : transformedJob.primaryMatchScore,
+                  secondaryMatchScore: aiMatchScore ? aiMatchScore.secondary_score : transformedJob.secondaryMatchScore,
+                  tertiaryMatchScore: aiMatchScore ? aiMatchScore.tertiary_score : transformedJob.tertiaryMatchScore,
+                  matchScore: aiMatchScore ? Math.round(aiMatchScore.total_score) : transformedJob.matchScore,
                   accommodationsFriendly: transformedJob.accommodationsFriendly,
                   type: transformedJob.type,
+                  status: transformedJob.status, // Include job status
                 };
               }
 
@@ -1151,7 +1242,6 @@ export default function CandidateDashboard() {
 
         setSavedJobs(mapped);
         
-        // Update saved job keys and IDs for save/unsave functionality
         const savedKeys = new Set<string>();
         const savedIds = new Map<string, number>();
         mapped.forEach((job: any) => {
@@ -1167,9 +1257,11 @@ export default function CandidateDashboard() {
         if (mapped.length > 0 && !selectedSavedJob) {
           setSelectedSavedJob(mapped[0]);
         }
+        setSavedJobsLoaded(true);
       } catch (error) {
         console.error('Error fetching saved jobs data:', error);
         setSavedJobs([]);
+        setSavedJobsLoaded(true);
       }
     };
 
@@ -1178,6 +1270,145 @@ export default function CandidateDashboard() {
       fetchSavedJobsData(sessionEmail);
     }
   }, [session]);
+
+  // Refresh saved jobs when Saved Jobs tab is activated
+  useEffect(() => {
+    if (activeTab === 'saved') {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        console.log('Refreshing saved jobs data for Saved Jobs tab');
+        const fetchSavedJobsData = async (email: string) => {
+          try {
+            setSavedJobsLoaded(false);
+            // Fetch both saved jobs and all jobs in parallel
+            const [savedJobsResponse, jobsResponse] = await Promise.all([
+              fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+              }),
+              fetch('/api/jobs', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+              })
+            ]);
+
+            if (!savedJobsResponse.ok) {
+              console.error('Failed to fetch saved jobs:', savedJobsResponse.status);
+              setSavedJobs([]);
+              setSavedJobsLoaded(true);
+              return;
+            }
+
+            const savedJobsData = await savedJobsResponse.json();
+            const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
+            
+            // Fetch match results for saved jobs
+            let matchResultsMap = new Map();
+            if (email) {
+              try {
+                const matchResponse = await fetch(`${API_BASE}/match_results/candidate/${encodeURIComponent(email)}`);
+                if (matchResponse && matchResponse.ok) {
+                  const matchData = await matchResponse.json();
+                  if (Array.isArray(matchData)) {
+                    matchData.forEach((match: any) => {
+                      if (match.job_id) {
+                        matchResultsMap.set(match.job_id.toString(), match);
+                      }
+                    });
+                  }
+                }
+              } catch (matchErr) {
+                console.warn('Failed to fetch match results for saved jobs:', matchErr);
+              }
+            }
+
+            // Import transform utilities
+            const { transformJob, findMatchingJob } = await import('./utils/jobTransform');
+
+            const mapped = Array.isArray(savedJobsData)
+              ? savedJobsData.map((job: any) => {
+                  // Find matching job from all jobs
+                  const matchingJob = findMatchingJob(jobsData, job.jobTitle ?? job.job_title ?? job.title ?? '', job.company ?? job.employer ?? '');
+                  
+                  // Extract job_id - this is the actual job posting ID needed for applications
+                  const actualJobId = job.job_id ?? (matchingJob as any)?.id ?? (matchingJob as any)?.job_id ?? undefined;
+                  
+                  // Get AI match score if available
+                  const aiMatchScore = actualJobId ? matchResultsMap.get(actualJobId.toString()) : null;
+                  
+                  // Base saved job data
+                  const baseJob = {
+                    id: job.id ?? job.saved_job_id ?? actualJobId,
+                    job_id: actualJobId, // Store the actual job ID for applying
+                    jobTitle: job.jobTitle ?? job.job_title ?? job.title ?? '',
+                    company: job.company ?? job.employer ?? '',
+                    location: job.location ?? '',
+                    salary: job.salary ?? '',
+                    type: job.type ?? job.job_type ?? '',
+                    isInclusive: job.isInclusive ?? job.is_inclusive ?? false,
+                    hasAccommodations: job.hasAccommodations ?? job.has_accommodations ?? false,
+                  };
+
+                  // If matching job found, enrich with full job details
+                  if (matchingJob) {
+                    const transformedJob = transformJob(matchingJob);
+                    return {
+                      ...baseJob,
+                      // Override with transformed job data
+                      description: transformedJob.description,
+                      requirements: transformedJob.requirements,
+                      accommodations: transformedJob.accommodations,
+                      companySize: transformedJob.companySize,
+                      industry: transformedJob.industry,
+                      postedDate: transformedJob.postedDate,
+                      applicationDeadline: transformedJob.applicationDeadline,
+                      salaryRange: transformedJob.salaryRange,
+                      salary: transformedJob.salary, // Use formatted salary from transformJob
+                      // Use AI match scores if available, otherwise use transformed job scores
+                      primaryMatchScore: aiMatchScore ? aiMatchScore.primary_score : transformedJob.primaryMatchScore,
+                      secondaryMatchScore: aiMatchScore ? aiMatchScore.secondary_score : transformedJob.secondaryMatchScore,
+                      tertiaryMatchScore: aiMatchScore ? aiMatchScore.tertiary_score : transformedJob.tertiaryMatchScore,
+                      matchScore: aiMatchScore ? Math.round(aiMatchScore.total_score) : transformedJob.matchScore,
+                      accommodationsFriendly: transformedJob.accommodationsFriendly,
+                      type: transformedJob.type,
+                      status: transformedJob.status, // Include job status
+                    };
+                  }
+
+                  return baseJob;
+                })
+              : [];
+
+            setSavedJobs(mapped);
+            
+            const savedKeys = new Set<string>();
+            const savedIds = new Map<string, number>();
+            mapped.forEach((job: any) => {
+              const jobKey = `${job.jobTitle || job.title}-${job.company}`;
+              savedKeys.add(jobKey);
+              if (job.id) {
+                savedIds.set(jobKey, job.id);
+              }
+            });
+            setSavedJobKeys(savedKeys);
+            setSavedJobIds(savedIds);
+            
+            // Only set selected job if there are jobs and none is currently selected
+            if (mapped.length > 0 && !selectedSavedJob) {
+              setSelectedSavedJob(mapped[0]);
+            }
+            setSavedJobsLoaded(true);
+          } catch (error) {
+            console.error('Error fetching saved jobs data:', error);
+            setSavedJobs([]);
+            setSavedJobsLoaded(true);
+          }
+        };
+        fetchSavedJobsData(sessionEmail);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, session]);
 
   // Check if user has a profile/resume
   const checkUserProfile = async (userEmail: string): Promise<boolean> => {
@@ -1398,26 +1629,129 @@ export default function CandidateDashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleApplyForSavedJob = (job: any) => {
-    const newApplication = {
-      ...job,
-      id: applications.length > 0 ? Math.max(...applications.map(app => app.id)) + 1 : 1,
-      status: "under_review",
-      appliedDate: new Date().toISOString().split('T')[0],
-      accommodationsRequested: job.hasAccommodations || false,
-    };
+  const handleApplyToJob = async (job: any) => {
+    console.log('Apply button clicked for job:', job.jobTitle);
+    console.log('Full job object:', job);
+    const jobKey = `${job.jobTitle}-${job.company}`;
+    
+    try {
+      if (appliedJobs.has(jobKey)) {
+        info('Already Applied', 'You have already applied to this job.');
+        return;
+      }
+      
+      // Check if job is closed or expired
+      const isExpired = job.applicationDeadline && new Date(job.applicationDeadline) < new Date();
+      if (job.status === 'closed' || isExpired) {
+        showError('Job Unavailable', 'This job is closed or expired and no longer accepting applications.');
+        return;
+      }
+      
+      const userEmail = session?.user?.email;
+      if (!userEmail) {
+        showError('Not Authenticated', 'Please sign in before applying to jobs.');
+        return;
+      }
 
-    setApplications(prev => [newApplication, ...prev]);
+      // Check if user has a valid profile BEFORE setting loading state
+      const hasProfile = await checkUserProfile(userEmail);
+      if (!hasProfile) {
+        showError('Profile Incomplete', 'Please complete your profile or upload your resume to apply.');
+        return;
+      }
 
-    setSavedJobs(prev => prev.filter(savedJob => savedJob.id !== job.id));
+      // Only set loading state after validation passes
+      setApplyingJobId(jobKey);
 
-    if (selectedSavedJob?.id === job.id) {
-      const remainingSavedJobs = savedJobs.filter(savedJob => savedJob.id !== job.id);
-      setSelectedSavedJob(remainingSavedJobs.length > 0 ? remainingSavedJobs[0] : null);
+      // Get the job_id (could be job.job_id, job.id, or need to parse)
+      const jobId = job.job_id || job.id;
+      console.log('Extracted job ID:', jobId);
+      
+      if (!jobId) {
+        console.error('Job ID not found. Job object:', job);
+        showError('Application Failed', 'Job ID not found. Please try again.');
+        setApplyingJobId(null);
+        return;
+      }
+
+      const response = await fetch('/api/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          candidate_email: userEmail,
+          job_id: typeof jobId === 'string' ? parseInt(jobId) : jobId,
+          accommodations_requested: job.accommodationsFriendly || job.hasAccommodations || false
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        success('Application Submitted!', 'Your application has been submitted successfully.');
+        
+        // Update applied jobs state
+        setAppliedJobs(prev => new Set([...prev, jobKey]));
+        
+        // Emit event so other tabs can update
+        window.dispatchEvent(new CustomEvent('jobApplied', {
+          detail: {
+            id: typeof jobId === 'string' ? parseInt(jobId) : jobId,
+            jobTitle: job.jobTitle,
+            company: job.company,
+            appliedDate: new Date().toISOString(),
+            status: 'under_review',
+            accommodationsRequested: job.accommodationsFriendly || job.hasAccommodations || false,
+            location: job.location,
+            salary: job.salary,
+            matchScore: job.matchScore || job.primaryMatchScore
+          }
+        }));
+        
+        // Refetch applications to update the list
+        if (userEmail) {
+          fetch(`/api/applications?candidateEmail=${encodeURIComponent(userEmail)}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          })
+            .then(res => res.json())
+            .then(data => {
+              const mapped = Array.isArray(data) ? data.map((app: any) => ({
+                id: app.application_id || app.id,
+                jobTitle: app.job_title || app.jobTitle,
+                company: app.employer_email || app.company,
+                location: app.location || 'Not specified',
+                salary: app.salary_range !== undefined ? app.salary_range : (app.salary || 'Not specified'),
+                salaryRange: app.salary_range,
+                employmentType: app.job_type || app.type || 'Full-time',
+                status: app.status || 'under_review',
+                appliedDate: app.application_date || app.appliedDate || new Date().toISOString(),
+                accommodationsRequested: app.accommodations_requested || false,
+              })) : [];
+              setApplications(mapped);
+            })
+            .catch(err => console.error('Error refreshing applications:', err));
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Application failed:', errorData);
+        
+        const msg = errorData.error || errorData.detail || 'Failed to apply to job';
+        if (msg.toLowerCase().includes('already applied')) {
+          info('Already Applied', 'You have already applied to this job.');
+          setAppliedJobs(prev => new Set([...prev, jobKey]));
+        } else if (msg.toLowerCase().includes('profile not found') || msg.toLowerCase().includes('upload a resume')) {
+          showError('Profile Incomplete', 'Please complete your profile or upload your resume to apply.');
+        } else {
+          showError('Application Failed', msg);
+        }
+      }
+    } catch (err) {
+      console.error('Error applying to job:', err);
+      showError('Application Error', 'An error occurred while applying to the job. Please try again.');
+    } finally {
+      setApplyingJobId(null);
     }
-
-    setActiveTab("applications");
-    setSelectedApplication(newApplication);
   };
 
   // Update individual education record
@@ -1441,7 +1775,12 @@ export default function CandidateDashboard() {
     return "font-bold text-red-600";
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, jobStatus?: string) => {
+    // If job is closed, show "Closed" badge regardless of application status
+    if (jobStatus === 'closed' || jobStatus === 'expired') {
+      return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Closed</Badge>;
+    }
+    
     switch (status) {
       case "under_review":
         return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Under Review</Badge>;
@@ -1766,6 +2105,12 @@ export default function CandidateDashboard() {
                 setApplicationSearchTerm={setApplicationSearchTerm}
                 applicationFilterStatus={applicationFilterStatus}
                 setApplicationFilterStatus={setApplicationFilterStatus}
+                applicationFilterLocation={applicationFilterLocation}
+                setApplicationFilterLocation={setApplicationFilterLocation}
+                applicationFilterType={applicationFilterType}
+                setApplicationFilterType={setApplicationFilterType}
+                applicationSortBy={applicationSortBy}
+                setApplicationSortBy={setApplicationSortBy}
                 selectedApplication={selectedApplication}
                 setSelectedApplication={setSelectedApplication}
                 showMatchingScoreDialog={showMatchingScoreDialog}
@@ -2017,6 +2362,31 @@ export default function CandidateDashboard() {
             </Dialog>
 
             {activeTab === "saved" && (
+              <SavedJobsPage
+                savedJobs={savedJobs}
+                setSavedJobs={setSavedJobs}
+                savedJobsSearchTerm={savedJobsSearchTerm}
+                setSavedJobsSearchTerm={setSavedJobsSearchTerm}
+                savedJobsFilterLocation={savedJobsFilterLocation}
+                setSavedJobsFilterLocation={setSavedJobsFilterLocation}
+                savedJobsFilterType={savedJobsFilterType}
+                setSavedJobsFilterType={setSavedJobsFilterType}
+                savedJobsSortBy={savedJobsSortBy}
+                setSavedJobsSortBy={setSavedJobsSortBy}
+                selectedSavedJob={selectedSavedJob}
+                setSelectedSavedJob={setSelectedSavedJob}
+                getMatchScoreColor={getMatchScoreColor}
+                handleSaveJob={handleSaveJob}
+                savedJobKeys={savedJobKeys}
+                savingJobId={savingJobId}
+                appliedJobs={appliedJobs}
+                applyingJobId={applyingJobId}
+                handleApplyToJob={handleApplyToJob}
+                savedJobsLoaded={savedJobsLoaded}
+              />
+            )}
+
+            {false && activeTab === "saved" && (
               <div className="space-y-6">
                 {/* Search and Filters */}
                 <Card className="mb-3 sticky top-22 z-10">
@@ -2301,7 +2671,7 @@ export default function CandidateDashboard() {
                             <div className="flex flex-col gap-3 pt-4 border-t border-[#e8e6f0]">
                               <Button 
                                 className="w-full bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
-                                onClick={() => handleApplyForSavedJob(selectedSavedJob)}
+                                onClick={() => handleApplyToJob(selectedSavedJob)}
                               >
                                 <Briefcase className="w-4 h-4 mr-2" />
                                 Apply Now
@@ -2750,7 +3120,9 @@ export default function CandidateDashboard() {
                                 <input
                                   type={field.type}
                                   // Ensure value is formatted as YYYY-MM for type="month"
-                                  value={String(exp[field.key as keyof typeof exp] ?? "").substring(0, 7)} // <--- CHANGE HERE: substring(0,7)
+                                  value={field.type === "month" 
+                                    ? String(exp[field.key as keyof typeof exp] ?? "").substring(0, 7)
+                                    : String(exp[field.key as keyof typeof exp] ?? "")}
                                   onChange={(e) => updateExperience(exp.id, { [field.key]: e.target.value })}
                                   className="w-full px-3 py-2 border border-[#e8e6f0] rounded-lg outline-none focus-visible:border-gray-400 focus-visible:ring-gray-400/50 focus-visible:ring-[1px]"
                                 />
@@ -3399,16 +3771,14 @@ export default function CandidateDashboard() {
                 )}
 
                 {mockInterviewStep === "history" && (
-                  <InterviewHistoryPage 
-                    onNavigate={(target, reportId?) => {
-                      if (target === "setup") {
-                        setMockInterviewStep("setup");
-                      } else if (target === "detail" && reportId) {
-                        setSelectedReportId(reportId);
-                        setMockInterviewStep("history-detail");
-                      }
-                    }}
-                  />
+                  <InterviewHistoryPage onNavigate={(target, reportId) => {
+                    if (target === "history-detail" && reportId) {
+                      setSelectedReportId(reportId);
+                      setMockInterviewStep("history-detail");
+                    } else if (target === "setup") {
+                      setMockInterviewStep("setup");
+                    }
+                  }} />
                 )}
 
                 {mockInterviewStep === "history-detail" && selectedReportId && (

@@ -644,6 +644,12 @@ const LoginPage = () => {
                       name="name"
                       value={signupData.name}
                       onChange={handleSignupInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && signupData.name.trim()) {
+                          e.preventDefault();
+                          handleNextStep();
+                        }
+                      }}
                       className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your full name"
                       autoFocus
@@ -662,6 +668,12 @@ const LoginPage = () => {
                       name="email"
                       value={signupData.email}
                       onChange={handleSignupInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && signupData.email.trim()) {
+                          e.preventDefault();
+                          handleNextStep();
+                        }
+                      }}
                       className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your email"
                       autoFocus

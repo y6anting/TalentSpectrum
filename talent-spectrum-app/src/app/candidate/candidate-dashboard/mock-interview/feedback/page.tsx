@@ -35,6 +35,7 @@ import {
   Download 
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 type InterviewType = "general" | "technical" | "behavioral";
 
@@ -56,12 +57,13 @@ interface InterviewSession {
   feedback?: string;
 }
 
-type EmbeddedNavTarget = "setup" | "interview" | "feedback";
+type EmbeddedNavTarget = "setup" | "interview" | "feedback" | "history";
 interface EmbeddedNavProps { onNavigate?: (target: EmbeddedNavTarget) => void }
 
 const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   const router = useRouter();
   const { data: authSession } = useSession();
+  const { success, error: showError } = useToastHelpers();
   
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,12 +73,12 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
 
   const saveToHistory = async () => {
     if (!session || !authSession?.user?.email) {
-      alert("Please sign in to save your interview history");
+      showError("Please sign in to save your interview history");
       return;
     }
 
     if (!parsed) {
-      alert("Feedback not yet generated");
+      showError("Feedback not yet generated");
       return;
     }
 
@@ -125,10 +127,10 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       }
 
       setIsSaved(true);
-      alert("Interview report saved to history successfully!");
+      success("Interview report saved to history successfully!");
     } catch (error: any) {
       console.error("Error saving interview report:", error);
-      alert(error?.message || "Failed to save interview report. Please try again.");
+      showError(error?.message || "Failed to save interview report. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -238,12 +240,16 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
         startTime: new Date(parsedData.startTime),
         endTime: parsedData.endTime ? new Date(parsedData.endTime) : undefined
       };
-      setSession(sessionWithDate);
       
-      // Generate AI feedback if not already generated
+      // Generate AI feedback if not already generated - wait for it to complete before showing
       if (!parsedData.feedback && parsedData.answers && parsedData.answers.length > 0) {
-        generateFeedback(sessionWithDate);
+        generateFeedback(sessionWithDate).then(() => {
+          // Feedback generation complete, now set session and stop loading
+          setLoading(false);
+        });
       } else {
+        // Feedback already exists, set session immediately
+        setSession(sessionWithDate);
         setLoading(false);
       }
     } else {
@@ -253,16 +259,14 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
-  const generateFeedback = async (sessionData: InterviewSession) => {
+  const generateFeedback = async (sessionData: InterviewSession): Promise<void> => {
     if (!sessionData.selectedPosition || !sessionData.answers.length) {
-      setLoading(false);
       return;
     }
 
     // Don't regenerate if feedback already exists
     if (sessionData.feedback) {
       console.log("📋 Feedback already exists, skipping generation");
-      setLoading(false);
       return;
     }
 
@@ -281,6 +285,7 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       };
       
       console.log("✅ Feedback generated successfully");
+      // Set session only after feedback is fully generated to prevent flashing
       setSession(updatedSession);
       sessionStorage.setItem('mockInterviewSession', JSON.stringify(updatedSession));
     } catch (error) {
@@ -293,21 +298,18 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       sessionStorage.setItem('mockInterviewSession', JSON.stringify(fallbackSession));
     } finally {
       setIsGeneratingFeedback(false);
-      setLoading(false);
     }
   };
 
   if (loading || !session) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bFF] mx-auto mb-4"></div>
-            <p className="text-gray-600">
-              {isGeneratingFeedback ? "Generating AI feedback..." : "Loading feedback..."}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="w-full flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+          <p className="text-[#6f7a80]">
+            {isGeneratingFeedback ? "Generating AI feedback..." : "Loading feedback..."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -559,7 +561,7 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
               <Button
                 onClick={saveToHistory}
                 disabled={isSaving || isSaved}
-                className="w-fit px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-fit px-6 py-2 bg-[#635BFF] hover:bg-[#524BCC] text-white font-semibold rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>
@@ -578,14 +580,19 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
                   </>
                 )}
               </Button>
-              <Link href="/candidate/candidate-dashboard/mock-interview/history">
-                <Button
-                  variant="outline"
-                  className="w-fit px-6 py-2 rounded-md border border-[#635BFF] text-[#635BFF] font-semibold hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
-                >
-                  View All History
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                className="w-fit px-6 py-2 rounded-md border border-[#635BFF] text-[#635BFF] font-semibold hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate("history");
+                  } else {
+                    router.push('/candidate/candidate-dashboard?tab=mock-interview&subtab=history');
+                  }
+                }}
+              >
+                View All History
+              </Button>
               <Button
                 variant="outline"
                 className="w-fit px-4 py-2 rounded-md 

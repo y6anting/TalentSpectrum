@@ -7,10 +7,11 @@ import { Button } from "@/app/components/button";
 import { Input } from "@/app/components/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import {
-  Search, MapPin, Clock, Briefcase, DollarSign, Shield, Building, Bookmark, Share, Eye, ChevronDown, ChevronUp, CheckCircle, BrainCircuit, House, Heart
+  Search, MapPin, Clock, Briefcase, DollarSign, Shield, Building, Bookmark, Share, Eye, ChevronDown, ChevronUp, CheckCircle, BrainCircuit, House, Heart, SortAsc, FileText
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useToastHelpers } from "@/components/ui/toast";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -31,7 +32,8 @@ interface Application {
   salaryRange?: number; // Index for SALARY_RANGES array
   employmentType: string;
   type?: string;
-  status: string;
+  status: string; // Application status (under_review, shortlisted, etc.)
+  jobStatus?: string; // Job status (active, closed, expired)
   appliedDate: string;
   accommodationsRequested?: boolean;
   accommodations?: string[]; // Accommodations offered
@@ -58,12 +60,18 @@ interface ApplicationsPageProps {
   setApplicationSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   applicationFilterStatus: string;
   setApplicationFilterStatus: React.Dispatch<React.SetStateAction<string>>;
+  applicationFilterLocation?: string;
+  setApplicationFilterLocation?: React.Dispatch<React.SetStateAction<string>>;
+  applicationFilterType?: string;
+  setApplicationFilterType?: React.Dispatch<React.SetStateAction<string>>;
+  applicationSortBy?: string;
+  setApplicationSortBy?: React.Dispatch<React.SetStateAction<string>>;
   selectedApplication: Application | null;
   setSelectedApplication: React.Dispatch<React.SetStateAction<Application | null>>;
   showMatchingScoreDialog: boolean;
   setShowMatchingScoreDialog: React.Dispatch<React.SetStateAction<boolean>>;
   getStatusIcon: (status: string) => React.ReactNode;
-  getStatusBadge: (status: string) => React.ReactNode;
+  getStatusBadge: (status: string, jobStatus?: string) => React.ReactNode;
   handleSaveJob: (job: Application) => Promise<void>;
   savedJobKeys: Set<string>;
   savingJobId: string | null;
@@ -76,6 +84,12 @@ export default function ApplicationsPage({
   setApplicationSearchTerm,
   applicationFilterStatus,
   setApplicationFilterStatus,
+  applicationFilterLocation,
+  setApplicationFilterLocation,
+  applicationFilterType,
+  setApplicationFilterType,
+  applicationSortBy,
+  setApplicationSortBy,
   selectedApplication,
   setSelectedApplication,
   showMatchingScoreDialog,
@@ -87,16 +101,64 @@ export default function ApplicationsPage({
   savingJobId,
 }: ApplicationsPageProps) {
   const router = useRouter();
+  const { success } = useToastHelpers();
   const [expandedMatchingScore, setExpandedMatchingScore] = useState<number | null>(null);
+  
+  // Default values if not provided
+  const filterLocation = applicationFilterLocation || "all";
+  const filterType = applicationFilterType || "all";
+  const sortBy = applicationSortBy || "recent";
+  const setFilterLocation = setApplicationFilterLocation || (() => {});
+  const setFilterType = setApplicationFilterType || (() => {});
+  const setSortBy = setApplicationSortBy || (() => {});
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = !applicationSearchTerm || 
-      app.jobTitle.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-      app.company.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-      app.status.toLowerCase().includes(applicationSearchTerm.toLowerCase());
-    const matchesStatus = applicationFilterStatus === "all" || app.status === applicationFilterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredApplications = applications
+    .filter(app => {
+      const matchesSearch = !applicationSearchTerm || 
+        app.jobTitle.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
+        app.company.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
+        app.status.toLowerCase().includes(applicationSearchTerm.toLowerCase());
+      const matchesStatus = applicationFilterStatus === "all" || app.status === applicationFilterStatus;
+      
+      // Location filter: check both location field and work_mode for Remote/Hybrid
+      let matchesLocation = true;
+      if (filterLocation !== "all") {
+        if (filterLocation === "Remote") {
+          matchesLocation = (app.location || "").toLowerCase().includes("remote");
+        } else if (filterLocation === "Hybrid") {
+          matchesLocation = (app.location || "").toLowerCase().includes("hybrid");
+        } else {
+          matchesLocation = (app.location || "").includes(filterLocation);
+        }
+      }
+      
+      // Work type filter: check both type field and work_mode for Remote
+      let matchesType = true;
+      if (filterType !== "all") {
+        const appTypeLower = (app.type || "").toLowerCase();
+        const filterTypeLower = filterType.toLowerCase();
+        
+        if (filterTypeLower === "remote") {
+          matchesType = appTypeLower.includes("remote");
+        } else {
+          matchesType = appTypeLower === filterTypeLower || appTypeLower.includes(filterTypeLower);
+        }
+      }
+      
+      return matchesSearch && matchesStatus && matchesLocation && matchesType;
+    })
+    .sort((a, b) => {
+      // Handle sortBy filter
+      if (sortBy === "match") {
+        return (b.score || 0) - (a.score || 0);
+      } else if (sortBy === "salary") {
+        return (b.salaryRange || 0) - (a.salaryRange || 0);
+      }
+      // Default: recent (sort by postedDate or appliedDate, most recent first)
+      const aDate = a.postedDate ? new Date(a.postedDate).getTime() : (a.appliedDate ? new Date(a.appliedDate).getTime() : 0);
+      const bDate = b.postedDate ? new Date(b.postedDate).getTime() : (b.appliedDate ? new Date(b.appliedDate).getTime() : 0);
+      return bDate - aDate;
+    });
 
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return "font-bold text-green-600";
@@ -121,6 +183,47 @@ export default function ApplicationsPage({
     return app.salary || "Not specified";
   };
 
+  // Loading state - show loading if applications array is empty and we're expecting data
+  const isLoading = applications.length === 0 && applicationSearchTerm === "";
+
+  // if (isLoading) {
+  //   return (
+  //     <div className="w-full flex items-center justify-center py-12">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+  //         <p className="text-[#6f7a80]">Loading applications...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // Show empty state if no applications found
+  if (applications.length === 0 && !isLoading) {
+    return (
+      <div className="w-full flex items-center justify-center py-20">
+        <Card className="max-w-md border border-gray-200">
+          <CardContent className="p-8 text-center">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No Applications Found</h3>
+            <p className="text-[#6f7a80] text-sm mb-6">Start applying to jobs to see your applications here.</p>
+            <Button
+              onClick={() => router.push("/candidate/JobListing")}
+              className="bg-[#635bff] hover:bg-[#524aff] text-white"
+            >
+              Browse Jobs
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  function showError(arg0: string, arg1: string) {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -144,28 +247,59 @@ export default function ApplicationsPage({
               {/* Filters */}
               <div className="flex gap-4">
                 <Select value={applicationFilterStatus} onValueChange={setApplicationFilterStatus}>
-                  <SelectTrigger className="w-42">
+                  <SelectTrigger className="w-fit cursor-pointer">
                     <MapPin className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="under_review">Under Review</SelectItem>
-                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="all" className="cursor-pointer">All Status</SelectItem>
+                    <SelectItem value="under_review" className="cursor-pointer">Under Review</SelectItem>
+                    <SelectItem value="shortlisted" className="cursor-pointer">Shortlisted</SelectItem>
+                    <SelectItem value="interview_scheduled" className="cursor-pointer">Interview Scheduled</SelectItem>
+                    <SelectItem value="rejected" className="cursor-pointer">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
 
-                <Select value="recent" onValueChange={() => {}}>
-                  <SelectTrigger className="w-42">
+                {/* <Select value={applicationFilterLocation || "all"} onValueChange={setApplicationFilterLocation}>
+                  <SelectTrigger className="w-fit cursor-pointer">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="cursor-pointer">All Locations</SelectItem>
+                    <SelectItem value="Kuala Lumpur" className="cursor-pointer">Kuala Lumpur</SelectItem>
+                    <SelectItem value="Petaling Jaya" className="cursor-pointer">Petaling Jaya</SelectItem>
+                    <SelectItem value="George Town" className="cursor-pointer">George Town</SelectItem>
+                    <SelectItem value="Johor Bahru" className="cursor-pointer">Johor Bahru</SelectItem>
+                    <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
+                    <SelectItem value="Hybrid" className="cursor-pointer">Hybrid</SelectItem>
+                    <SelectItem value="Malaysia" className="cursor-pointer">Malaysia</SelectItem>
+                  </SelectContent>
+                </Select> */}
+
+                <Select value={applicationFilterType || "all"} onValueChange={setApplicationFilterType}>
+                  <SelectTrigger className="w-fit cursor-pointer">
                     <Clock className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="cursor-pointer">All Types</SelectItem>
+                    <SelectItem value="Full-time" className="cursor-pointer">Full-time</SelectItem>
+                    <SelectItem value="Part-time" className="cursor-pointer">Part-time</SelectItem>
+                    <SelectItem value="Contract" className="cursor-pointer">Contract</SelectItem>
+                    <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={applicationSortBy || "recent"} onValueChange={setApplicationSortBy}>
+                  <SelectTrigger className="w-fit cursor-pointer">
+                    <SortAsc className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="recent">Most Recent</SelectItem>
-                    <SelectItem value="match">Best Match</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
+                    <SelectItem value="recent" className="cursor-pointer">Most Recent</SelectItem>
+                    <SelectItem value="match" className="cursor-pointer">Best Match</SelectItem>
+                    <SelectItem value="salary" className="cursor-pointer">Highest Salary</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -245,7 +379,7 @@ export default function ApplicationsPage({
 
                              {/* RIGHT STATUS BADGE AND HEART */}
                              <div className="flex flex-col justify-between items-end gap-2 sm:self-start shrink-0">
-                               {getStatusBadge(app.status)}
+                               {getStatusBadge(app.status, app.jobStatus)}
                                <button
                                  className={`p-2 rounded-md transition-colors cursor-pointer ${
                                    savedJobKeys.has(`${app.jobTitle}-${app.company}`)
@@ -318,7 +452,7 @@ export default function ApplicationsPage({
                         </button>
                       </div>
                       <div className="absolute top-20 right-4">
-                        {getStatusBadge(selectedApplication.status)}
+                        {getStatusBadge(selectedApplication.status, selectedApplication.jobStatus)}
                       </div>
                     </div>
                   </CardHeader>
@@ -411,11 +545,35 @@ export default function ApplicationsPage({
                     <div className="flex flex-row gap-3 pt-4 border-t border-[#e8e6f0]">
                       <Button 
                         className="flex-1 bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
-                        onClick={() => {
-                          if (selectedApplication) {
-                            setApplications(prev => prev.filter(app => app.id !== selectedApplication.id));
-                            const remainingApplications = applications.filter(app => app.id !== selectedApplication.id);
-                            setSelectedApplication(remainingApplications.length > 0 ? remainingApplications[0] : null);
+                        onClick={async () => {
+                          if (selectedApplication && selectedApplication.id) {
+                            try {
+                              const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                              const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                              });
+
+                              if (response.ok) {
+                                setApplications(prev => prev.filter(app => app.id !== selectedApplication.id));
+                                const remainingApplications = applications.filter(app => app.id !== selectedApplication.id);
+                                setSelectedApplication(remainingApplications.length > 0 ? remainingApplications[0] : null);
+                                success('Application Withdrawn', `Your application for ${selectedApplication.jobTitle} at ${selectedApplication.company} has been withdrawn.`);
+                                
+                                // Dispatch event to refresh applications list
+                                if (typeof window !== 'undefined') {
+                                  window.dispatchEvent(new CustomEvent('applicationWithdrawn', {
+                                    detail: { applicationId: selectedApplication.id }
+                                  }));
+                                }
+                              } else {
+                                const errorText = await response.text();
+                                showError('Withdrawal Failed', errorText || 'Failed to withdraw application. Please try again.');
+                              }
+                            } catch (error) {
+                              console.error('Error withdrawing application:', error);
+                              showError('Error', 'An error occurred while withdrawing the application.');
+                            }
                           }
                         }}
                       >

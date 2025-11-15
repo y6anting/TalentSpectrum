@@ -137,7 +137,7 @@ export default function OverviewPage({
                       {app.company} • {app.location}
                     </p>
                   </div>
-                  {app.accommodationsRequested && (
+                  {/* {app.accommodationsRequested && (
                     <Badge
                       variant="secondary"
                       className="bg-purple-100 text-[#635BFF] flex items-center gap-1"
@@ -145,7 +145,7 @@ export default function OverviewPage({
                       <Shield className="h-3 w-3" />
                       Accommodations
                     </Badge>
-                  )}
+                  )} */}
                 </div>
                 <div className="text-right">
                   {getStatusBadge(app.status)}

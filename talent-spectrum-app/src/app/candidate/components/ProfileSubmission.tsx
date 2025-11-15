@@ -91,7 +91,7 @@ export function ProfileSubmission({ candidateProfile, onSave }: ProfileSubmissio
     <div>
       {error && <p className="text-red-600 mb-2">{error}</p>}
       <Button
-        className="bg-[#635bff] hover:bg-[#827CFF] text-white"
+        className="bg-[#635bff] hover:bg-[#827CFF] text-white hover:cursor-pointer"
         onClick={handleSubmitProfile}
         disabled={isSubmitting}
       >

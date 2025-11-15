@@ -38,6 +38,9 @@ export interface Job {
   optional_social_event: boolean;
   mental_health_support: boolean;
   near_public_transport: boolean;
+  created_at?: string; // ISO date string
+  application_deadline?: string; // ISO date string
+  status?: string; // Job status (active, closed, expired)
 }
 
 export interface DisplayJob {
@@ -62,6 +65,7 @@ export interface DisplayJob {
   primaryMatchScore?: number;
   secondaryMatchScore?: number;
   tertiaryMatchScore?: number;
+  status?: string; // Job status (active, closed, expired)
 }
 
 export const transformJob = (job: Job): DisplayJob => {
@@ -110,15 +114,30 @@ export const transformJob = (job: Job): DisplayJob => {
   if (job.flexible_work_hour) matchScore += 5;
   if (job.neurodiversity_awareness_training) matchScore += 5;
 
+  // Use actual dates from backend if available, otherwise use defaults
+  const postedDate = job.created_at 
+    ? new Date(job.created_at).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+  
+  const applicationDeadline = job.application_deadline
+    ? new Date(job.application_deadline).toISOString().split('T')[0]
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days from now as fallback
+
+  // Determine job status - check if expired based on deadline
+  let jobStatus = job.status || 'active';
+  if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+    jobStatus = 'expired';
+  }
+
   return {
     id: job.id.toString(),
     title: job.job_title,
     company: job.employer_email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     location: job.location,
     type: job.job_type,
-    salary: SALARY_RANGES[job.salary_range] || `RM${job.salary_range}k - RM${job.salary_range + 20}k / annum`,
+    salary: SALARY_RANGES[job.salary_range] || `RM${job.salary_range}k - RM${job.salary_range + 20}k / month`,
     salaryRange: job.salary_range,
-    postedDate: new Date().toISOString().split('T')[0],
+    postedDate,
     matchScore: Math.min(matchScore, 100),
     accommodationsFriendly,
     description: job.job_summary,
@@ -127,11 +146,12 @@ export const transformJob = (job: Job): DisplayJob => {
     accommodations: accommodations,
     companySize: "50-500 employees",
     industry: "Technology",
-    applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    applicationDeadline,
     neurodivergentFriendly: accommodationsFriendly,
     primaryMatchScore: Math.min(matchScore, 100),
     secondaryMatchScore: Math.min(matchScore - 5, 95),
     tertiaryMatchScore: Math.min(matchScore - 10, 90),
+    status: jobStatus, // Include job status
   };
 };
 

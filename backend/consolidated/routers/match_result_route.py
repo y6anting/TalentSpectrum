@@ -170,3 +170,19 @@ async def get_match_results_by_job_id(job_id: int, db: Session = Depends(get_db)
         raise e # Re-raise HTTPExceptions
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve match results for job ID {job_id}: {e}")
+
+
+# NEW: Endpoint to get all match results for a specific candidate email
+@router.get("/candidate/{candidate_email}", response_model=List[MatchResultFullResponse], summary="Retrieve all stored match results for a specific candidate (full data).")
+async def get_match_results_by_candidate_email(candidate_email: str, db: Session = Depends(get_db)):
+    """
+    Retrieves a complete list of all match results from the database
+    for a given candidate email.
+    """
+    try:
+        results = db.query(MatchResult).filter(MatchResult.candidate_email == candidate_email).all()
+        # Don't raise 404 if no results found - just return empty list
+        # This allows frontend to gracefully handle "no matches yet" scenario
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve match results for candidate {candidate_email}: {e}")

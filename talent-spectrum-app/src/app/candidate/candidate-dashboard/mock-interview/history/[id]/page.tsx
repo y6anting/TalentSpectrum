@@ -10,7 +10,8 @@ import {
   ArrowUpWideNarrow,
   MessageSquare,
   History,
-  Mic
+  Mic,
+  ArrowLeft
 } from "lucide-react";
 
 type Report = {
@@ -137,7 +138,17 @@ export default function InterviewReportDetailPage({ reportId, onNavigate }: Embe
   const durationMinutes = Math.round((report.duration_seconds || 0) / 60);
 
   return (
-    <div className="">
+    <div className="w-full">
+      <div className="mb-4">
+        <Button
+          variant="outline"
+          onClick={handleBackToHistory}
+          className="mb-4 border-[#635bff] text-[#635bff] hover:bg-[#635bff] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to History
+        </Button>
+      </div>
       <div className="">
         <div className="max-w-[1400px] ">
           <Card className="max-w-[6xl] mx-auto bg-white p-4">
@@ -187,6 +198,16 @@ export default function InterviewReportDetailPage({ reportId, onNavigate }: Embe
                 </div>
                 </Card>
               </div>
+
+              {/* Overall Feedback Summary - matches feedback page */}
+              {report.overall_feedback && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-6 mb-8 text-left">
+                  <h4 className="text-xl font-semibold text-gray-800 mb-3 flex items-center">
+                    Overall Feedback 
+                  </h4>
+                  <p className="text-gray-700 text-lg leading-relaxed">{report.overall_feedback}</p>
+                </div>
+              )}
 
               {/* Text before strengths/improvements - matches feedback page exactly */}
               <div className="py-4">

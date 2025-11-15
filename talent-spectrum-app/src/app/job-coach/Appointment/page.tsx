@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Card } from "@/app/components/card";
-import { Calendar, Video, User, Clock, Search, Building, Briefcase, MessageSquare, CalendarClock } from "lucide-react"
+import { Calendar, Video, User, Clock, Search, Building, Briefcase, MessageSquare, CalendarClock, MapPin } from "lucide-react"
 import { useSession } from "next-auth/react";
 import { useToastHelpers } from "@/components/ui/toast";
 
@@ -13,13 +13,11 @@ type Appointment = {
   dateTime: Date;
 };
 
-type JobCoach = {
+type Candidate = {
   email: string;
   name: string;
-  organization?: string;
-  specializations?: string[];
-  bio?: string;
-  experience_years?: number;
+  title?: string;
+  location?: string;
   profile_picture_url?: string;
   available_appointments?: Array<{
     id: number;
@@ -31,86 +29,79 @@ type JobCoach = {
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 const APPOINTMENT_BASE_URL = `${BASE_URL}/appointment`;
 
-export default function AppointmentPage() {
+export default function JobCoachAppointmentPage() {
   const { data: session } = useSession();
   const { success, error: showError } = useToastHelpers();
-  const [jobCoachSearch, setJobCoachSearch] = useState('');
-  const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [appointmentMonth, setAppointmentMonth] = useState(new Date().getMonth());
   const [appointmentYear, setAppointmentYear] = useState(new Date().getFullYear());
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [jobCoaches, setJobCoaches] = useState<JobCoach[]>([]);
-  const [loadingCoaches, setLoadingCoaches] = useState(true);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
-  const candidateNameTemp = session?.user?.email || "Proxy Candidate";
-  const meetUrl = "https://meet.google.com/xxj-yzxu-dkz"
+  const coachEmail = session?.user?.email || "";
+  const meetUrl = "https://meet.google.com/"; // change this url to google meet. make sure it has https
   
-  // Fetch job coaches with their available appointments from API
-  const fetchJobCoachesWithAppointments = async () => {
+  // Fetch all candidates
+  const fetchCandidates = async () => {
     try {
-      setLoadingCoaches(true);
-      const res = await fetch('/api/job-coach/all-with-appointments');
+      setLoadingCandidates(true);
+      const res = await fetch(`${BASE_URL}/profiles/`);
       if (!res.ok) {
-        console.warn("Failed to fetch job coaches with appointments, falling back to separate endpoints");
-        // Fallback to separate endpoints
-        await Promise.all([fetchJobCoaches(), fetchAppointments()]);
-        return;
+        throw new Error("Failed to fetch candidates");
       }
-      const data: JobCoach[] = await res.json();
-      setJobCoaches(data || []);
+      const data: any[] = await res.json();
       
-      // Also populate appointments for backward compatibility
-      // First, fetch ALL appointments to include booked ones
+      // Transform candidate profiles to Candidate type
+      const transformedCandidates: Candidate[] = data.map((profile: any) => ({
+        email: profile.candidate_email || profile.email || "",
+        name: profile.name || profile.personal_identifiers?.fullName || profile.candidate_email || profile.email || "Unknown",
+        title: profile.title || profile.personal_identifiers?.jobTitle || "",
+        location: profile.location || profile.personal_identifiers?.location || "",
+        profile_picture_url: profile.profile_picture_url || profile.personal_identifiers?.profile_picture_url,
+        available_appointments: [] // Will be populated from appointments
+      }));
+      
+      setCandidates(transformedCandidates);
+      
+      // Fetch ALL appointments to include booked ones
       const allAppointmentsRes = await fetch(`${APPOINTMENT_BASE_URL}/all`);
       if (allAppointmentsRes.ok) {
         const allAppointmentsData: Appointment[] = await allAppointmentsRes.json();
         const converted = allAppointmentsData.map(a => ({ ...a, dateTime: new Date(a.dateTime) }));
         setAppointments(converted);
-      } else {
-        // Fallback: build from coach data (but this might miss booked appointments)
-        const allAppointments: Appointment[] = [];
-        data.forEach(coach => {
-          if (coach.available_appointments) {
-            coach.available_appointments.forEach(apt => {
-              allAppointments.push({
-                id: apt.id,
-                jobCoach: coach.email,
-                candidate: apt.candidate,
-                dateTime: new Date(apt.dateTime),
-              });
-            });
-          }
+        
+        // Populate available_appointments for each candidate
+        const candidatesWithAppointments = transformedCandidates.map(candidate => {
+          const candidateAppointments = converted
+            .filter(apt => apt.jobCoach === coachEmail && apt.candidate === candidate.email)
+            .map(apt => ({
+              id: apt.id,
+              dateTime: apt.dateTime.toISOString(),
+              candidate: apt.candidate,
+            }));
+          
+          return {
+            ...candidate,
+            available_appointments: candidateAppointments,
+          };
         });
-        setAppointments(allAppointments);
+        
+        setCandidates(candidatesWithAppointments);
       }
     } catch (err) {
-      console.error("Error fetching job coaches with appointments:", err);
-      // Fallback to separate endpoints
-      await Promise.all([fetchJobCoaches(), fetchAppointments()]);
+      console.error("Error fetching candidates:", err);
+      showError("Error", "Failed to fetch candidates. Please try again.");
     } finally {
-      setLoadingCoaches(false);
+      setLoadingCandidates(false);
     }
   };
 
-  // Fallback: Fetch job coaches from API (separate endpoint)
-  const fetchJobCoaches = async () => {
-    try {
-      const res = await fetch('/api/job-coach/all');
-      if (!res.ok) {
-        console.warn("Failed to fetch job coaches");
-        return;
-      }
-      const data: JobCoach[] = await res.json();
-      setJobCoaches(data || []);
-    } catch (err) {
-      console.error("Error fetching job coaches:", err);
-    }
-  };
-
-  // Fallback: Fetch appointments separately
+  // Fetch appointments separately
   const fetchAppointments = async () => {
     try {
       const res = await fetch(`${APPOINTMENT_BASE_URL}/all`)
@@ -124,62 +115,38 @@ export default function AppointmentPage() {
   };
 
   useEffect(() => {
-    fetchJobCoachesWithAppointments();
+    fetchCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [coachEmail]);
 
   const selectedAppointment = appointments.find(
     (a) => a.id === selectedAppointmentId && typeof selectedAppointmentId === 'number'
   );
 
-  // Use job coaches from API with their available appointments
-  const availableJobCoaches = jobCoaches.length > 0 
-    ? jobCoaches.map(coach => ({ 
-        name: coach.name, 
-        email: coach.email,
-        organization: coach.organization,
-        specializations: coach.specializations,
-        bio: coach.bio,
-        experience_years: coach.experience_years,
-        profile_picture_url: coach.profile_picture_url,
-        available_appointments: coach.available_appointments || []
+  // Use candidates from API
+  const availableCandidates = candidates.length > 0 
+    ? candidates.map(candidate => ({ 
+        name: candidate.name, 
+        email: candidate.email,
+        title: candidate.title,
+        location: candidate.location,
+        profile_picture_url: candidate.profile_picture_url,
+        available_appointments: candidate.available_appointments || []
       }))
-    : Array.from(
-        new Set(
-          appointments
-            .filter(a => a.candidate === null)
-            .map(a => a.jobCoach)
-        )
-      ).map(name => ({ 
-        name, 
-        email: name,
-        organization: undefined,
-        specializations: undefined,
-        bio: undefined,
-        experience_years: undefined,
-        profile_picture_url: undefined,
-        available_appointments: []
-      }));
-
-  console.log(availableJobCoaches);
+    : [];
 
   const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
   const handleConfirmBooking = async () => {
-    if (selectedAppointmentId === null) {
-      showError("No Selection", "Please select an appointment time slot.");
+    if (selectedAppointmentId === null || !selectedCandidate) {
+      showError("No Selection", "Please select a candidate and appointment time slot.");
       return;
     }
 
     setIsBooking(true);
     try {
-      // Check if it's a virtual slot (starts with "virtual-")
-      const isVirtualSlot = typeof selectedAppointmentId === 'string' && selectedAppointmentId.startsWith('virtual-');
-      
       // Find the selected appointment
-      const selectedAppointment = isVirtualSlot
-        ? selectedDayAppointments.find(apt => `virtual-${apt.dateTime.toISOString()}` === selectedAppointmentId)
-        : selectedDayAppointments.find(apt => apt.id === selectedAppointmentId);
+      const selectedAppointment = selectedDayAppointments.find(apt => apt.id === selectedAppointmentId);
       
       if (!selectedAppointment) {
         showError("Slot Not Found", "The selected appointment slot could not be found.");
@@ -187,191 +154,55 @@ export default function AppointmentPage() {
         return;
       }
       
-      // Find the selected coach
-      const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
-      if (!coach) {
-        showError("Coach Not Found", "The selected coach could not be found.");
+      // Find the selected candidate
+      const candidate = availableCandidates.find(c => c.email === selectedCandidate);
+      if (!candidate) {
+        showError("Candidate Not Found", "The selected candidate could not be found.");
         setIsBooking(false);
         return;
       }
       
-      // Check if candidate already has an appointment with this coach
-      const existingBookingWithCoach = appointments.find(apt => 
-        apt.candidate === candidateNameTemp && 
-        apt.jobCoach === coach.email &&
-        apt.dateTime > new Date() // Only check future appointments
+      // Book the appointment
+      const res = await fetch(
+        `${APPOINTMENT_BASE_URL}/book?id=${selectedAppointmentId}&candidate=${encodeURIComponent(candidate.email)}`,
+        {
+          method: "PUT",
+        }
       );
-      
-      if (existingBookingWithCoach) {
-        showError(
-          "Already Booked", 
-          `You already have a booked appointment with ${coach.name}. Please cancel your existing appointment first before booking a new one.`
-        );
-        setIsBooking(false);
-        return;
-      }
-      
-      // Check for time conflicts (overlapping appointments) - allow 1 hour buffer
-      const selectedDateTime = selectedAppointment.dateTime;
-      const selectedEndTime = new Date(selectedDateTime.getTime() + 60 * 60 * 1000); // Add 1 hour
-      
-      const conflictingAppointment = appointments.find(apt => {
-        if (apt.candidate !== candidateNameTemp) return false;
-        if (apt.id === selectedAppointment.id) return false; // Same appointment
-        const aptDateTime = apt.dateTime;
-        const aptEndTime = new Date(aptDateTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
-        
-        // Check if appointments overlap
-        return (selectedDateTime < aptEndTime && selectedEndTime > aptDateTime);
-      });
-      
-      if (conflictingAppointment) {
-        const conflictCoach = availableJobCoaches.find(c => c.email === conflictingAppointment.jobCoach);
-        showError(
-          "Time Conflict",
-          `You have a conflicting appointment with ${conflictCoach?.name || conflictingAppointment.jobCoach} at ${conflictingAppointment.dateTime.toLocaleString()}. Please choose a different time.`
-        );
-        setIsBooking(false);
-        return;
-      }
-      
-      // Ensure selectedDate is available
-      if (!selectedDate) {
-        showError("Missing Information", "Please select a date for the appointment.");
-        setIsBooking(false);
-        return;
-      }
-      
-      // If it's a virtual slot (id is null or undefined), create it first
-      if (isVirtualSlot || selectedAppointment.id === null || selectedAppointment.id === undefined) {
-        // Find the virtual slot from available appointments - match by exact dateTime
-        const virtualSlot = coach.available_appointments?.find(apt => {
-          if (apt.candidate !== null) return false;
-          if (apt.id !== null && apt.id !== undefined) return false; // Must be virtual slot
-          const aptDate = new Date(apt.dateTime);
-          // Match by exact ISO string comparison
-          return aptDate.toISOString() === selectedAppointment.dateTime.toISOString();
-        });
-        
-        if (!virtualSlot) {
-          showError("Slot Unavailable", "The selected slot is no longer available. Please select another time.");
-          setIsBooking(false);
-          return;
-        }
-        
-        // Create the appointment first
-        const createRes = await fetch(`${APPOINTMENT_BASE_URL}/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            jobCoach: coach.email,
-            dateTime: virtualSlot.dateTime,
-          }),
-        });
-        
-        if (!createRes.ok) {
-          const errorText = await createRes.text();
-          throw new Error(`Failed to create appointment: ${errorText}`);
-        }
-        
-        const createData = await createRes.json();
-        const newAppointmentId = createData.id;
-        
-        if (!newAppointmentId) {
-          throw new Error("Failed to get appointment ID after creation");
-        }
-        
-        // Now book it
-        const bookRes = await fetch(
-          `${APPOINTMENT_BASE_URL}/book?id=${newAppointmentId}&candidate=${encodeURIComponent(candidateNameTemp)}`,
-          {
-            method: "PUT",
-          }
-        );
-        
-        if (!bookRes.ok) {
-          let errorMessage = "Failed to book appointment";
-          try {
-            const errorData = await bookRes.json();
-            errorMessage = errorData.detail || errorData.message || errorMessage;
-          } catch {
-            const errorText = await bookRes.text();
-            errorMessage = errorText || errorMessage;
-          }
-          throw new Error(errorMessage);
-        }
-        
-        // Refresh appointments and coach data
-        await fetchAppointments();
-        await fetchJobCoachesWithAppointments();
-        
-        // Dispatch notification event
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('appointmentBooked', {
-            detail: {
-              appointmentId: newAppointmentId,
-              dateTime: selectedAppointment.dateTime,
-              coachEmail: coach.email,
-              candidateEmail: candidateNameTemp,
-            }
-          }));
-        }
-        
-        success("Appointment Booked", `Successfully booked appointment with ${coach.name} on ${selectedDate.toLocaleDateString()} at ${selectedAppointment.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
-        
-      } else {
-        // Regular appointment booking
-        const res = await fetch(
-          `${APPOINTMENT_BASE_URL}/book?id=${selectedAppointmentId}&candidate=${encodeURIComponent(candidateNameTemp)}`,
-          {
-            method: "PUT",
-          }
-        );
 
-        if (!res.ok) {
-          let errorMessage = "Failed to book appointment";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.detail || errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text();
-            errorMessage = errorText || errorMessage;
-          }
-          throw new Error(errorMessage);
+      if (!res.ok) {
+        let errorMessage = "Failed to book appointment";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          const errorText = await res.text();
+          errorMessage = errorText || errorMessage;
         }
-
-        // Refresh appointments and coach data
-        await fetchAppointments();
-        await fetchJobCoachesWithAppointments();
-        
-        // Dispatch notification event
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('appointmentBooked', {
-            detail: {
-              appointmentId: selectedAppointmentId,
-              dateTime: selectedAppointment.dateTime,
-              coachEmail: selectedAppointment.jobCoach,
-              candidateEmail: candidateNameTemp,
-            }
-          }));
-        }
-        
-        const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
-        success("Appointment Booked", `Successfully booked appointment with ${coach?.name || selectedCoach} on ${selectedDate?.toLocaleDateString()} at ${selectedAppointment.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+        throw new Error(errorMessage);
       }
+
+      // Refresh appointments and candidate data
+      await fetchAppointments();
+      await fetchCandidates();
+      
+      // Dispatch notification event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('appointmentBooked', {
+          detail: {
+            appointmentId: selectedAppointmentId,
+            dateTime: selectedAppointment.dateTime,
+            coachEmail: coachEmail,
+            candidateEmail: candidate.email,
+          }
+        }));
+      }
+      
+      success("Appointment Booked", `Successfully booked appointment with ${candidate.name} on ${selectedDate?.toLocaleDateString()} at ${selectedAppointment.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
 
       setSelectedAppointmentId(null);
       setSelectedDate(null);
-
-      // Deselect coach if no remaining slots
-      if (selectedCoach) {
-        const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
-        const hasAvailable = coach?.available_appointments?.some(apt => apt.candidate === null) || false;
-        if (!hasAvailable) setSelectedCoach(null);
-      }
-
+      setSelectedCandidate(null);
       setShowPopup(false);
     } catch (err: any) {
       console.error("Booking error:", err);
@@ -391,16 +222,9 @@ export default function AppointmentPage() {
         throw new Error("Failed to unbook appointment");
       }
 
-      // Update frontend state
-      setAppointments(prev =>
-        prev.map(a =>
-          a.id === id ? { ...a, candidate: null } : a
-        )
-      );
-
-      // Refresh appointments and coach data
+      // Refresh appointments and candidate data
       await fetchAppointments();
-      await fetchJobCoachesWithAppointments();
+      await fetchCandidates();
       
       success("Appointment Cancelled", "Your appointment has been cancelled successfully.");
 
@@ -421,16 +245,9 @@ export default function AppointmentPage() {
         throw new Error("Failed to unbook appointment");
       }
 
-      // Update frontend state
-      setAppointments(prev =>
-        prev.map(a =>
-          a.id === id ? { ...a, candidate: null } : a
-        )
-      );
-
-      // Refresh appointments and coach data
+      // Refresh appointments and candidate data
       await fetchAppointments();
-      await fetchJobCoachesWithAppointments();
+      await fetchCandidates();
       
       // Dispatch notification event
       if (typeof window !== 'undefined') {
@@ -449,38 +266,38 @@ export default function AppointmentPage() {
     }
   };
 
-  const filteredJobCoachSearch = availableJobCoaches.filter((c) => {
-    if (!jobCoachSearch.trim()) return true; // Show all if search is empty
-    const searchLower = jobCoachSearch.toLowerCase();
+  const filteredCandidateSearch = availableCandidates.filter((c) => {
+    if (!candidateSearch.trim()) return true; // Show all if search is empty
+    const searchLower = candidateSearch.toLowerCase();
     return (
       c.name.toLowerCase().includes(searchLower) ||
       c.email.toLowerCase().includes(searchLower) ||
-      (c.organization && c.organization.toLowerCase().includes(searchLower)) ||
-      (c.specializations && c.specializations.some((spec: string) => spec.toLowerCase().includes(searchLower)))
+      (c.title && c.title.toLowerCase().includes(searchLower)) ||
+      (c.location && c.location.toLowerCase().includes(searchLower))
     );
   });
 
-  const handleSelect = (name: string) => {
-    // If clicking the same coach, deselect; otherwise select the new coach
-    setSelectedCoach((prev) => (prev === name ? null : name));
+  const handleSelect = (email: string) => {
+    // If clicking the same candidate, deselect; otherwise select the new candidate
+    setSelectedCandidate((prev) => (prev === email ? null : email));
     setSelectedDate(null);
-    // Reset to current month when selecting a new coach
+    // Reset to current month when selecting a new candidate
     const now = new Date();
     setAppointmentMonth(now.getMonth());
     setAppointmentYear(now.getFullYear());
   };
 
   const availableDays = React.useMemo(() => {
-    if (!selectedCoach) return [];
-    // Find the selected coach
-    const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
-    if (coach && coach.available_appointments && coach.available_appointments.length > 0) {
-      // Use appointments from coach data
-      return coach.available_appointments
+    if (!selectedCandidate) return [];
+    // Find the selected candidate
+    const candidate = availableCandidates.find(c => c.email === selectedCandidate);
+    if (candidate && candidate.available_appointments && candidate.available_appointments.length > 0) {
+      // Use appointments from candidate data
+      return candidate.available_appointments
         .filter(apt => apt.candidate === null)
         .map(apt => {
           const date = new Date(apt.dateTime);
-          // Only include Monday-Friday (weekday 0-4), exclude Saturday (5) and Sunday (6)
+          // Only include Monday-Friday (weekday 1-5), exclude Saturday (6) and Sunday (0)
           const weekday = date.getDay();
           if (weekday >= 1 && weekday <= 5) { // Monday=1, Friday=5
             return date;
@@ -492,13 +309,12 @@ export default function AppointmentPage() {
     // Fallback to appointments array
     return appointments
       .filter(a => {
-        if (a.jobCoach !== selectedCoach || a.candidate !== null) return false;
+        if (a.jobCoach !== coachEmail || a.candidate !== null) return false;
         const weekday = a.dateTime.getDay();
         return weekday >= 1 && weekday <= 5; // Only Mon-Fri
       })
       .map(a => a.dateTime);
-  }, [availableJobCoaches, appointments, selectedCoach]);
-
+  }, [availableCandidates, appointments, selectedCandidate, coachEmail]);
 
   const daysInMonth = new Date(appointmentYear, appointmentMonth + 1, 0).getDate();
   const firstDay = new Date(appointmentYear, appointmentMonth, 1).getDay();
@@ -507,55 +323,28 @@ export default function AppointmentPage() {
   );
 
   const selectedDayAppointments = React.useMemo(() => {
-    if (!selectedCoach || !selectedDate) return [];
+    if (!selectedCandidate || !selectedDate) return [];
     
-    // Find the selected coach
-    const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
+    // Find the selected candidate
+    const candidate = availableCandidates.find(c => c.email === selectedCandidate);
     
-    // Get all booked appointments for this candidate (from upcoming booked sessions)
-    const bookedAppointmentIds = new Set(
-      appointments
-        .filter(apt => apt.candidate === candidateNameTemp && apt.dateTime > new Date())
-        .map(apt => apt.id)
-    );
-    
-    if (coach && coach.available_appointments && coach.available_appointments.length > 0) {
-      // Use appointments from coach data
-      const selectedDateStr = formatDate(selectedDate);
-      return coach.available_appointments
-        .filter(apt => {
-          if (apt.candidate !== null) return false;
-          // Exclude appointments that are already booked by this candidate
-          if (apt.id !== null && apt.id !== undefined && bookedAppointmentIds.has(apt.id)) return false;
-          const aptDate = new Date(apt.dateTime);
-          const weekday = aptDate.getDay();
-          // Only include Monday-Friday (weekday 1-5), exclude Saturday (6) and Sunday (0)
-          if (weekday === 0 || weekday === 6) return false;
-          return formatDate(aptDate) === selectedDateStr;
-        })
-        .map(apt => ({
-          id: apt.id,
-          jobCoach: coach.email,
-          candidate: apt.candidate,
-          dateTime: new Date(apt.dateTime),
-        }));
-    }
-    
-    // Fallback to appointments array
-    return appointments.filter(
-      (a) => {
-        if (a.candidate !== null) return false;
-        // Exclude appointments that are already booked by this candidate
-        if (a.id !== null && a.id !== undefined && bookedAppointmentIds.has(a.id)) return false;
+    // Get available appointments for this coach (where candidate is null)
+    const selectedDateStr = formatDate(selectedDate);
+    return appointments
+      .filter(a => {
+        if (a.jobCoach !== coachEmail || a.candidate !== null) return false;
         const weekday = a.dateTime.getDay();
-        // Only include Monday-Friday
+        // Only include Monday-Friday (weekday 1-5), exclude Saturday (6) and Sunday (0)
         if (weekday === 0 || weekday === 6) return false;
-        return (a.jobCoach === selectedCoach || a.jobCoach === coach?.email) &&
-               formatDate(a.dateTime) === formatDate(selectedDate);
-      }
-    );
-  }, [availableJobCoaches, appointments, selectedCoach, selectedDate, candidateNameTemp]);
-
+        return formatDate(a.dateTime) === selectedDateStr;
+      })
+      .map(apt => ({
+        id: apt.id,
+        jobCoach: apt.jobCoach,
+        candidate: apt.candidate,
+        dateTime: apt.dateTime,
+      }));
+  }, [availableCandidates, appointments, selectedCandidate, selectedDate, coachEmail]);
 
   const handlePrevMonth = () => {
     if (appointmentMonth === 0) {
@@ -600,11 +389,7 @@ export default function AppointmentPage() {
   ];
 
   const handleBookClick = (appointment: any) => {
-    // For virtual slots (id === null), use a temporary identifier based on dateTime
-    const appointmentId = appointment.id !== null && appointment.id !== undefined 
-      ? appointment.id 
-      : `virtual-${appointment.dateTime.toISOString()}`;
-    setSelectedAppointmentId(appointmentId as any);
+    setSelectedAppointmentId(appointment.id);
     setShowPopup(true);
   };
 
@@ -612,6 +397,11 @@ export default function AppointmentPage() {
     setShowPopup(false);
     setSelectedAppointmentId(null);
   };
+
+  // Get booked appointments for this coach
+  const bookedAppointments = appointments
+    .filter(a => a.jobCoach === coachEmail && a.candidate !== null && a.dateTime > new Date())
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
   return (
     <>
@@ -623,28 +413,28 @@ export default function AppointmentPage() {
               <input
                 type="text"
                 className="flex-grow bg-transparent outline-none text-m text-gray-700 placeholder-gray-400"
-                placeholder="Find and select a job coach..."
-                value={jobCoachSearch}
-                onChange={(e) => setJobCoachSearch(e.target.value)}
+                placeholder="Find and select a candidate..."
+                value={candidateSearch}
+                onChange={(e) => setCandidateSearch(e.target.value)}
               />
               <Search className="text-gray-400 w-5 h-5" />
             </div>
             <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-3">
-              {loadingCoaches ? (
+              {loadingCandidates ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#635bff] mx-auto mb-2"></div>
-                    <p className="text-gray-400 text-sm">Loading job coaches...</p>
+                    <p className="text-gray-400 text-sm">Loading candidates...</p>
                   </div>
                 </div>
-              ) : filteredJobCoachSearch.length > 0 ? (
+              ) : filteredCandidateSearch.length > 0 ? (
                 <ul className="space-y-3">
-                  {filteredJobCoachSearch.map((coach, index) => {
-                    const isSelected = selectedCoach === coach.name || selectedCoach === coach.email;
+                  {filteredCandidateSearch.map((candidate, index) => {
+                    const isSelected = selectedCandidate === candidate.email;
                     return (
                       <li
-                        key={coach.email || index}
-                        onClick={() => handleSelect(coach.name)}
+                        key={candidate.email || index}
+                        onClick={() => handleSelect(candidate.email)}
                         className={`p-3 border rounded-lg cursor-pointer transition flex items-center gap-3 ${isSelected
                           ? "bg-[#635bff] text-white border-[#635bff]"
                           : "hover:bg-[#f5f3ff] text-gray-800 border-gray-200"
@@ -652,11 +442,11 @@ export default function AppointmentPage() {
                       >
                         {/* Profile picture */}
                         <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 overflow-hidden relative">
-                          {coach.profile_picture_url ? (
+                          {candidate.profile_picture_url ? (
                             <img
                               src={
                                 (() => {
-                                  const picUrl = coach.profile_picture_url;
+                                  const picUrl = candidate.profile_picture_url;
                                   if (!picUrl) return '';
                                   if (picUrl.startsWith("http")) {
                                     return `${picUrl}?t=${Date.now()}`;
@@ -664,7 +454,7 @@ export default function AppointmentPage() {
                                   return `${BASE_URL}${picUrl.startsWith('/') ? '' : '/'}${picUrl}?t=${Date.now()}`;
                                 })()
                               }
-                              alt={coach.name || coach.email}
+                              alt={candidate.name || candidate.email}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = "none";
@@ -672,7 +462,7 @@ export default function AppointmentPage() {
                                 if (parentDiv && !parentDiv.querySelector('.fallback-initials')) {
                                   const fallback = document.createElement("div");
                                   fallback.className = `fallback-initials w-full h-full flex items-center justify-center font-bold ${isSelected ? "bg-white text-[#635bff]" : "bg-[#635bff] text-white"}`;
-                                  fallback.textContent = coach.name ? coach.name.charAt(0).toUpperCase() : (coach.email ? coach.email.charAt(0).toUpperCase() : '?');
+                                  fallback.textContent = candidate.name ? candidate.name.charAt(0).toUpperCase() : (candidate.email ? candidate.email.charAt(0).toUpperCase() : '?');
                                   parentDiv.appendChild(fallback);
                                 }
                               }}
@@ -681,64 +471,50 @@ export default function AppointmentPage() {
                             <div
                               className={`w-full h-full flex items-center justify-center ${isSelected ? "bg-white text-[#635bff]" : "bg-[#635bff] text-white"}`}
                             >
-                              {coach.name ? coach.name.charAt(0).toUpperCase() : (coach.email ? coach.email.charAt(0).toUpperCase() : '?')}
+                              {candidate.name ? candidate.name.charAt(0).toUpperCase() : (candidate.email ? candidate.email.charAt(0).toUpperCase() : '?')}
                             </div>
                           )}
                         </div>
 
-                        {/* Coach info */}
+                        {/* Candidate info */}
                         <div className="flex-1 min-w-0 space-y-1.5">
-                          {/* First row: Coach name */}
+                          {/* First row: Candidate name */}
                           <p className={`font-semibold truncate ${isSelected ? "text-white" : "text-gray-900"}`}>
-                            {coach.name || coach.email}
+                            {candidate.name || candidate.email}
                           </p>
                           
-                          {/* Second row: Organization, Specializations, Experience years */}
+                          {/* Second row: Title, Location */}
                           <div className={`flex flex-wrap items-center gap-3 text-xs ${isSelected ? "text-white/80" : "text-gray-600"}`}>
-                            {coach.organization && (
-                              <span className="flex items-center gap-1">
-                                <Building className="h-3.5 w-3.5" />
-                                {coach.organization}
-                              </span>
-                            )}
-                            {coach.specializations && coach.specializations.length > 0 && (
+                            {candidate.title && (
                               <span className="flex items-center gap-1">
                                 <Briefcase className="h-3.5 w-3.5" />
-                                {coach.specializations.join(", ")}
+                                {candidate.title}
                               </span>
                             )}
-                            {coach.experience_years !== null && coach.experience_years !== undefined && (
+                            {candidate.location && (
                               <span className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {coach.experience_years} {coach.experience_years === 1 ? 'year' : 'years'} exp.
+                                <MapPin className="h-3.5 w-3.5" />
+                                {candidate.location}
                               </span>
                             )}
                           </div>
-                          
-                          {/* Third row: Bio */}
-                          {coach.bio && (
-                            <p className={`text-xs line-clamp-2 ${isSelected ? "text-white/70" : "text-gray-500"} flex items-start gap-1`}>
-                              <MessageSquare className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                              <span>{coach.bio}</span>
-                            </p>
-                          )}
                         </div>
                       </li>
                     );
                   })}
                 </ul>
-              ) : availableJobCoaches.length === 0 ? (
+              ) : availableCandidates.length === 0 ? (
                 <div className="text-center py-8">
                   <User className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-400 text-sm">
-                    No job coaches available.
+                    No candidates available.
                   </p>
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <Search className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-400 text-sm">
-                    No matching coaches found for "{jobCoachSearch}".
+                    No matching candidates found for "{candidateSearch}".
                   </p>
                   <p className="text-gray-400 text-xs mt-1">
                     Try a different search term.
@@ -750,19 +526,19 @@ export default function AppointmentPage() {
         </Card>
         <Card>
           <div className="p-5">
-            {loadingCoaches ? (
+            {loadingCandidates ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
                   <p className="text-[#6f7a80]">Loading appointment calendar...</p>
                 </div>
               </div>
-            ) : !selectedCoach ? (
+            ) : !selectedCandidate ? (
               <div className="text-center py-12">
                 <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-[#3a4043] mb-2">Select a Job Coach</h3>
+                <h3 className="text-lg font-semibold text-[#3a4043] mb-2">Select a Candidate</h3>
                 <p className="text-[#6f7a80] text-sm">
-                  Choose a job coach from the list to view their available appointment slots.
+                  Choose a candidate from the list to view available appointment slots.
                 </p>
               </div>
             ) : (
@@ -840,8 +616,8 @@ export default function AppointmentPage() {
                       </svg>
                       <h3 className="font-semibold text-gray-800">
                         Available Time Slots for {(() => {
-                          const coach = availableJobCoaches.find(c => c.name === selectedCoach || c.email === selectedCoach);
-                          return coach?.name || selectedCoach;
+                          const candidate = availableCandidates.find(c => c.email === selectedCandidate);
+                          return candidate?.name || selectedCandidate;
                         })()}:
                       </h3>
                     </div>
@@ -857,11 +633,9 @@ export default function AppointmentPage() {
 
                     <ul className="space-y-3">
                       {selectedDayAppointments.map((a, i) => {
-                        // Create a unique key for virtual slots using dateTime string
-                        const slotKey = a.id || `virtual-${a.dateTime.toISOString()}`;
                         return (
                           <li
-                            key={slotKey}
+                            key={a.id || i}
                             className="flex items-center justify-between border rounded-xl px-4 py-3 hover:shadow-sm transition bg-white"
                           >
                             <div className="flex items-center gap-2 text-gray-700">
@@ -919,10 +693,13 @@ export default function AppointmentPage() {
                 Confirm Your Booking
               </h2>
 
-              {selectedAppointment && (
+              {selectedAppointment && selectedCandidate && (
                 <div className="text-gray-600 space-y-1">
                   <p>
-                    <span className="font-medium">Coach:</span> {selectedAppointment.jobCoach}
+                    <span className="font-medium">Candidate:</span> {(() => {
+                      const candidate = availableCandidates.find(c => c.email === selectedCandidate);
+                      return candidate?.name || selectedCandidate;
+                    })()}
                   </p>
                   <p>
                     <span className="font-medium">Date:</span>{" "}
@@ -1000,12 +777,11 @@ export default function AppointmentPage() {
 
           {/* Session cards */}
           <div className="flex flex-wrap gap-4">
-            {appointments
-              .filter(a => ((a.candidate != null) && (a.candidate === candidateNameTemp) && (a.dateTime > new Date())))
-              .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime()) // Sort by date, earliest first
-              .map((a, i) => (
+            {bookedAppointments.map((a) => {
+              const candidate = availableCandidates.find(c => c.email === a.candidate);
+              return (
                 <div
-                  key={i}
+                  key={a.id}
                   className="relative flex flex-col gap-2 p-4 border rounded-xl shadow-sm bg-white w-64"
                 >
                   {/* Close button */}
@@ -1045,15 +821,10 @@ export default function AppointmentPage() {
                     </span>
                   </div>
 
-                  {/* Coach */}
+                  {/* Candidate */}
                   <div className="flex items-center gap-2 text-sm text-gray-700">
                     <User size={16} className="text-gray-500" />
-                    <span>
-                      {(() => {
-                        const coach = availableJobCoaches.find(c => c.email === a.jobCoach);
-                        return coach?.name || a.jobCoach || "Unknown coach";
-                      })()}
-                    </span>
+                    <span>{candidate?.name || a.candidate || "Unknown candidate"}</span>
                   </div>
 
                   {/* Action buttons */}
@@ -1077,10 +848,11 @@ export default function AppointmentPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+            })}
 
             {/* Empty state */}
-            {appointments.filter(a => a.candidate === candidateNameTemp && a.dateTime > new Date()).length === 0 && (
+            {bookedAppointments.length === 0 && !loadingCandidates && (
               <p className="text-gray-500 text-sm mt-4">No booked sessions yet.</p>
             )}
           </div>

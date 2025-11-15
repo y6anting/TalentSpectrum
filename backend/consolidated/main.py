@@ -21,7 +21,8 @@ from routers import (
     ai_matching,
     match_result_route,
     bookedAppointments,
-    shortlist
+    shortlist,
+    job_coach
 )
 
 # Import models so they register with SQLAlchemy
@@ -139,6 +140,7 @@ app.include_router(shortlist.router, prefix="/shortlist", tags=["Shortlist"])
 app.include_router(ai_matching.router, prefix="/ai-matching", tags=["AI Matching"])
 app.include_router(match_result_route.router, prefix="/match_results", tags=["Match Results"])
 app.include_router(bookedAppointments.router, prefix="/appointment", tags=["Appointment"])
+app.include_router(job_coach.router, tags=["Job Coach"])
 
 if __name__ == "__main__":
     import uvicorn

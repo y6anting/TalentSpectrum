@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/card";
 import { Badge } from "@/app/components/badge";
 import { Button } from "@/app/components/button";
@@ -9,6 +9,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Search, MapPin, Clock, Briefcase, DollarSign, Shield, Heart, Building, SortAsc, Bookmark, Share, Eye, ChevronDown, ChevronUp, CheckCircle, BrainCircuit, House } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useToastHelpers } from "@/components/ui/toast";
 
 const SALARY_RANGES = [
   "Below RM 3,000",
@@ -22,6 +24,7 @@ const SALARY_RANGES = [
 
 interface SavedJob {
   id: number;
+  job_id?: number; // Backend job ID
   jobTitle: string;
   company: string;
   location: string;
@@ -43,49 +46,216 @@ interface SavedJob {
   applicationDeadline?: string;
   industry?: string;
   isApplied?: boolean; // Track if job is already applied
+  matchScore?: number;
+  accommodationsFriendly?: boolean;
+  status?: string; // Job status (active, closed, expired)
+  work_mode?: string; // Work mode (Remote, Hybrid, On-site)
 }
 
 interface SavedJobsPageProps {
   savedJobs: SavedJob[];
+  setSavedJobs: React.Dispatch<React.SetStateAction<SavedJob[]>>;
   savedJobsSearchTerm: string;
   setSavedJobsSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+  savedJobsFilterLocation?: string;
+  setSavedJobsFilterLocation?: React.Dispatch<React.SetStateAction<string>>;
+  savedJobsFilterType?: string;
+  setSavedJobsFilterType?: React.Dispatch<React.SetStateAction<string>>;
   savedJobsSortBy: string;
   setSavedJobsSortBy: React.Dispatch<React.SetStateAction<string>>;
   selectedSavedJob: SavedJob | null;
   setSelectedSavedJob: React.Dispatch<React.SetStateAction<SavedJob | null>>;
   getMatchScoreColor: (score: number) => string;
+  handleSaveJob: (job: SavedJob) => Promise<void>;
+  savedJobKeys: Set<string>;
+  savingJobId: string | null;
+  appliedJobs: Set<string>;
+  applyingJobId: string | null;
+  handleApplyToJob: (job: SavedJob) => Promise<void>;
+  savedJobsLoaded?: boolean;
 }
 
 export default function SavedJobsPage({
   savedJobs,
+  setSavedJobs,
   savedJobsSearchTerm,
   setSavedJobsSearchTerm,
+  savedJobsFilterLocation,
+  setSavedJobsFilterLocation,
+  savedJobsFilterType,
+  setSavedJobsFilterType,
   savedJobsSortBy,
   setSavedJobsSortBy,
   selectedSavedJob,
   setSelectedSavedJob,
   getMatchScoreColor,
+  handleSaveJob,
+  savedJobKeys,
+  savingJobId,
+  appliedJobs,
+  applyingJobId,
+  handleApplyToJob,
+  savedJobsLoaded = false,
 }: SavedJobsPageProps) {
   const [expandedMatchingScore, setExpandedMatchingScore] = useState<number | null>(null);
+  const { data: session } = useSession();
+  const { success, error: showError, info } = useToastHelpers();
 
-  const filteredJobs = savedJobs.filter(job => 
-    !savedJobsSearchTerm || 
-    job.jobTitle.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
-    job.company.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
-    job.location.toLowerCase().includes(savedJobsSearchTerm.toLowerCase())
-  ).sort((a, b) => {
-    if (savedJobsSortBy === "match") {
-      const aScore = ((a.primaryMatchScore || 96) + (a.secondaryMatchScore || 90) + (a.tertiaryMatchScore || 85)) / 3;
-      const bScore = ((b.primaryMatchScore || 96) + (b.secondaryMatchScore || 90) + (b.tertiaryMatchScore || 85)) / 3;
-      return bScore - aScore;
-    } else if (savedJobsSortBy === "company") {
-      return a.company.localeCompare(b.company);
-    } else if (savedJobsSortBy === "salary") {
-      // Basic salary comparison (you can enhance this)
-      return (b.salary || "").localeCompare(a.salary || "");
-    }
-    return 0; // recent (default order)
-  });
+  // Listen for save/unsave events from other tabs (Browse Jobs, Applications)
+  useEffect(() => {
+    const handleJobSaved = (event: CustomEvent) => {
+      const { id, jobTitle, company, location, jobType, salary } = event.detail;
+      const jobKey = `${jobTitle}-${company}`;
+      
+      // Check if this job is already in saved jobs
+      const alreadySaved = savedJobs.some(job => 
+        `${job.jobTitle}-${job.company}` === jobKey
+      );
+      
+      if (!alreadySaved) {
+        const newJob: SavedJob = {
+          id,
+          job_id: id,
+          jobTitle,
+          company,
+          location: location || '',
+          salary: salary || '',
+          type: jobType || '',
+        };
+        setSavedJobs(prev => [newJob, ...prev]);
+      }
+    };
+
+    const handleJobUnsaved = (event: CustomEvent) => {
+      const { jobTitle, company } = event.detail;
+      const jobKey = `${jobTitle}-${company}`;
+      
+      setSavedJobs(prev => prev.filter(job => 
+        `${job.jobTitle}-${job.company}` !== jobKey
+      ));
+      
+      // If currently selected job was unsaved, select another
+      if (selectedSavedJob && `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}` === jobKey) {
+        const remaining = savedJobs.filter(job => 
+          `${job.jobTitle}-${job.company}` !== jobKey
+        );
+        setSelectedSavedJob(remaining.length > 0 ? remaining[0] : null);
+      }
+    };
+
+    const handleJobApplied = (event: CustomEvent) => {
+      const { jobTitle, company } = event.detail;
+      const jobKey = `${jobTitle}-${company}`;
+      
+      // Mark job as applied in saved jobs list
+      setSavedJobs(prev => prev.map(job => {
+        if (`${job.jobTitle}-${job.company}` === jobKey) {
+          return { ...job, isApplied: true };
+        }
+        return job;
+      }));
+      
+      // Update selected job if it was applied
+      if (selectedSavedJob && `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}` === jobKey) {
+        setSelectedSavedJob({ ...selectedSavedJob, isApplied: true });
+      }
+    };
+
+    const handleJobStatusChanged = (event: CustomEvent) => {
+      const { jobTitle, company, status } = event.detail;
+      const jobKey = `${jobTitle}-${company}`;
+      
+      // Update job status in saved jobs list
+      setSavedJobs(prev => prev.map(job => {
+        if (`${job.jobTitle}-${job.company}` === jobKey) {
+          return { ...job, status };
+        }
+        return job;
+      }));
+      
+      // Update selected job if status changed
+      if (selectedSavedJob && `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}` === jobKey) {
+        setSelectedSavedJob({ ...selectedSavedJob, status });
+      }
+    };
+
+    window.addEventListener('jobSaved', handleJobSaved as EventListener);
+    window.addEventListener('jobUnsaved', handleJobUnsaved as EventListener);
+    window.addEventListener('jobApplied', handleJobApplied as EventListener);
+    window.addEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+
+    return () => {
+      window.removeEventListener('jobSaved', handleJobSaved as EventListener);
+      window.removeEventListener('jobUnsaved', handleJobUnsaved as EventListener);
+      window.removeEventListener('jobApplied', handleJobApplied as EventListener);
+      window.removeEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
+    };
+  }, [savedJobs, selectedSavedJob, setSelectedSavedJob, setSavedJobs]);
+
+  // Default values if not provided via props
+  const filterLocation = savedJobsFilterLocation || "all";
+  const filterType = savedJobsFilterType || "all";
+  const setFilterLocation = setSavedJobsFilterLocation || (() => {}); // Default no-op
+  const setFilterType = setSavedJobsFilterType || (() => {}); // Default no-op
+
+  const filteredJobs = savedJobs
+    .filter((job) => {
+      const matchesSearch = job.jobTitle.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                           job.company.toLowerCase().includes(savedJobsSearchTerm.toLowerCase()) ||
+                           (job.description || "").toLowerCase().includes(savedJobsSearchTerm.toLowerCase());
+      
+      // Location filter: check both location field and work_mode for Remote/Hybrid
+      let matchesLocation = true;
+      if (filterLocation !== "all") {
+        if (filterLocation === "Remote") {
+          matchesLocation = job.location.toLowerCase().includes("remote") || 
+                          job.work_mode?.toLowerCase() === "remote";
+        } else if (filterLocation === "Hybrid") {
+          matchesLocation = job.location.toLowerCase().includes("hybrid") || 
+                          job.work_mode?.toLowerCase() === "hybrid";
+        } else {
+          matchesLocation = job.location.includes(filterLocation);
+        }
+      }
+      
+      // Work type filter: check both type field and work_mode for Remote
+      // Make comparison case-insensitive
+      let matchesType = true;
+      if (filterType !== "all") {
+        const jobTypeLower = job.type?.toLowerCase() || '';
+        const filterTypeLower = filterType.toLowerCase();
+        
+        if (filterTypeLower === "remote") {
+          matchesType = jobTypeLower.includes("remote") || 
+                      job.work_mode?.toLowerCase() === "remote";
+        } else {
+          // Case-insensitive comparison for other types
+          matchesType = jobTypeLower === filterTypeLower || 
+                      jobTypeLower.includes(filterTypeLower) ||
+                      job.work_mode?.toLowerCase() === filterTypeLower;
+        }
+      }
+      
+      return matchesSearch && matchesLocation && matchesType;
+    })
+    .sort((a, b) => {
+      // Handle sortBy filter
+      if (savedJobsSortBy === "match") {
+        const aScore = ((a.primaryMatchScore || 96) + (a.secondaryMatchScore || 90) + (a.tertiaryMatchScore || 85)) / 3;
+        const bScore = ((b.primaryMatchScore || 96) + (b.secondaryMatchScore || 90) + (b.tertiaryMatchScore || 85)) / 3;
+        return bScore - aScore;
+      } else if (savedJobsSortBy === "salary") {
+        return (b.salaryRange || 0) - (a.salaryRange || 0);
+      } else if (savedJobsSortBy === "company") {
+        return a.company.localeCompare(b.company);
+      }
+      // Default: recent (sort by postedDate, most recent first)
+      const aDate = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+      const bDate = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+      
+      // Most recent first (descending order)
+      return bDate - aDate;
+    });
 
   const getOverallMatchScore = (job: SavedJob) => {
     return Math.round(
@@ -101,6 +271,20 @@ export default function SavedJobsPage({
     }
     return job.salary || "Not specified";
   };
+
+  // Loading state - show loading if savedJobs array is empty and we're expecting data
+  // const isLoading = savedJobs.length === 0 && savedJobsSearchTerm === "";
+
+  // if (isLoading) {
+  //   return (
+  //     <div className="w-full flex items-center justify-center py-12">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#635bff] mx-auto mb-4"></div>
+  //         <p className="text-[#6f7a80]">Loading saved jobs...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-6">
@@ -123,47 +307,46 @@ export default function SavedJobsPage({
 
             {/* Filters */}
             <div className="flex gap-4">
-              <Select value="all" onValueChange={() => {}}>
-                <SelectTrigger className="w-42">
+              <Select value={filterLocation} onValueChange={setFilterLocation}>
+                <SelectTrigger className="w-fit cursor-pointer">
                   <MapPin className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
-                  <SelectItem value="Petaling Jaya">Petaling Jaya</SelectItem>
-                  <SelectItem value="George Town">George Town</SelectItem>
-                  <SelectItem value="Johor Bahru">Johor Bahru</SelectItem>
-                  <SelectItem value="Remote">Remote</SelectItem>
-                  <SelectItem value="Hybrid">Hybrid</SelectItem>
-                  <SelectItem value="Malaysia">Malaysia</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">All Locations</SelectItem>
+                  <SelectItem value="Kuala Lumpur" className="cursor-pointer">Kuala Lumpur</SelectItem>
+                  <SelectItem value="Petaling Jaya" className="cursor-pointer">Petaling Jaya</SelectItem>
+                  <SelectItem value="George Town" className="cursor-pointer">George Town</SelectItem>
+                  <SelectItem value="Johor Bahru" className="cursor-pointer">Johor Bahru</SelectItem>
+                  <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
+                  <SelectItem value="Hybrid" className="cursor-pointer">Hybrid</SelectItem>
+                  <SelectItem value="Malaysia" className="cursor-pointer">Malaysia</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value="all" onValueChange={() => {}}>
-                <SelectTrigger className="w-42">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-fit cursor-pointer">
                   <Clock className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Contract">Contract</SelectItem>
-                  <SelectItem value="Remote">Remote</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">All Types</SelectItem>
+                  <SelectItem value="Full-time" className="cursor-pointer">Full-time</SelectItem>
+                  <SelectItem value="Part-time" className="cursor-pointer">Part-time</SelectItem>
+                  <SelectItem value="Contract" className="cursor-pointer">Contract</SelectItem>
+                  <SelectItem value="Remote" className="cursor-pointer">Remote</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={savedJobsSortBy} onValueChange={setSavedJobsSortBy}>
-                <SelectTrigger className="w-42">
+                <SelectTrigger className="w-fit cursor-pointer">
                   <SortAsc className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recent">Most Recent</SelectItem>
-                  <SelectItem value="match">Best Match</SelectItem>
-                  <SelectItem value="salary">Salary</SelectItem>
-                  <SelectItem value="company">Company</SelectItem>
+                  <SelectItem value="recent" className="cursor-pointer">Most Recent</SelectItem>
+                  <SelectItem value="match" className="cursor-pointer">Best Match</SelectItem>
+                  <SelectItem value="salary" className="cursor-pointer">Highest Salary</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -230,25 +413,60 @@ export default function SavedJobsPage({
                           </div>
 
                           <p className="text-[#6f7a80] text-sm mb-3 line-clamp-3 overflow-hidden">
-                            {job.description || "View details for job description"}
+                            {job.description}
                           </p>
 
-                          <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
-                            <span>Posted: {job.postedDate || "Recent"}</span>
-                            {job.applicationDeadline && <span>Deadline: {job.applicationDeadline}</span>}
-                          </div>
+                          {(job.postedDate || job.applicationDeadline) && (
+                            <div className="flex items-center gap-4 text-xs text-[#6f7a80]">
+                              {job.postedDate && <span>Posted: {job.postedDate}</span>}
+                              {job.applicationDeadline && <span>Deadline: {job.applicationDeadline}</span>}
+                            </div>
+                          )}
                         </div>
 
-                        {/* RIGHT BUTTON */}
-                        <div className="flex flex-col gap-2 sm:self-start shrink-0">
-                          <button
-                            className="p-2 rounded-md transition-colors text-red-500 hover:bg-red-50 cursor-pointer"
+                        {/* RIGHT BUTTONS AND HEART */}
+                        <div className="flex flex-col justify-between items-end gap-2 sm:self-start shrink-0">
+                          <Button
+                            size="sm"
+                            className={`w-full sm:w-auto ${
+                              appliedJobs.has(`${job.jobTitle}-${job.company}`) ||
+                              job.status === 'closed' ||
+                              (job.applicationDeadline && new Date(job.applicationDeadline) < new Date())
+                              ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white cursor-not-allowed"
+                              : "bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
+                            }`}
+                            disabled={
+                              applyingJobId === `${job.jobTitle}-${job.company}` || 
+                              appliedJobs.has(`${job.jobTitle}-${job.company}`) ||
+                              job.status === 'closed' ||
+                              !!(job.applicationDeadline && new Date(job.applicationDeadline) < new Date())
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: Handle unsave
+                              handleApplyToJob(job);
                             }}
                           >
-                            <Heart className="h-5 w-5 fill-red-500" />
+                            {applyingJobId === `${job.jobTitle}-${job.company}` 
+                              ? "Applying..." 
+                              : appliedJobs.has(`${job.jobTitle}-${job.company}`) 
+                                ? "Applied" 
+                                : (job.status === 'closed' || (job.applicationDeadline && new Date(job.applicationDeadline) < new Date()))
+                                  ? "Closed"
+                                  : "Apply"}
+                          </Button>
+                          <button
+                            className={`p-2 rounded-md transition-colors cursor-pointer ${
+                              savedJobKeys.has(`${job.jobTitle}-${job.company}`)
+                                ? "text-red-500 hover:bg-red-50"
+                                : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            }`}
+                            disabled={savingJobId === `${job.jobTitle}-${job.company}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveJob(job);
+                            }}
+                          >
+                            <Heart className={`h-5 w-5 ${savedJobKeys.has(`${job.jobTitle}-${job.company}`) ? 'fill-red-500' : ''}`} />
                           </button>
                         </div>
                       </div>
@@ -296,9 +514,8 @@ export default function SavedJobsPage({
                       </Badge>
                       <button
                         className="p-2 rounded-md transition-colors text-red-500 hover:bg-red-50 cursor-pointer"
-                        onClick={() => {
-                          // TODO: Handle unsave
-                        }}
+                        disabled={savingJobId === `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}`}
+                        onClick={() => handleSaveJob(selectedSavedJob)}
                       >
                         <Heart className="w-5 h-5 fill-red-500" />
                       </button>
@@ -587,21 +804,37 @@ export default function SavedJobsPage({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-3 pt-4 border-t border-[#e8e6f0]">
+                  <div className="flex gap-3 pt-4 border-t border-[#e8e6f0]">
                     <Button 
-                      className={`w-full ${
-                        selectedSavedJob.isApplied
-                          ? "bg-[#635bff]/70 hover:bg-[#635bff]/70 text-white"
-                          : "bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer"
-                      }`}
-                      disabled={selectedSavedJob.isApplied}
+                      className={`flex-1 ${
+                        selectedSavedJob.isApplied || 
+                        appliedJobs.has(`${selectedSavedJob.jobTitle}-${selectedSavedJob.company}`) ||
+                        selectedSavedJob.status === 'closed' ||
+                        (selectedSavedJob.applicationDeadline && new Date(selectedSavedJob.applicationDeadline) < new Date())
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-[#635bff] hover:bg-[#524aff] cursor-pointer"
+                      } text-white`}
+                      disabled={
+                        !!selectedSavedJob.isApplied || 
+                        appliedJobs.has(`${selectedSavedJob.jobTitle}-${selectedSavedJob.company}`) || 
+                        applyingJobId === `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}` ||
+                        selectedSavedJob.status === 'closed' ||
+                        !!(selectedSavedJob.applicationDeadline && new Date(selectedSavedJob.applicationDeadline) < new Date())
+                      }
+                      onClick={() => handleApplyToJob(selectedSavedJob)}
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
-                      {selectedSavedJob.isApplied ? "Applied" : "Apply Now"}
+                      {applyingJobId === `${selectedSavedJob.jobTitle}-${selectedSavedJob.company}` 
+                        ? "Applying..." 
+                        : (selectedSavedJob.isApplied || appliedJobs.has(`${selectedSavedJob.jobTitle}-${selectedSavedJob.company}`)) 
+                          ? "Applied" 
+                          : (selectedSavedJob.status === 'closed' || (selectedSavedJob.applicationDeadline && new Date(selectedSavedJob.applicationDeadline) < new Date()))
+                            ? "Closed"
+                            : "Apply Now"}
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
                     >
                       <Share className="w-4 h-4 mr-2" />
                       Share

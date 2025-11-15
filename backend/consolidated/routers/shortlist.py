@@ -61,13 +61,16 @@ async def get_employer_shortlist(employer_email: str, db: DbDep):
     Get all shortlisted candidates for an employer
     """
     try:
+        print(f"Fetching shortlisted candidates for employer: {employer_email}")
         shortlisted = db.query(ShortlistedCandidate).filter(
             ShortlistedCandidate.employer_email == employer_email
         ).order_by(ShortlistedCandidate.created_at.desc()).all()
-
+        
+        print(f"Found {len(shortlisted)} shortlisted candidates")
         return shortlisted
 
     except Exception as e:
+        print(f"Error fetching shortlist: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching shortlist: {str(e)}")
 
 

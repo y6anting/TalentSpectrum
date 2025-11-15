@@ -6,7 +6,8 @@ import { Button } from "@/app/components/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import { Card, CardContent } from "@/app/components/card";
 import { 
-  Target, Clock, ArrowUpWideNarrow, Briefcase, Search, Users, Code, MessageSquare, History
+  Target, Clock, ArrowUpWideNarrow, Briefcase, Search, Users, Code, MessageSquare, History,
+  Info
 } from "lucide-react";
 import { 
   generateInterviewQuestions, 
@@ -45,13 +46,81 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [customJobDescription, setCustomJobDescription] = useState("");
+  const [fetchedJobs, setFetchedJobs] = useState<JobPosition[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
   const itemsPerPage = 3;
+
+  // Fetch jobs from backend API
+  React.useEffect(() => {
+    const fetchJobsFromBackend = async () => {
+      setLoadingJobs(true);
+      try {
+        const response = await fetch('/api/jobs');
+        if (response.ok) {
+          const jobsData = await response.json();
+          
+          // Transform backend jobs to JobPosition format
+          const transformedJobs: JobPosition[] = jobsData
+            .filter((job: any) => job.job_title && job.job_summary) // Only include jobs with title and description
+            .map((job: any) => {
+              // Map experience_level to JobPosition level
+              let level: 'entry' | 'mid' | 'senior' = 'mid';
+              if (job.experience_level) {
+                const expLevel = job.experience_level.toLowerCase();
+                if (expLevel.includes('entry') || expLevel.includes('junior') || expLevel.includes('intern')) {
+                  level = 'entry';
+                } else if (expLevel.includes('senior') || expLevel.includes('lead') || expLevel.includes('manager')) {
+                  level = 'senior';
+                }
+              }
+
+              // Parse requirements
+              const requirements = job.job_requirements 
+                ? job.job_requirements.split(',').map((r: string) => r.trim()).filter((r: string) => r.length > 0)
+                : [];
+              
+              // Add soft skills if available
+              const softSkills = job.soft_skills 
+                ? job.soft_skills.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+                : [];
+              
+              return {
+                title: job.job_title,
+                description: job.job_summary || job.job_description || '',
+                requirements: [...requirements, ...softSkills].slice(0, 10), // Limit to 10 requirements
+                level: level,
+                industry: job.industry || 'General',
+              };
+            });
+          
+          setFetchedJobs(transformedJobs);
+        } else {
+          console.warn('Failed to fetch jobs from backend, using mock data');
+          setFetchedJobs([]);
+        }
+      } catch (error) {
+        console.error('Error fetching jobs from backend:', error);
+        setFetchedJobs([]); // Fallback to mock data
+      } finally {
+        setLoadingJobs(false);
+      }
+    };
+
+    fetchJobsFromBackend();
+  }, []);
+
+  // Combine fetched jobs with mock data (fallback)
+  const allAvailableJobs = useMemo(() => {
+    // If we have fetched jobs, use them; otherwise use mock data
+    return fetchedJobs.length > 0 ? fetchedJobs : jobPositions;
+  }, [fetchedJobs]);
+
   const filteredJobs = useMemo(() => {
-    return jobPositions.filter(position =>
+    return allAvailableJobs.filter(position =>
       position.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       position.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [searchTerm, allAvailableJobs]);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentJobs = filteredJobs.slice(startIndex, startIndex + itemsPerPage);
@@ -75,7 +144,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
   // Generate questions and start interview
   const handleStartInterview = async () => {
     const selectedPosition = selectedPositionId 
-      ? jobPositions.find(pos => pos.title === selectedPositionId)
+      ? allAvailableJobs.find(pos => pos.title === selectedPositionId)
       : null;
 
     if (!selectedPosition && !customJobDescription.trim()) {
@@ -241,7 +310,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                     </div>
                   </div>
                   <div>
-                  <div className="pb-6" >
+                  <div className="pb-5" >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6 items-start justify-start">
                       <h3 className="text-xl font-semibold text-gray-800 flex items-center mb-3 sm:mb-0">
                         <Briefcase className="w-5 h-5 text-[#635BFF] mr-2" /> Target Position
@@ -273,7 +342,11 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       </div>
+                      
                     </div>
+                          <p className="text-gray-500 text-sm my-2 ml-1">
+                             <i>Select here or fill in custom job details below.</i>
+                          </p>
                   </div> 
 
                     {/* Position Cards Grid */}
@@ -304,7 +377,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                           <p className="text-sm text-gray-400 mb-3 line-clamp-2">
                             {position.description}
                           </p>
-                          <div className="flex flex-wrap gap-1">
+                          {/* <div className="flex flex-wrap gap-1">
                             {position.requirements.slice(0, 2).map((req, index) => (
                               <span
                                 key={index}
@@ -318,7 +391,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                                 +{position.requirements.length - 2} more
                               </span>
                             )}
-                          </div>
+                          </div> */}
                         </button>
                       ))}
                     </div>
@@ -337,7 +410,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                         </>
                       ) : (
                         <div className="text-gray-500">
-                          {jobPositions.length} available positions
+                          {loadingJobs ? 'Loading positions...' : `${allAvailableJobs.length} available position${allAvailableJobs.length !== 1 ? 's' : ''}`}
                         </div>
                       )}
                     </div>
@@ -396,6 +469,7 @@ const MockInterviewSetupPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) => {
                       <label className="block text-base font-semibold text-gray-700 mb-3 ml-1">
                         Custom Job Title or Description
                       </label>
+                      
                       <textarea
                         value={customJobDescription}
                         onChange={(e) => {

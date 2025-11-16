@@ -166,13 +166,13 @@ const AccessibilitySettings: React.FC = () => {
     root.style.fontFamily = fontFamilyMap[prefs.fontFamily];
     body.style.fontFamily = fontFamilyMap[prefs.fontFamily];
 
-    // Apply theme color
+    // Apply theme color - Using Material Design standard colors
     const themeColorMap = {
-      purple: '#635BFF',
-      blue: '#2196F3',
-      green: '#4CAF50',
-      orange: '#FF9800',
-      pink: '#E91E63',
+      purple: '#635BFF',  // Custom purple brand color
+      blue: '#2196F3',     // Material Blue 500
+      green: '#4CAF50',   // Material Green 500
+      orange: '#FF9800',  // Material Orange 500
+      pink: '#E91E63',    // Material Pink 500
       default: '#635BFF',
     };
     root.style.setProperty('--theme-color', themeColorMap[prefs.themeColor]);
@@ -249,7 +249,7 @@ const AccessibilitySettings: React.FC = () => {
           />
 
           {/* Panel */}
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[99999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ willChange: 'auto' }}>
+          <div id="accessibility-settings-panel" className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[99999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ willChange: 'auto' }}>
             <div className="p-8 overflow-y-auto flex-1" style={{ overflowAnchor: 'none' }}>
               {/* Header */}
               <div className="flex items-center justify-between mb-2">
@@ -344,11 +344,14 @@ const AccessibilitySettings: React.FC = () => {
                           <SelectContent className="max-h-[300px]" style={{ zIndex: 100003 }} position="popper">
                             {availableVoices
                               .filter(voice => voice.lang.toLowerCase().startsWith('en'))
-                              .map((voice) => (
-                                <SelectItem key={voice.name} value={voice.name}>
-                                  {voice.name} ({voice.lang})
-                                </SelectItem>
-                              ))}
+                              .map((voice) => {
+                                const displayName = voice.name.replace(/^Microsoft\s+/i, '');
+                                return (
+                                  <SelectItem key={voice.name} value={voice.name}>
+                                    {displayName} ({voice.lang})
+                                  </SelectItem>
+                                );
+                              })}
                           </SelectContent>
                         </Select>
                       ) : (
@@ -551,7 +554,7 @@ const AccessibilitySettings: React.FC = () => {
                 </Card>
 
                 {/* Theme Color */}
-                <Card className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
+                <Card id="accessibility-settings-theme-color" className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Palette className="w-5 h-5 text-gray-700 dark:text-gray-300" />
@@ -559,13 +562,33 @@ const AccessibilitySettings: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 theme-color-swatches">
                       {([
-                        { value: 'purple', color: '#635BFF', label: 'Purple' },
-                        { value: 'blue', color: '#6ca6f1ff', label: 'Blue' },
-                        { value: 'green', color: '#4CAF50', label: 'Green' },
-                        { value: 'orange', color: '#FF9800', label: 'Orange' },
-                        { value: 'pink', color: '#E91E63', label: 'Pink' },
+                        { 
+                          value: 'purple', 
+                          color: '#635BFF',  // Custom purple brand color
+                          label: 'Purple' 
+                        },
+                        { 
+                          value: 'blue', 
+                          color: '#2196F3',  // Material Blue 500
+                          label: 'Blue' 
+                        },
+                        { 
+                          value: 'green', 
+                          color: '#4CAF50',  // Material Green 500
+                          label: 'Green' 
+                        },
+                        { 
+                          value: 'orange', 
+                          color: '#FF9800',  // Material Orange 500
+                          label: 'Orange' 
+                        },
+                        { 
+                          value: 'pink', 
+                          color: '#E91E63',  // Material Pink 500
+                          label: 'Pink' 
+                        },
                       ] as const).map((colorOption) => (
                         <button
                           key={colorOption.value}
@@ -578,8 +601,10 @@ const AccessibilitySettings: React.FC = () => {
                           title={colorOption.label}
                         >
                           <div
-                            className="w-full h-8 rounded-lg"
-                            style={{ backgroundColor: colorOption.color }}
+                            className="w-full h-8 rounded-lg theme-color-swatch"
+                            style={{ 
+                              backgroundColor: colorOption.color
+                            }}
                           />
                           {preferences.themeColor === colorOption.value && (
                             <Check className="w-4 h-4 mx-auto mt-1 text-gray-900 dark:text-white" />

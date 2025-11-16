@@ -168,9 +168,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
     role === "CANDIDATE"
       ? "/"
       : role === "EMPLOYER"
-      ? "/employer/employer-dashboard"
+      ? "/"
       : role === "JOB_COACH"
-      ? "/job-coach/dashboard"
+      ? "/"
       : "/";
 
   const isActive = (path: string) => pathname === path;
@@ -222,9 +222,9 @@ export default function Header({ setCurrentPage }: HeaderProps) {
               title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? (
-                <Sun className="w-5 h-5 text-[#635bff]" />
+                <Sun className="w-5 h-5" style={{ color: 'var(--theme-color, #635bff)' }} />
               ) : (
-                <Moon className="w-5 h-5 text-[#635bff]" />
+                <Moon className="w-5 h-5" style={{ color: 'var(--theme-color, #635bff)' }} />
               )}
             </button>
             
@@ -313,13 +313,13 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 >
                   {isDarkMode ? (
                     <>
-                      <Sun className="w-5 h-5 text-[#635bff]" />
-                      <span className="text-[#635bff] font-medium">Light Mode</span>
+                      <Sun className="w-5 h-5" style={{ color: 'var(--theme-color, #635bff)' }} />
+                      <span className="font-medium" style={{ color: 'var(--theme-color, #635bff)' }}>Light Mode</span>
                     </>
                   ) : (
                     <>
-                      <Moon className="w-5 h-5 text-[#635bff]" />
-                      <span className="text-[#635bff] font-medium">Dark Mode</span>
+                      <Moon className="w-5 h-5" style={{ color: 'var(--theme-color, #635bff)' }} />
+                      <span className="font-medium" style={{ color: 'var(--theme-color, #635bff)' }}>Dark Mode</span>
                     </>
                   )}
                 </button>

@@ -428,15 +428,16 @@ export default function NotificationBell() {
   };
 
   const getNotificationIcon = (type: string) => {
+    const iconColor = { color: 'var(--theme-color, #635bff)' };
     switch (type) {
       case "appointment":
-        return <Calendar className="w-5 h-5 text-[#635bff]" />;
+        return <Calendar className="w-5 h-5" style={iconColor} />;
       case "application":
-        return <MessageCircleMore className="w-5 h-5 text-[#635bff]" />;
+        return <MessageCircleMore className="w-5 h-5" style={iconColor} />;
       case "job":
-        return <Briefcase className="w-5 h-5 text-[#635bff]" />;
+        return <Briefcase className="w-5 h-5" style={iconColor} />;
       default:
-        return <Bell className="w-5 h-5 text-[#635bff]" />;
+        return <Bell className="w-5 h-5" style={iconColor} />;
     }
   };
 
@@ -471,10 +472,19 @@ export default function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-700 hover:text-[#635bff] transition-colors cursor-pointer"
+        className="relative p-2 text-gray-700 transition-colors cursor-pointer"
+        style={{ 
+          '--hover-color': 'var(--theme-color, #635bff)'
+        } as React.CSSProperties & { '--hover-color': string }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--theme-color, #635bff)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = '';
+        }}
         aria-label="Notifications"
       >
-        <Bell className="w-5 h-5 text-[#635bff]" />
+        <Bell className="w-5 h-5" style={{ color: 'var(--theme-color, #635bff)' }} />
         {unreadCount > 0 && (
           <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -490,7 +500,16 @@ export default function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-sm text-[#635bff] hover:text-[#524aff] cursor-pointer"
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{ 
+                    color: 'var(--theme-color, #635bff)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--theme-color-hover, #524aff)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--theme-color, #635bff)';
+                  }}
                 >
                   Mark all as read
                 </button>
@@ -557,7 +576,14 @@ export default function NotificationBell() {
                               {showExpandButton && (
                                 <button
                                   onClick={(e) => toggleExpand(notification.id, e)}
-                                  className="text-xs text-[#635bff] hover:text-[#524aff] mt-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                  className="text-xs mt-1 flex items-center gap-1 cursor-pointer transition-colors"
+                                  style={{ color: 'var(--theme-color, #635bff)' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'var(--theme-color-hover, #524aff)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'var(--theme-color, #635bff)';
+                                  }}
                                   aria-label={isExpanded ? "Show less" : "Show more"}
                                 >
                                   {isExpanded ? (

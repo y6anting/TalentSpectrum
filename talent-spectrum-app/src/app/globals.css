@@ -355,9 +355,9 @@ html.forced-dark {
 /* To get light gray (#d3cdcd), we set dark gray (#2c3232) which inverts to light */
 /* For even lighter background, use darker color here (e.g., #1a1a1a inverts to very light) */
 html.forced-dark,
-html.forced-dark body {
+/* html.forced-dark body {
   background-color: #2c3232 !important;
-}
+} */
 
 /* Dark mode gradient backgrounds */
 /* Use dark violet shades that will invert to light violet for better visibility */
@@ -378,4 +378,286 @@ html.forced-dark video,
 html.forced-dark iframe,
 html.forced-dark svg {
   filter: invert(1) hue-rotate(180deg) !important;
+}
+
+
+html.forced-dark[data-theme-color="purple"] {
+  filter: invert(0.9) hue-rotate(180deg) !important
+}
+html.forced-dark[data-theme-color="blue"] {
+  filter: invert(0.9) hue-rotate(130deg) !important
+}
+html.forced-dark[data-theme-color="green"] {
+  filter: invert(0.9) hue-rotate(85deg) !important
+}
+html.forced-dark[data-theme-color="orange"] {
+  filter: invert(0.9) hue-rotate(320deg) !important
+}
+html.forced-dark[data-theme-color="pink"] {
+  filter: invert(0.9) hue-rotate(270deg) !important
+}
+
+
+html[data-theme-color="purple"] {
+  filter: invert(0) hue-rotate(0deg) !important;
+}
+html[data-theme-color="blue"] {
+  filter: invert(0) hue-rotate(340deg) !important;
+}
+html[data-theme-color="green"] {
+  filter: invert(0) hue-rotate(270deg) !important;
+}
+html[data-theme-color="orange"] {
+  filter: invert(0) hue-rotate(125deg) !important;
+}
+html[data-theme-color="pink"] {
+  filter: invert(0) hue-rotate(95deg) !important;
+}
+
+/* Prevent images and logos from being affected by theme color filters */
+/* Apply inverse hue rotation to counteract parent filter */
+
+/* Purple theme - no hue rotation needed */
+html[data-theme-color="purple"] img,
+html[data-theme-color="purple"] picture,
+html[data-theme-color="purple"] video,
+html[data-theme-color="purple"] iframe,
+html[data-theme-color="purple"] svg,
+html[data-theme-color="purple"] [class*="logo"],
+html[data-theme-color="purple"] [id*="logo"],
+html[data-theme-color="purple"] [alt*="Logo"],
+html[data-theme-color="purple"] [alt*="logo"],
+html[data-theme-color="purple"] img[src*="logo"],
+html[data-theme-color="purple"] img[src*="Logo"],
+html[data-theme-color="purple"] img[src*="TalentSpectrum"] {
+  filter: none !important;
+}
+
+/* Blue theme - counteract hue-rotate(340deg) with hue-rotate(20deg) */
+html[data-theme-color="blue"] img,
+html[data-theme-color="blue"] picture,
+html[data-theme-color="blue"] video,
+html[data-theme-color="blue"] iframe,
+html[data-theme-color="blue"] svg,
+html[data-theme-color="blue"] [class*="logo"],
+html[data-theme-color="blue"] [id*="logo"],
+html[data-theme-color="blue"] [alt*="Logo"],
+html[data-theme-color="blue"] [alt*="logo"],
+html[data-theme-color="blue"] img[src*="logo"],
+html[data-theme-color="blue"] img[src*="Logo"],
+html[data-theme-color="blue"] img[src*="TalentSpectrum"] {
+  filter: hue-rotate(20deg) !important; /* 360 - 340 = 20 */
+}
+
+/* Green theme - counteract hue-rotate(270deg) with hue-rotate(90deg) */
+html[data-theme-color="green"] img,
+html[data-theme-color="green"] picture,
+html[data-theme-color="green"] video,
+html[data-theme-color="green"] iframe,
+html[data-theme-color="green"] svg,
+html[data-theme-color="green"] [class*="logo"],
+html[data-theme-color="green"] [id*="logo"],
+html[data-theme-color="green"] [alt*="Logo"],
+html[data-theme-color="green"] [alt*="logo"],
+html[data-theme-color="green"] img[src*="logo"],
+html[data-theme-color="green"] img[src*="Logo"],
+html[data-theme-color="green"] img[src*="TalentSpectrum"] {
+  filter: hue-rotate(90deg) !important; /* 360 - 270 = 90 */
+}
+
+/* Orange theme - counteract hue-rotate(125deg) with hue-rotate(235deg) */
+html[data-theme-color="orange"] img,
+html[data-theme-color="orange"] picture,
+html[data-theme-color="orange"] video,
+html[data-theme-color="orange"] iframe,
+html[data-theme-color="orange"] svg,
+html[data-theme-color="orange"] [class*="logo"],
+html[data-theme-color="orange"] [id*="logo"],
+html[data-theme-color="orange"] [alt*="Logo"],
+html[data-theme-color="orange"] [alt*="logo"],
+html[data-theme-color="orange"] img[src*="logo"],
+html[data-theme-color="orange"] img[src*="Logo"],
+html[data-theme-color="orange"] img[src*="TalentSpectrum"] {
+  filter: hue-rotate(235deg) !important; /* 360 - 125 = 235 */
+}
+
+/* Pink theme - counteract hue-rotate(95deg) with hue-rotate(265deg) */
+html[data-theme-color="pink"] img,
+html[data-theme-color="pink"] picture,
+html[data-theme-color="pink"] video,
+html[data-theme-color="pink"] iframe,
+html[data-theme-color="pink"] svg,
+html[data-theme-color="pink"] [class*="logo"],
+html[data-theme-color="pink"] [id*="logo"],
+html[data-theme-color="pink"] [alt*="Logo"],
+html[data-theme-color="pink"] [alt*="logo"],
+html[data-theme-color="pink"] img[src*="logo"],
+html[data-theme-color="pink"] img[src*="Logo"],
+html[data-theme-color="pink"] img[src*="TalentSpectrum"] {
+  filter: hue-rotate(265deg) !important; /* 360 - 95 = 265 */
+}
+
+/* Dark mode with theme colors - images need invert back but NOT theme color hue rotation */
+html.forced-dark[data-theme-color="purple"] img,
+html.forced-dark[data-theme-color="purple"] picture,
+html.forced-dark[data-theme-color="purple"] video,
+html.forced-dark[data-theme-color="purple"] iframe,
+html.forced-dark[data-theme-color="purple"] svg,
+html.forced-dark[data-theme-color="purple"] canvas,
+html.forced-dark[data-theme-color="purple"] [class*="logo"],
+html.forced-dark[data-theme-color="purple"] [id*="logo"],
+html.forced-dark[data-theme-color="purple"] [alt*="Logo"],
+html.forced-dark[data-theme-color="purple"] [alt*="logo"],
+html.forced-dark[data-theme-color="purple"] img[src*="logo"],
+html.forced-dark[data-theme-color="purple"] img[src*="Logo"],
+html.forced-dark[data-theme-color="purple"] img[src*="TalentSpectrum"],
+html.forced-dark[data-theme-color="purple"] img[src*="Google"],
+html.forced-dark[data-theme-color="purple"] img[src*="PwC"],
+html.forced-dark[data-theme-color="purple"] img[src*="Gamuda"],
+html.forced-dark[data-theme-color="purple"] *[role="img"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Blue dark mode - counteract invert(0.9) hue-rotate(130deg) */
+html.forced-dark[data-theme-color="blue"] img,
+html.forced-dark[data-theme-color="blue"] picture,
+html.forced-dark[data-theme-color="blue"] video,
+html.forced-dark[data-theme-color="blue"] iframe,
+html.forced-dark[data-theme-color="blue"] svg,
+html.forced-dark[data-theme-color="blue"] canvas,
+html.forced-dark[data-theme-color="blue"] [class*="logo"],
+html.forced-dark[data-theme-color="blue"] [id*="logo"],
+html.forced-dark[data-theme-color="blue"] [alt*="Logo"],
+html.forced-dark[data-theme-color="blue"] [alt*="logo"],
+html.forced-dark[data-theme-color="blue"] img[src*="logo"],
+html.forced-dark[data-theme-color="blue"] img[src*="Logo"],
+html.forced-dark[data-theme-color="blue"] img[src*="TalentSpectrum"],
+html.forced-dark[data-theme-color="blue"] img[src*="Google"],
+html.forced-dark[data-theme-color="blue"] img[src*="PwC"],
+html.forced-dark[data-theme-color="blue"] img[src*="Gamuda"],
+html.forced-dark[data-theme-color="blue"] *[role="img"] {
+  filter: invert(1) hue-rotate(230deg) !important; /* Counteract 130deg: 180 + (360 - 130) = 410 mod 360 = 50, so 180 + 50 = 230 */
+}
+
+/* Green dark mode - counteract invert(0.9) hue-rotate(85deg) */
+html.forced-dark[data-theme-color="green"] img,
+html.forced-dark[data-theme-color="green"] picture,
+html.forced-dark[data-theme-color="green"] video,
+html.forced-dark[data-theme-color="green"] iframe,
+html.forced-dark[data-theme-color="green"] svg,
+html.forced-dark[data-theme-color="green"] canvas,
+html.forced-dark[data-theme-color="green"] [class*="logo"],
+html.forced-dark[data-theme-color="green"] [id*="logo"],
+html.forced-dark[data-theme-color="green"] [alt*="Logo"],
+html.forced-dark[data-theme-color="green"] [alt*="logo"],
+html.forced-dark[data-theme-color="green"] img[src*="logo"],
+html.forced-dark[data-theme-color="green"] img[src*="Logo"],
+html.forced-dark[data-theme-color="green"] img[src*="TalentSpectrum"],
+html.forced-dark[data-theme-color="green"] img[src*="Google"],
+html.forced-dark[data-theme-color="green"] img[src*="PwC"],
+html.forced-dark[data-theme-color="green"] img[src*="Gamuda"],
+html.forced-dark[data-theme-color="green"] *[role="img"] {
+  filter: invert(1) hue-rotate(275deg) !important; /* Counteract 85deg: 180 + (360 - 85) = 455 mod 360 = 95, so 180 + 95 = 275 */
+}
+
+/* Orange dark mode - counteract invert(0.9) hue-rotate(320deg) */
+/* The parent filter creates a filtered rendering context */
+/* To neutralize: we need invert(1) to fully invert, and counter-rotate */
+/* Since parent rotates 320deg, we need -320deg = 40deg to cancel it */
+html.forced-dark[data-theme-color="orange"] img,
+html.forced-dark[data-theme-color="orange"] picture,
+html.forced-dark[data-theme-color="orange"] video,
+html.forced-dark[data-theme-color="orange"] iframe,
+html.forced-dark[data-theme-color="orange"] svg,
+html.forced-dark[data-theme-color="orange"] canvas,
+html.forced-dark[data-theme-color="orange"] [class*="logo"],
+html.forced-dark[data-theme-color="orange"] [id*="logo"],
+html.forced-dark[data-theme-color="orange"] [alt*="Logo"],
+html.forced-dark[data-theme-color="orange"] [alt*="logo"],
+html.forced-dark[data-theme-color="orange"] img[src*="logo"],
+html.forced-dark[data-theme-color="orange"] img[src*="Logo"],
+html.forced-dark[data-theme-color="orange"] img[src*="TalentSpectrum"],
+html.forced-dark[data-theme-color="orange"] img[src*="Google"],
+html.forced-dark[data-theme-color="orange"] img[src*="PwC"],
+html.forced-dark[data-theme-color="orange"] img[src*="Gamuda"],
+html.forced-dark[data-theme-color="orange"] *[role="img"],
+html.forced-dark[data-theme-color="orange"] *[class*="avatar"],
+html.forced-dark[data-theme-color="orange"] *[class*="Avatar"] {
+  filter: invert(1) hue-rotate(40deg) !important;
+  isolation: isolate;
+}
+
+/* Pink dark mode - counteract invert(0.9) hue-rotate(270deg) */
+/* Parent rotates 270deg, so we need -270deg = 90deg to cancel it */
+html.forced-dark[data-theme-color="pink"] img,
+html.forced-dark[data-theme-color="pink"] picture,
+html.forced-dark[data-theme-color="pink"] video,
+html.forced-dark[data-theme-color="pink"] iframe,
+html.forced-dark[data-theme-color="pink"] svg,
+html.forced-dark[data-theme-color="pink"] canvas,
+html.forced-dark[data-theme-color="pink"] [class*="logo"],
+html.forced-dark[data-theme-color="pink"] [id*="logo"],
+html.forced-dark[data-theme-color="pink"] [alt*="Logo"],
+html.forced-dark[data-theme-color="pink"] [alt*="logo"],
+html.forced-dark[data-theme-color="pink"] img[src*="logo"],
+html.forced-dark[data-theme-color="pink"] img[src*="Logo"],
+html.forced-dark[data-theme-color="pink"] img[src*="TalentSpectrum"],
+html.forced-dark[data-theme-color="pink"] img[src*="Google"],
+html.forced-dark[data-theme-color="pink"] img[src*="PwC"],
+html.forced-dark[data-theme-color="pink"] img[src*="Gamuda"],
+html.forced-dark[data-theme-color="pink"] *[role="img"],
+html.forced-dark[data-theme-color="pink"] *[class*="avatar"],
+html.forced-dark[data-theme-color="pink"] *[class*="Avatar"] {
+  filter: invert(1) hue-rotate(90deg) !important;
+  isolation: isolate;
+}
+
+/* Prevent the entire accessibility settings panel from being filtered */
+html.forced-dark #accessibility-settings-panel {
+  filter: invert(1) hue-rotate(180deg) !important;
+  isolation: isolate;
+}
+
+/* Protect accessibility settings panel from theme color filters in light mode */
+html[data-theme-color] #accessibility-settings-panel {
+  filter: none !important;
+  isolation: isolate;
+}
+
+/* Protect accessibility settings panel from theme color filters in dark mode */
+html.forced-dark[data-theme-color] #accessibility-settings-panel {
+  filter: invert(1) hue-rotate(180deg) !important;
+  isolation: isolate;
+}
+
+/* Prevent theme color buttons/swatches from being filtered */
+/* Protect color swatches in light mode with theme colors */
+html[data-theme-color] .theme-color-swatch,
+html[data-theme-color] .theme-color-swatches,
+html[data-theme-color] #accessibility-settings-theme-color .theme-color-swatch,
+html[data-theme-color] #accessibility-settings-theme-color button {
+  filter: none !important;
+  isolation: isolate;
+}
+
+/* Protect color swatches in dark mode */
+html.forced-dark .theme-color-swatch,
+html.forced-dark .theme-color-swatches,
+html.forced-dark #accessibility-settings-theme-color .theme-color-swatch,
+html.forced-dark #accessibility-settings-theme-color button {
+  filter: none !important;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+}
+
+/* Protect color swatches in dark mode with theme colors */
+html.forced-dark[data-theme-color] .theme-color-swatch,
+html.forced-dark[data-theme-color] .theme-color-swatches,
+html.forced-dark[data-theme-color] #accessibility-settings-theme-color .theme-color-swatch,
+html.forced-dark[data-theme-color] #accessibility-settings-theme-color button {
+  filter: none !important;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
 }

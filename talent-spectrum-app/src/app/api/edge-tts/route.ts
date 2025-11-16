@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     
     const {
       text,
-      voice = "en-US-AriaNeural",
+      voice = "en-US-JennyNeural", // Default to Jenny (US female voice)
       rate = 0,
       volume = 1.0,
       pitch,

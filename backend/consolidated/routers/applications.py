@@ -82,12 +82,10 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
-        # Check if already applied
+        # Check if already applied - use job_id for accurate duplicate checking
         existing_application = db.query(JobApplication).filter(
-            # JobApplication.candidate_id == candidate.id,
             JobApplication.candidate_email == candidate.candidate_email,
-            JobApplication.job_title == job.job_title,
-            JobApplication.company == job.employer_email.split('@')[0]
+            JobApplication.job_id == application.job_id
         ).first()
 
         if existing_application:
@@ -95,8 +93,8 @@ async def apply_to_job(db: DbDep, application: JobApplicationRequest):
 
         # Create new application
         new_application = JobApplication(
-            # candidate_id=candidate.id,
             candidate_email = candidate.candidate_email,
+            job_id = application.job_id,  # Store job_id for accurate duplicate checking
             job_title=job.job_title,
             company=job.employer_email.split('@')[0].replace('.', ' ').replace('_', ' ').title(),
             applied_date=datetime.utcnow(),
@@ -131,10 +129,33 @@ async def get_candidate_applications(candidate_email: str, db: DbDep):
 
         # applications = db.query(JobApplication).filter(JobApplication.candidate_id == candidate.id).all()
         applications = db.query(JobApplication).filter(JobApplication.candidate_email == candidate.candidate_email).all()
-        return applications
+        
+        # Format applications with proper date serialization for JSON
+        formatted_applications = []
+        for app in applications:
+            app_dict = {
+                "id": app.id,
+                "candidate_email": app.candidate_email,
+                "job_id": app.job_id,
+                "job_title": app.job_title,
+                "company": app.company,
+                "applied_date": app.applied_date.isoformat() if app.applied_date else None,
+                "status": app.status,
+                "location": app.location,
+                "salary": app.salary,
+                "accommodations_requested": app.accommodations_requested,
+                "score": app.score,
+                "interview_date": app.interview_date.isoformat() if app.interview_date else None,
+                "updated_at": app.updated_at.isoformat() if app.updated_at else None,  # Include updated_at for notifications
+            }
+            formatted_applications.append(app_dict)
+        
+        return formatted_applications
 
     except Exception as e:
         print(f"Error fetching applications: {e}")
+        import traceback
+        print(traceback.format_exc())
         # Return empty array instead of 500 error
         return []
 
@@ -199,6 +220,7 @@ async def get_employer_applications(employer_email: str, db: DbDep):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+    interview_date: str | None = None  # Optional interview date in YYYY-MM-DD or ISO datetime format
 
 @router.get("/{application_id}")
 async def get_application(application_id: int, db: DbDep):
@@ -259,20 +281,66 @@ async def update_application_status(application_id: int, db: DbDep, status_data:
             raise HTTPException(status_code=404, detail="Application not found")
         
         new_status = status_data.status
-        if new_status not in ["shortlisted", "rejected", "under_review"]:
-            raise HTTPException(status_code=400, detail="Invalid status. Must be 'shortlisted', 'rejected', or 'under_review'")
+        if new_status not in ["shortlisted", "rejected", "under_review", "interview_scheduled", "interview_accepted", "interview_rejected"]:
+            raise HTTPException(status_code=400, detail="Invalid status. Must be 'shortlisted', 'rejected', 'under_review', 'interview_scheduled', 'interview_accepted', or 'interview_rejected'")
         
+        old_status = application.status
         application.status = new_status
+        application.updated_at = datetime.utcnow()  # Explicitly update timestamp for notifications
+        
+        # Update interview_date if provided
+        if hasattr(status_data, 'interview_date') and status_data.interview_date:
+            try:
+                if isinstance(status_data.interview_date, str):
+                    # Try to parse as ISO datetime first (includes time)
+                    try:
+                        # Handle ISO format with or without timezone
+                        if 'T' in status_data.interview_date:
+                            # ISO datetime format
+                            application.interview_date = datetime.fromisoformat(status_data.interview_date.replace('Z', '+00:00'))
+                        else:
+                            # Date-only format (YYYY-MM-DD)
+                            application.interview_date = datetime.strptime(status_data.interview_date, "%Y-%m-%d")
+                    except ValueError:
+                        # Fallback to date-only format
+                        application.interview_date = datetime.strptime(status_data.interview_date, "%Y-%m-%d")
+                else:
+                    application.interview_date = status_data.interview_date
+            except (ValueError, TypeError) as e:
+                print(f"Warning: Could not parse interview_date: {status_data.interview_date}, error: {e}")
+                # Continue without updating interview_date
+        
+        # If status is interview_accepted or interview_rejected, also update shortlist status
+        if new_status in ["interview_accepted", "interview_rejected"]:
+            try:
+                from database.models.shortlist import ShortlistedCandidate
+                # Find shortlist entry by candidate_email and job_title
+                shortlist_entry = db.query(ShortlistedCandidate).filter(
+                    ShortlistedCandidate.candidate_email == application.candidate_email,
+                    ShortlistedCandidate.job_title == application.job_title
+                ).first()
+                
+                if shortlist_entry:
+                    shortlist_entry.status = new_status
+                    print(f"✅ Shortlist status synced to {new_status} for candidate {application.candidate_email}")
+            except Exception as e:
+                print(f"⚠️ Warning: Could not sync shortlist status: {e}")
+                # Don't fail the application update if shortlist sync fails
+        
         db.commit()
         db.refresh(application)
         
+        # Return application details including updated_at for notification system
         return {
             "message": f"Application status updated to {new_status}",
             "application": {
                 "id": application.id,
                 "candidate_email": application.candidate_email,
                 "job_title": application.job_title,
-                "status": application.status
+                "company": application.company,
+                "status": application.status,
+                "interview_date": application.interview_date.isoformat() if application.interview_date else None,
+                "updated_at": application.updated_at.isoformat() if application.updated_at else None
             }
         }
     except HTTPException:

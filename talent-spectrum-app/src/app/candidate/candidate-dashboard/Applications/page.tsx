@@ -7,10 +7,11 @@ import { Button } from "@/app/components/button";
 import { Input } from "@/app/components/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import {
-  Search, MapPin, Clock, Briefcase, DollarSign, Shield, Building, Bookmark, Share, Eye, ChevronDown, ChevronUp, CheckCircle, BrainCircuit, House, Heart, SortAsc, FileText
+  Search, MapPin, Clock, Briefcase, DollarSign, Building, Share, Eye, ChevronDown, ChevronUp, CheckCircle, BrainCircuit, House, Heart, SortAsc, FileText, Calendar, X as XIcon, User, Check
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useToastHelpers } from "@/components/ui/toast";
 
 const SALARY_RANGES = [
@@ -101,7 +102,8 @@ export default function ApplicationsPage({
   savingJobId,
 }: ApplicationsPageProps) {
   const router = useRouter();
-  const { success } = useToastHelpers();
+  const { data: session } = useSession();
+  const { success, error: showError } = useToastHelpers();
   const [expandedMatchingScore, setExpandedMatchingScore] = useState<number | null>(null);
   
   // Default values if not provided
@@ -218,10 +220,6 @@ export default function ApplicationsPage({
         </Card>
       </div>
     );
-  }
-
-  function showError(arg0: string, arg1: string) {
-    throw new Error("Function not implemented.");
   }
 
   return (
@@ -524,20 +522,475 @@ export default function ApplicationsPage({
                       </div>
                     </div>
 
+                    {/* Detailed Matching Score - Expandable */}
+                    <div className="pt-4 border-t border-[#e8e6f0]">
+                      <button
+                        onClick={() => setExpandedMatchingScore(expandedMatchingScore === selectedApplication.id ? null : selectedApplication.id)}
+                        className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span className="font-semibold text-[#635BFF]">View Matching Detail</span>
+                        {expandedMatchingScore === selectedApplication.id ? (
+                          <ChevronUp className="h-5 w-5 text-[#6f7a80]" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-[#6f7a80]" />
+                        )}
+                      </button>
+                      {expandedMatchingScore === selectedApplication.id && selectedApplication && (() => {
+                        const primaryMatchScore = selectedApplication.primaryMatchScore || selectedApplication.score || 96;
+                        const secondaryMatchScore = selectedApplication.secondaryMatchScore || 90;
+                        const tertiaryMatchScore = selectedApplication.tertiaryMatchScore || 85;
+                        const overallMatchScore = getOverallMatchScore(selectedApplication);
+
+                        return (
+                          <div className="mt-4 space-y-6">
+                            {/* Overall Match Score */}
+                            <div className="text-center py-6 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg">
+                              <p className="text-sm text-gray-600 mb-2">Overall Match</p>
+                              <div className="text-6xl font-bold text-[#635bff] mb-2">
+                                {overallMatchScore}%
+                              </div>
+                            </div>
+
+                            {/* Primary Match: Experience, Skill & Education */}
+                            <Card className="border-2 border-green-200">
+                              <CardHeader className="bg-green-50">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-green-100 rounded-lg">
+                                      <Briefcase className="h-5 w-5 text-green-600" />
+                                    </div>
+                                    <div>
+                                      <CardTitle className="text-lg">Primary Match: <br />Experience, Skill & Education</CardTitle>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        Strong alignment with required technical skills
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-3xl font-bold text-green-600">{primaryMatchScore}%</div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-6">
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2">
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                      Matched Skills
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2 ml-6">
+                                      {["Python", "Machine Learning", "NLP", "Data Analysis"].map((skill) => (
+                                        <Badge key={skill} className="bg-green-100 text-green-800 border-green-300">
+                                          {skill}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-yellow-600">⚠</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      Cloud Computing (minor gap)
+                                    </p>
+                                  </div>
+
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      Candidate possesses core technical competencies. Consider a short technical assessment for cloud skills.
+                                    </p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {/* Secondary Match: Environmental Fit */}
+                            <Card className="border-2 border-purple-200">
+                              <CardHeader className="bg-purple-50">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-purple-100 rounded-lg">
+                                      <House className="h-5 w-5 text-purple-600" />
+                                    </div>
+                                    <div>
+                                      <CardTitle className="text-lg">Secondary Match: <br /> Environmental Fit</CardTitle>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        Excellent fit for remote work and preference for written communication
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-3xl font-bold text-purple-600">{secondaryMatchScore}%</div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-6">
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-3">Matched Preferences</h4>
+                                    <div className="space-y-2 ml-6">
+                                      <div className="flex items-start gap-2">
+                                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                        <span className="text-sm text-gray-700">Remote work experience</span>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                        <span className="text-sm text-gray-700">Preference for written communication</span>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                        <span className="text-sm text-gray-700">Flexible hours</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-orange-600">📋</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      Prefers independent work; team style might need slight adjustment
+                                    </p>
+                                  </div>
+
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      The candidate&apos;s environmental preferences align well with the remote-first culture. Ensure clear written instructions are standard.
+                                    </p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {/* Tertiary Match: Other Factors */}
+                            <Card className="border-2 border-blue-200">
+                              <CardHeader className="bg-blue-50">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-blue-100 rounded-lg">
+                                      <BrainCircuit className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <CardTitle className="text-lg">Tertiary Match: <br /> Other Factors</CardTitle>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        Good alignment with company&apos;s focus on detail-oriented problem solving
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-3xl font-bold text-blue-600">{tertiaryMatchScore}%</div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-6">
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-3">Matched Factors</h4>
+                                    <div className="space-y-2 ml-6">
+                                      <div className="flex items-start gap-2">
+                                        <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                                        <span className="text-sm text-gray-700">
+                                          <strong>Location:</strong> Remote preference matches job offering
+                                        </span>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                                        <span className="text-sm text-gray-700">
+                                          <strong>Neurodivergent Strengths:</strong> Detail-Oriented, Systematic Thinking
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-yellow-600">⚠</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      Presentation comfort is lower; may need support for client-facing roles
+                                    </p>
+                                  </div>
+
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      Candidate&apos;s preference for detail and systematic thinking is a strong asset. Provide coaching or alternative presentation methods if required.
+                                    </p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
                     {/* Interview Information */}
-                    {selectedApplication.interviewDate && (
-                      <div className="bg-blue-50 p-4 rounded-lg">
+                    {selectedApplication.interviewDate && selectedApplication.status === "interview_scheduled" && (
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div className="flex-1">
                         <h3 className="text-lg font-semibold text-[#3a4043] mb-2">Interview Scheduled</h3>
+                            <p className="text-gray-700 mb-1">
+                              <strong>Date:</strong> {(() => {
+                                try {
+                                  // Normalize date string to ensure proper timezone handling
+                                  const dateStr = selectedApplication.interviewDate;
+                                  const normalizedStr = dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)
+                                    ? dateStr
+                                    : dateStr + 'Z';
+                                  const interviewDate = new Date(normalizedStr);
+                                  return interviewDate.toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric',
+                                    weekday: 'long',
+                                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                                  });
+                                } catch {
+                                  return 'Invalid date';
+                                }
+                              })()}
+                            </p>
+                            {(() => {
+                              try {
+                                // Normalize date string to ensure proper timezone handling
+                                const dateStr = selectedApplication.interviewDate;
+                                const normalizedStr = dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)
+                                  ? dateStr
+                                  : dateStr + 'Z';
+                                const interviewDateTime = new Date(normalizedStr);
+                                // Check if time information is available (not just date)
+                                if (interviewDateTime.getHours() !== 0 || interviewDateTime.getMinutes() !== 0) {
+                                  return (
                         <p className="text-gray-700 mb-3">
-                          <strong>Date:</strong> {new Date(selectedApplication.interviewDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </p>
+                                      <strong>Time:</strong> {interviewDateTime.toLocaleTimeString('en-US', { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit',
+                                        hour12: true,
+                                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                                      })}
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              } catch {
+                                return null;
+                              }
+                            })()}
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-green-500 text-green-600 hover:bg-green-50 font-semibold px-5 py-2 shadow-md transition-all duration-200 cursor-pointer"
+                            onClick={async () => {
+                              if (!selectedApplication.id) {
+                                showError("Error", "Application ID not found");
+                                return;
+                              }
+                              try {
+                                const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                                // Update application status
+                                const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({ status: 'interview_accepted' }),
+                                });
+                                
+                                if (response.ok) {
+                                  // Backend will automatically update shortlist status when application status changes
+                                  // Dispatch event to refresh applications
+                                  window.dispatchEvent(new CustomEvent('applicationStatusUpdated', {
+                                    detail: {
+                                      applicationId: selectedApplication.id,
+                                      newStatus: 'interview_accepted',
+                                      timestamp: new Date().toISOString()
+                                    }
+                                  }));
+                                  
+                                  success("Interview Accepted", "You have accepted the interview invitation.");
+                                  // Refresh applications
+                                  if (setApplications) {
+                                    const sessionEmail = session?.user?.email;
+                                    if (sessionEmail) {
+                                      const appsResponse = await fetch(`${API_BASE}/applications?candidateEmail=${encodeURIComponent(sessionEmail)}`);
+                                      if (appsResponse.ok) {
+                                        const appsData = await appsResponse.json();
+                                        const mapped = Array.isArray(appsData)
+                                          ? appsData.map((app: any) => ({
+                                              id: app.id,
+                                              jobTitle: app.job_title || app.jobTitle || '',
+                                              company: app.company || '',
+                                              appliedDate: app.applied_date || app.appliedDate || '',
+                                              status: app.status || 'under_review',
+                                              location: app.location || '',
+                                              salary: app.salary || '',
+                                              employmentType: app.type || app.employment_type || '',
+                                              accommodationsRequested: app.accommodations_requested || false,
+                                              score: app.score,
+                                              interviewDate: app.interview_date || app.interviewDate,
+                                            }))
+                                          : [];
+                                        setApplications(mapped);
+                                        // Update selected application
+                                        const updatedApp = mapped.find((a: any) => a.id === selectedApplication.id);
+                                        if (updatedApp) {
+                                          setSelectedApplication({ ...selectedApplication, ...updatedApp });
+                                        }
+                                      }
+                                    }
+                                  }
+                                } else {
+                                  showError("Error", "Failed to accept interview. Please try again.");
+                                }
+                              } catch (error) {
+                                console.error("Error accepting interview:", error);
+                                showError("Error", "An error occurred while accepting the interview.");
+                              }
+                            }}
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Accept Interview
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-500 text-red-600 hover:bg-red-50 font-semibold px-5 py-2 shadow-md transition-all duration-200 cursor-pointer"
+                            onClick={async () => {
+                              if (!selectedApplication.id) {
+                                showError("Error", "Application ID not found");
+                                return;
+                              }
+                              try {
+                                const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                                // Update application status
+                                const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({ status: 'interview_rejected' }),
+                                });
+                                
+                                if (response.ok) {
+                                  // Find and update shortlist status
+                                  // Similar to accept - update application, shortlist will sync when employer views
+                                  // The application status update is the primary source of truth
+                                  
+                                  // Dispatch event to refresh applications
+                                  window.dispatchEvent(new CustomEvent('applicationStatusUpdated', {
+                                    detail: {
+                                      applicationId: selectedApplication.id,
+                                      newStatus: 'interview_rejected',
+                                      timestamp: new Date().toISOString()
+                                    }
+                                  }));
+                                  
+                                  success("Interview Rejected", "You have rejected the interview invitation.");
+                                  // Refresh applications
+                                  if (setApplications) {
+                                    const sessionEmail = session?.user?.email;
+                                    if (sessionEmail) {
+                                      const appsResponse = await fetch(`${API_BASE}/applications?candidateEmail=${encodeURIComponent(sessionEmail)}`);
+                                      if (appsResponse.ok) {
+                                        const appsData = await appsResponse.json();
+                                        const mapped = Array.isArray(appsData)
+                                          ? appsData.map((app: any) => ({
+                                              id: app.id,
+                                              jobTitle: app.job_title || app.jobTitle || '',
+                                              company: app.company || '',
+                                              appliedDate: app.applied_date || app.appliedDate || '',
+                                              status: app.status || 'under_review',
+                                              location: app.location || '',
+                                              salary: app.salary || '',
+                                              employmentType: app.type || app.employment_type || '',
+                                              accommodationsRequested: app.accommodations_requested || false,
+                                              score: app.score,
+                                              interviewDate: app.interview_date || app.interviewDate,
+                                            }))
+                                          : [];
+                                        setApplications(mapped);
+                                        // Update selected application
+                                        const updatedApp = mapped.find((a: any) => a.id === selectedApplication.id);
+                                        if (updatedApp) {
+                                          setSelectedApplication({ ...selectedApplication, ...updatedApp });
+                                        }
+                                      }
+                                    }
+                                  }
+                                } else {
+                                  showError("Error", "Failed to reject interview. Please try again.");
+                                }
+                              } catch (error) {
+                                console.error("Error rejecting interview:", error);
+                                showError("Error", "An error occurred while rejecting the interview.");
+                              }
+                            }}
+                          >
+                            <XIcon className="h-4 w-4 mr-2" />
+                            Reject Interview
+                          </Button>
                         <Button
                           size="sm"
-                          className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200"
-                          onClick={() => router.push("/mock-interview/setup")}
+                            className="bg-[#635bff] hover:bg-[#5748e5] text-white font-semibold px-5 py-2 shadow-md transition-all duration-200 cursor-pointer"
+                            onClick={() => router.push("/candidate/candidate-dashboard?tab=mock-interview&subtab=setup")}
                         >
                           Prepare for Interview
                         </Button>
+                        </div>
+                      </div>
+                    )}
+                    {selectedApplication.interviewDate && selectedApplication.status === "interview_accepted" && (
+                      <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <div>
+                            <h3 className="text-lg font-semibold text-green-800 mb-1">Interview Accepted</h3>
+                            <p className="text-sm text-green-700">
+                              Date: {new Date(selectedApplication.interviewDate).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                weekday: 'long'
+                              })} at {new Date(selectedApplication.interviewDate).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedApplication.status === "interview_rejected" && (
+                      <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          <XIcon className="h-5 w-5 text-red-600" />
+                          <div>
+                            <h3 className="text-lg font-semibold text-red-800 mb-1">Interview Rejected</h3>
+                            <p className="text-sm text-red-700">You have rejected this interview invitation.</p>
+                          </div>
+                        </div>
                       </div>
                     )}
 

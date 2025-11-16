@@ -86,21 +86,19 @@ const ResumeUploadButton: React.FC<ResumeUploadButtonProps> = ({
         console.log("   - Session email:", userEmail);
         console.log("   - Final email used:", resumeEmail);
 
-        if (typeof window !== 'undefined' && resumeEmail) {
-          sessionStorage.setItem('resumeParsedEmail', resumeEmail);
-          console.log("✅ Stored resumeParsedEmail in sessionStorage:", resumeEmail);
-        }
+        // NOTE: Backend now always uses login email (userEmail) as primary identifier
+        // Resume email (if different) is stored in personal_identifiers.resume_email
+        // No need to store resumeParsedEmail in sessionStorage - backend handles linking
+        console.log("✅ Backend will use login email as primary and link resume email if different");
       } catch (e) {
         console.error("❌ Error storing resume email:", e);
       }
 
       try {
-        const finalEmail = 
-          (dataToSet as any)?.personal_identifiers?.emailAddress || 
-          (dataToSet as any)?.candidate_email ||
-          userEmail;
+        // Always use login email for event dispatch - backend uses this as primary identifier
+        const finalEmail = userEmail;
         
-        console.log("📤 Dispatching 'resumeUploaded' event with email:", finalEmail);
+        console.log("📤 Dispatching 'resumeUploaded' event with login email:", finalEmail);
         window.dispatchEvent(
           new CustomEvent('resumeUploaded', { 
             detail: { email: finalEmail } 

@@ -448,21 +448,6 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
   return (
     <Card className="overflow-hidden">
       <div className="p-6">
-        {/* Download Button - Hidden in PDF */}
-        <div className="max-w-7xl mx-auto mb-4 flex justify-end no-print">
-          <Button
-            onClick={() => handleDownloadReport()}
-            style={{
-              backgroundColor: PRIMARY,
-              color: 'white',
-            }}
-            className="hover:opacity-90 flex items-center gap-2 hover:cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            Download Report
-          </Button>
-        </div>
-
         <div id="report-content" className="max-w-7xl mx-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
@@ -481,6 +466,25 @@ const ReportPage: React.FC<ReportPageProp> = ({ handleTabChangeProp }) => {
                   <h1 className="text-3xl font-bold text-gray-800">Feedback Report</h1>
                   <p className="text-gray-600 mt-1">Comprehensive analysis of your profile and interview performance</p>
                 </div>
+              </div>
+              {/* Download Button - Same row as title, Hidden in PDF */}
+              <div className="no-print">
+                <Button
+                  onClick={() => handleDownloadReport({
+                    reportData,
+                    mockInterviewFeedback,
+                    mockInterviewDetails,
+                    profileData
+                  })}
+                  style={{
+                    backgroundColor: PRIMARY,
+                    color: 'white',
+                  }}
+                  className="hover:opacity-90 flex items-center gap-2 hover:cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Report
+                </Button>
               </div>
             </div>
 

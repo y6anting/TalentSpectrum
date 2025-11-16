@@ -102,6 +102,9 @@ export default function InterviewReportDetailPage({ reportId, onNavigate }: Embe
   const handlePracticeAgain = () => {
     if (onNavigate) {
       onNavigate("setup");
+    } else {
+      // Fallback: navigate to mock interview setup tab
+      window.location.href = '/candidate/candidate-dashboard?tab=mock-interview&subtab=setup';
     }
   };
 
@@ -134,7 +137,19 @@ export default function InterviewReportDetailPage({ reportId, onNavigate }: Embe
     );
   }
 
-  const date = new Date(report.created_at || report.end_time || report.start_time);
+  // Parse the date string - backend returns ISO strings
+  // If timezone info is missing, assume UTC
+  const dateStr = report.created_at || report.end_time || report.start_time;
+  let date: Date;
+  if (dateStr) {
+    // If the string doesn't end with Z or timezone offset, assume UTC
+    const normalizedStr = dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)
+      ? dateStr
+      : dateStr + 'Z'; // Append Z to indicate UTC
+    date = new Date(normalizedStr);
+  } else {
+    date = new Date();
+  }
   const durationMinutes = Math.round((report.duration_seconds || 0) / 60);
 
   return (
@@ -143,7 +158,7 @@ export default function InterviewReportDetailPage({ reportId, onNavigate }: Embe
         <Button
           variant="outline"
           onClick={handleBackToHistory}
-          className="mb-4 border-[#635bff] text-[#635bff] hover:bg-[#635bff] hover:text-white"
+          className="mb-4 border-[#635bff] text-[#635bff] hover:bg-[#635bff] hover:text-white cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to History

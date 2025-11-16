@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Annotated, List
 from datetime import datetime
@@ -56,15 +56,26 @@ async def create_shortlist(db: DbDep, shortlist: ShortlistRequest):
 
 
 @router.get("/employer/{employer_email}", response_model=List[ShortlistResponse])
-async def get_employer_shortlist(employer_email: str, db: DbDep):
+async def get_employer_shortlist(
+    employer_email: str, 
+    db: DbDep, 
+    status: str = Query(None, description="Filter by status (e.g., 'shortlisted')")
+):
     """
-    Get all shortlisted candidates for an employer
+    Get shortlisted candidates for an employer
+    If status is provided, filter by that status (e.g., "shortlisted")
     """
     try:
-        print(f"Fetching shortlisted candidates for employer: {employer_email}")
-        shortlisted = db.query(ShortlistedCandidate).filter(
+        print(f"Fetching shortlisted candidates for employer: {employer_email}, status filter: {status}")
+        query = db.query(ShortlistedCandidate).filter(
             ShortlistedCandidate.employer_email == employer_email
-        ).order_by(ShortlistedCandidate.created_at.desc()).all()
+        )
+        
+        # Filter by status if provided
+        if status:
+            query = query.filter(ShortlistedCandidate.status == status)
+        
+        shortlisted = query.order_by(ShortlistedCandidate.created_at.desc()).all()
         
         print(f"Found {len(shortlisted)} shortlisted candidates")
         return shortlisted
@@ -109,9 +120,21 @@ async def update_shortlist(shortlist_id: int, db: DbDep, update_data: dict):
             raise HTTPException(status_code=404, detail="Shortlisted candidate not found")
 
         # Update allowed fields
-        allowed_fields = ['status', 'accommodation_details', 'experience', 'score']
+        allowed_fields = ['status', 'accommodation_details', 'experience', 'score', 'interview_date']
         for field, value in update_data.items():
             if field in allowed_fields and hasattr(shortlisted, field):
+                # Handle interview_date conversion from string to datetime if needed
+                if field == 'interview_date' and isinstance(value, str):
+                    try:
+                        from datetime import datetime
+                        value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        # If parsing fails, try other formats
+                        try:
+                            value = datetime.fromisoformat(value)
+                        except ValueError:
+                            print(f"Warning: Could not parse interview_date: {value}")
+                            continue
                 setattr(shortlisted, field, value)
 
         db.commit()

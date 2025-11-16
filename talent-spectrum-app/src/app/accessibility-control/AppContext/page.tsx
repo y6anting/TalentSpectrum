@@ -6,7 +6,7 @@ interface AppContextType {
   setUser: (user: User | null) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  darkMode: boolean;
+  darkMode: boolean;http://localhost:3000/employer/employer-dashboard
   setDarkMode: (dark: boolean) => void;
   fontSize: number;
   setFontSize: (size: number) => void;

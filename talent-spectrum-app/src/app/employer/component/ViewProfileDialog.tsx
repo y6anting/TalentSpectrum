@@ -148,16 +148,58 @@ export default function ViewProfileDialog({
       const fetchProfile = async () => {
         setLoadingReport(true);
         try {
-          // Fetch all candidate report data (same as CandidateSearch)
-          const [profileResponse, mockInterviewResponse] = await Promise.all([
-            fetch(`${API_BASE}/profiles/${encodeURIComponent(candidateEmail)}`),
-            fetch(`/api/mock-interview/reports/highest-score?email=${encodeURIComponent(candidateEmail)}`)
-          ]);
-          
+          // Fetch all candidate report data (same as Candidate Dashboard Report tab)
+          // 1. Fetch profile data
+          const profileResponse = await fetch(`${API_BASE}/profiles/${encodeURIComponent(candidateEmail)}`);
           const profileData = profileResponse.ok ? await profileResponse.json() : null;
-          const mockInterviewData = mockInterviewResponse.ok ? await mockInterviewResponse.json() : null;
           
-          // Build report data with mock fallback
+          // 2. Fetch mock interview feedback - use highest score (same as Report tab)
+          let mockInterviewData = null;
+          try {
+            const mockInterviewResponse = await fetch(`/api/mock-interview/reports/highest-score?email=${encodeURIComponent(candidateEmail)}`);
+            if (mockInterviewResponse.ok) {
+              const highestScoreReport = await mockInterviewResponse.json();
+              if (highestScoreReport) {
+                mockInterviewData = {
+                  overall_score: highestScoreReport.overall_score || 0,
+                  strengths: highestScoreReport.strengths || [],
+                  areas_for_improvement: highestScoreReport.improvements || [],
+                  position: highestScoreReport.position_title,
+                  interviewType: highestScoreReport.interview_type,
+                  positionLevel: highestScoreReport.position_level,
+                  questionCount: highestScoreReport.total_questions,
+                  date: new Date(highestScoreReport.created_at).toLocaleDateString(),
+                  duration: Math.round(highestScoreReport.duration_seconds / 60)
+                };
+              }
+            }
+          } catch (err) {
+            console.error("Failed to fetch highest score mock interview report:", err);
+            // Fallback to latest if highest score fails (same as Report tab)
+            try {
+              const fallbackResponse = await fetch(`/api/mock-interview/reports/latest?email=${encodeURIComponent(candidateEmail)}`);
+              if (fallbackResponse.ok) {
+                const latestReport = await fallbackResponse.json();
+                if (latestReport) {
+                  mockInterviewData = {
+                    overall_score: latestReport.overall_score || 0,
+                    strengths: latestReport.strengths || [],
+                    areas_for_improvement: latestReport.improvements || [],
+                    position: latestReport.position_title,
+                    interviewType: latestReport.interview_type,
+                    positionLevel: latestReport.position_level,
+                    questionCount: latestReport.total_questions,
+                    date: new Date(latestReport.created_at).toLocaleDateString(),
+                    duration: Math.round(latestReport.duration_seconds / 60)
+                  };
+                }
+              }
+            } catch (fallbackErr) {
+              console.error("Failed to fetch latest mock interview report as fallback:", fallbackErr);
+            }
+          }
+          
+          // 3. Build report data structure (same as Report tab)
           const mockData = getMockReportData();
           const reportData = {
             profile: profileData,
@@ -165,7 +207,7 @@ export default function ViewProfileDialog({
             resumeFeedback: {
               resume_feedback: {
                 ...mockData.resume_feedback,
-                // Override with generated areas if profile exists
+                // Override with generated areas if profile exists (same logic as Report tab)
                 areas_for_improvement: profileData ? generateAreasForImprovementFromProfile(profileData) : mockData.resume_feedback.areas_for_improvement
               },
               career_guidance: mockData.career_guidance

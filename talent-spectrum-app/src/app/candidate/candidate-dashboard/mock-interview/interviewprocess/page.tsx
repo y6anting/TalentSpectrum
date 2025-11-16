@@ -511,7 +511,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       const res = await fetch("/api/edge-tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "en-SG-LunaNeural" }), // Singapore female voice
+        body: JSON.stringify({ text, voice: "en-US-JennyNeural" }), // US female voice
       });
 
       if (!res.ok) throw new Error("Edge-TTS failed");
@@ -703,6 +703,7 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
 
     let finalAnswer = currentAnswer;
     let audioBlob = null;
+    let transcriptionPromise: Promise<string> | null = null;
     
     // Create audio blob from recorded chunks if available
     if (audioChunksRef.current.length > 0) {
@@ -712,14 +713,25 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       if (!currentAnswer.trim()) {
         setIsTranscribing(true);
         try {
-          const text = await transcribeVoiceToText(audioBlob);
+          // Add timeout to prevent hanging (30 seconds max)
+          transcriptionPromise = transcribeVoiceToText(audioBlob);
+          const timeoutPromise = new Promise<string>((_, reject) => 
+            setTimeout(() => reject(new Error("Transcription timeout")), 30000)
+          );
+          
+          const text = await Promise.race([transcriptionPromise, timeoutPromise]);
           if (text.trim()) {
             finalAnswer = text;
             setCurrentAnswer(text);
           }
         } catch (error) {
           console.error("Transcription failed:", error);
-          alert("Auto-transcription failed.");
+          // Don't show alert if user clicked finish too fast - just log it
+          if (session.currentQuestion < session.totalQuestions - 1) {
+            alert("Auto-transcription failed. You can manually type your answer.");
+          }
+          // Use empty answer if transcription fails
+          finalAnswer = "";
         } finally {
           setIsTranscribing(false);
         }
@@ -763,11 +775,33 @@ const MockInterviewProcessPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =>
       setIsTranscribing(false);
       setIsRecording(false);
     } else {
-      // Interview finished - cleanup all media devices
+      // Interview finished - wait for any ongoing transcription to complete
+      // but don't wait too long (max 5 seconds)
+      if (transcriptionPromise && !finalAnswer.trim()) {
+        try {
+          const text = await Promise.race([
+            transcriptionPromise,
+            new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+          ]);
+          // Update answer if transcription completed
+          if (text && text.trim()) {
+            updated.answers[updated.answers.length - 1].answer = text;
+            finalAnswer = text;
+          }
+        } catch (error) {
+          console.log("Transcription still in progress or timed out, proceeding with current answer");
+          // Proceed with whatever answer we have (even if empty)
+        }
+      }
+      
+      // Cleanup all media devices
       cleanupMediaDevices();
       
-      const final = { ...updated, endTime: new Date().toISOString() };
+      // Store endTime as ISO string (UTC) - this will be correctly converted by backend
+      const endTime = new Date();
+      const final = { ...updated, endTime: endTime.toISOString() };
       sessionStorage.setItem("mockInterviewSession", JSON.stringify(final));
+      setIsTranscribing(false); // Ensure transcription state is cleared
       onNavigate ? onNavigate("feedback") : router.push("/candidate/candidate-dashboard/mock-interview/feedback");
     }
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Sun, Moon, Type, Palette, Check, Volume2, Info } from 'lucide-react';
+import { Settings, X, Type, Palette, Check, Volume2, Info, Play, Clock, Zap } from 'lucide-react';
 import { Button } from './button';
 import {
   Select,
@@ -10,9 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/card';
 
 interface AccessibilityPreferences {
-  theme: 'light' | 'dark';
   fontSize: 'small' | 'medium' | 'large' | 'extra-large';
   fontFamily: 'default' | 'arial' | 'verdana' | 'georgia' | 'comic-sans' | 'open-dyslexic';
   themeColor: 'purple' | 'blue' | 'green' | 'orange' | 'pink' | 'default';
@@ -25,9 +25,29 @@ const STORAGE_KEY = 'accessibility-preferences';
 
 const AccessibilitySettings: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Prevent body scroll and preserve scrollbar width when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Calculate scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      // Save original padding
+      const originalPaddingRight = document.body.style.paddingRight;
+      const originalOverflow = document.body.style.overflow;
+      
+      // Apply padding to prevent shift when scrollbar disappears
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore original styles
+        document.body.style.paddingRight = originalPaddingRight;
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [preferences, setPreferences] = useState<AccessibilityPreferences>({
-    theme: 'light',
     fontSize: 'medium',
     fontFamily: 'default',
     themeColor: 'purple',
@@ -41,6 +61,9 @@ const AccessibilitySettings: React.FC = () => {
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
       setAvailableVoices(voices);
+      // Debug: Log all English voices
+      const englishVoices = voices.filter(voice => voice.lang.toLowerCase().startsWith('en'));
+      console.log('Available English voices:', englishVoices.length, englishVoices.map(v => `${v.name} (${v.lang})`));
       
       // Set default voice if not set
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -120,29 +143,6 @@ const AccessibilitySettings: React.FC = () => {
     const root = document.documentElement;
     const body = document.body;
 
-    // Apply theme (dark/light mode)
-    if (prefs.theme === 'dark') {
-      root.classList.add('dark-mode');
-      body.classList.add('dark-mode');
-      root.style.setProperty('--bg-primary', '#1a1a1a');
-      root.style.setProperty('--bg-secondary', '#2d2d2d');
-      root.style.setProperty('--text-primary', '#ffffff');
-      root.style.setProperty('--text-secondary', '#e0e0e0');
-      // Apply to body directly for immediate effect
-      body.style.backgroundColor = '#1a1a1a';
-      body.style.color = '#ffffff';
-    } else {
-      root.classList.remove('dark-mode');
-      body.classList.remove('dark-mode');
-      root.style.setProperty('--bg-primary', '#ffffff');
-      root.style.setProperty('--bg-secondary', '#f5f5f5');
-      root.style.setProperty('--text-primary', '#000000');
-      root.style.setProperty('--text-secondary', '#333333');
-      // Apply to body directly for immediate effect
-      body.style.backgroundColor = '#ffffff';
-      body.style.color = '#000000';
-    }
-
     // Apply font size to both root and body
     const fontSizeMap = {
       small: '14px',
@@ -179,7 +179,6 @@ const AccessibilitySettings: React.FC = () => {
     root.style.setProperty('--theme-color-hover', adjustColorBrightness(themeColorMap[prefs.themeColor], -20));
 
     // Force update all elements with custom class
-    root.setAttribute('data-theme', prefs.theme);
     root.setAttribute('data-font-size', prefs.fontSize);
     root.setAttribute('data-font-family', prefs.fontFamily);
     root.setAttribute('data-theme-color', prefs.themeColor);
@@ -215,7 +214,6 @@ const AccessibilitySettings: React.FC = () => {
     ) || availableVoices.find(voice => voice.lang.startsWith('en')) || availableVoices[0];
     
     const defaults: AccessibilityPreferences = {
-      theme: 'light',
       fontSize: 'medium',
       fontFamily: 'default',
       themeColor: 'purple',
@@ -247,11 +245,12 @@ const AccessibilitySettings: React.FC = () => {
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-[99998]"
             onClick={() => setIsOpen(false)}
+            style={{ paddingRight: typeof window !== 'undefined' ? `${window.innerWidth - document.documentElement.clientWidth}px` : '0px' }}
           />
 
           {/* Panel */}
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[99999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[99999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ willChange: 'auto' }}>
+            <div className="p-8 overflow-y-auto flex-1" style={{ overflowAnchor: 'none' }}>
               {/* Header */}
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
@@ -273,247 +272,327 @@ const AccessibilitySettings: React.FC = () => {
                 Customize your experience to suit your needs. All changes are saved automatically.
               </p>
 
-              {/* Theme Mode */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Display Mode
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => updatePreference('theme', 'light')}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      preferences.theme === 'light'
-                        ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
-                    }`}
-                  >
-                    <Sun className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-                    <div className="text-center font-medium text-gray-900 dark:text-white">Light Mode</div>
-                    {preferences.theme === 'light' && (
-                      <Check className="w-5 h-5 mx-auto mt-2 text-[var(--theme-color,#635BFF)]" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => updatePreference('theme', 'dark')}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      preferences.theme === 'dark'
-                        ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
-                    }`}
-                  >
-                    <Moon className="w-8 h-8 mx-auto mb-2 text-indigo-500" />
-                    <div className="text-center font-medium text-gray-900 dark:text-white">Dark Mode</div>
-                    {preferences.theme === 'dark' && (
-                      <Check className="w-5 h-5 mx-auto mt-2 text-[var(--theme-color,#635BFF)]" />
-                    )}
-                  </button>
+              {/* Settings Navigation Breadcrumb */}
+              <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-gray-900 dark:text-white">Read Aloud</span>
+                  <span>|</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Font Size</span>
+                  <span>|</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Font Style</span>
+                  <span>|</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Theme Color</span>
                 </div>
               </div>
 
-              {/* Font Size */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3">
-                  <Type className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Font Size
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => updatePreference('fontSize', size)}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        preferences.fontSize === size
-                          ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400  hover:cursor-pointer'
-                      }`}
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white capitalize text-center">
-                        {size === 'extra-large' ? 'XL' : size.charAt(0).toUpperCase()}
+              <div className="space-y-8">
+                {/* Custom styles for range inputs */}
+                <style dangerouslySetInnerHTML={{__html: `
+                  .tts-range-input::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: var(--theme-color, #635BFF);
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    cursor: pointer;
+                  }
+                  .tts-range-input::-moz-range-thumb {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: var(--theme-color, #635BFF);
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    cursor: pointer;
+                  }
+                `}} />
+
+                {/* Read Aloud Section (Voice Selection) */}
+                <Card className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 ">
+                      <Volume2 className="w-5 h-5" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                      Read Aloud
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Read Aloud Info Banner */}
+                    <div className="p-4 bg-[var(--theme-color,#635BFF)]/8 border border-[var(--theme-color,#635BFF)]/40 rounded-xl">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-5 h-5" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                        <div className="text-sm font-semibold text-gray-600">
+                          <p>Select any text on the website and click "Read Aloud" to have it read to you. Choose your preferred voice below.</p>
+                        </div>
                       </div>
-                      {preferences.fontSize === size && (
-                        <Check className="w-4 h-4 mx-auto mt-1 text-[var(--theme-color,#635BFF)]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Font Family */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3">
-                  <Type className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Font Style
-                  </h3>
-                </div>
-                <div className="space-y-2">
-                  {([
-                    { value: 'default', label: 'Default (System)' },
-                    { value: 'arial', label: 'Arial' },
-                    { value: 'verdana', label: 'Verdana' },
-                    { value: 'georgia', label: 'Georgia' },
-                    { value: 'comic-sans', label: 'Comic Sans (Dyslexia-friendly)' },
-                    { value: 'open-dyslexic', label: 'OpenDyslexic (Recommended for Dyslexia)' },
-                  ] as const).map((font) => (
-                    <button
-                      key={font.value}
-                      onClick={() => updatePreference('fontFamily', font.value)}
-                      className={`w-full p-3 rounded-xl border-2 transition-all text-left flex items-center justify-between ${
-                        preferences.fontFamily === font.value
-                          ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
-                      }`}
-                    >
-                      <span className="font-medium text-gray-900 dark:text-white">{font.label}</span>
-                      {preferences.fontFamily === font.value && (
-                        <Check className="w-5 h-5 text-[var(--theme-color,#635BFF)]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Theme Color */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3">
-                  <Palette className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Theme Color
-                  </h3>
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                  {([
-                    { value: 'purple', color: '#635BFF', label: 'Purple' },
-                    { value: 'blue', color: '#6ca6f1ff', label: 'Blue' },
-                    { value: 'green', color: '#4CAF50', label: 'Green' },
-                    { value: 'orange', color: '#FF9800', label: 'Orange' },
-                    { value: 'pink', color: '#E91E63', label: 'Pink' },
-                    // { value: 'default', color: '#ff5bffff', label: 'Default' },
-                  ] as const).map((colorOption) => (
-                    <button
-                      key={colorOption.value}
-                      onClick={() => updatePreference('themeColor', colorOption.value)}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        preferences.themeColor === colorOption.value
-                          ? 'border-gray-900 dark:border-white'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
-                      }`}
-                      title={colorOption.label}
-                    >
-                      <div
-                        className="w-full h-8 rounded-lg"
-                        style={{ backgroundColor: colorOption.color }}
-                      />
-                      {preferences.themeColor === colorOption.value && (
-                        <Check className="w-4 h-4 mx-auto mt-1 text-gray-900 dark:text-white" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Text-to-Speech Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3">
-                  <Volume2 className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Text-to-Speech
-                  </h3>
-                </div>
-                
-                {/* TTS Info Banner */}
-                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-800 dark:text-blue-200">
-                      <p className="font-medium mb-1">Text-to-Speech Feature Available</p>
-                      <p>Select any text on the website and click "Read Aloud" to have it read to you. Choose your preferred voice below.</p>
                     </div>
-                  </div>
-                </div>
 
-                {/* Voice Selection */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Preferred Voice
-                    </label>
-                    {availableVoices.length > 0 ? (
-                      <Select
-                        value={preferences.ttsVoice || ''}
-                        onValueChange={(value) => updatePreference('ttsVoice', value)}
+                    {/* Voice Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Preferred Voice
+                      </label>
+                      {availableVoices.length > 0 ? (
+                        <Select
+                          value={preferences.ttsVoice || ''}
+                          onValueChange={(value) => updatePreference('ttsVoice', value)}
+                        >
+                          <SelectTrigger className="w-full border-gray-300 dark:border-gray-600 z-[100001]">
+                            <SelectValue placeholder="Select a voice" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]" style={{ zIndex: 100003 }} position="popper">
+                            {availableVoices
+                              .filter(voice => voice.lang.toLowerCase().startsWith('en'))
+                              .map((voice) => (
+                                <SelectItem key={voice.name} value={voice.name}>
+                                  {voice.name} ({voice.lang})
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Loading voices...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Speech Speed & Pitch - Nested Cards */}
+                    {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> */}
+                      {/* Speech Speed Card */}
+                      <Card className="border border-gray-200 dark:border-gray-600 shadow-sm">
+                        <CardHeader className="pb-1">
+                          <CardTitle className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                            Speech Speed
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="relative">
+                            <input
+                              type="range"
+                              min="0.5"
+                              max="2.0"
+                              step="0.1"
+                              value={preferences.ttsSpeed}
+                              onChange={(e) => updatePreference('ttsSpeed', parseFloat(e.target.value))}
+                              className="tts-range-input w-full h-2 bg-white border-2 border-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-800 dark:border-gray-600"
+                              style={{
+                                background: `linear-gradient(to right, var(--theme-color, #635BFF) 0%, var(--theme-color, #635BFF) ${((preferences.ttsSpeed - 0.5) / 1.5) * 100}%, #ffffff ${((preferences.ttsSpeed - 0.5) / 1.5) * 100}%, #ffffff 100%)`,
+                                WebkitAppearance: 'none',
+                                appearance: 'none'
+                              }}
+                            />
+                            <div className="flex justify-between items-center mt-2">
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Slow</span>
+                              </div>
+                              <span className="text-sm font-medium" style={{ color: 'var(--theme-color, #635BFF)' }}>
+                                {preferences.ttsSpeed.toFixed(1)}x
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Fast</span>
+                                <Zap className="w-4 h-4" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Speech Pitch Card */}
+                      {/* <Card className="border border-gray-200 dark:border-gray-600 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2 text-sm">
+                            <Volume2 className="w-4 h-4" style={{ color: 'var(--theme-color, #635BFF)' }} />
+                            Speech Pitch
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="relative">
+                            <input
+                              type="range"
+                              min="0.5"
+                              max="2.0"
+                              step="0.1"
+                              value={preferences.ttsPitch}
+                              onChange={(e) => {
+                                const newPitch = parseFloat(e.target.value);
+                                updatePreference('ttsPitch', newPitch);
+                                // Test pitch immediately for feedback
+                                const testUtterance = new SpeechSynthesisUtterance('Pitch test');
+                                const selectedVoice = availableVoices.find(v => v.name === preferences.ttsVoice);
+                                if (selectedVoice) {
+                                  testUtterance.voice = selectedVoice;
+                                }
+                                testUtterance.rate = preferences.ttsSpeed;
+                                testUtterance.pitch = newPitch;
+                                window.speechSynthesis.cancel();
+                                window.speechSynthesis.speak(testUtterance);
+                              }}
+                              className="tts-range-input w-full h-2 bg-white border-2 border-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-800 dark:border-gray-600"
+                              style={{
+                                background: `linear-gradient(to right, var(--theme-color, #635BFF) 0%, var(--theme-color, #635BFF) ${((preferences.ttsPitch - 0.5) / 1.5) * 100}%, #ffffff ${((preferences.ttsPitch - 0.5) / 1.5) * 100}%, #ffffff 100%)`,
+                                WebkitAppearance: 'none',
+                                appearance: 'none'
+                              }}
+                            />
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">0.5 (Lower)</span>
+                              <span className="text-sm font-medium" style={{ color: 'var(--theme-color, #635BFF)' }}>
+                                {preferences.ttsPitch.toFixed(1)}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">2.0 (Higher)</span>
+                            </div>
+                            <div className="flex justify-center mt-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">1.0 (Normal)</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div> */}
+
+                    {/* Preview Text */}
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Preview Text
+                      </label>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 italic">
+                        "This is a preview of the text to speech voice. You can adjust the speed and pitch to your preference."
+                      </p>
+                    </div>
+
+                    {/* Preview Button */}
+                    <div>
+                      <Button
+                        onClick={() => {
+                          const utterance = new SpeechSynthesisUtterance('This is a preview of the text to speech voice. You can adjust the speed and pitch to your preference.');
+                          const selectedVoice = availableVoices.find(v => v.name === preferences.ttsVoice);
+                          if (selectedVoice) {
+                            utterance.voice = selectedVoice;
+                          }
+                          utterance.rate = preferences.ttsSpeed;
+                          utterance.pitch = preferences.ttsPitch;
+                          window.speechSynthesis.cancel();
+                          window.speechSynthesis.speak(utterance);
+                        }}
+                        className="w-full hover:cursor-pointer flex items-center justify-center gap-2"
+                        style={{
+                          backgroundColor: 'var(--theme-color, #635BFF)',
+                          color: 'white'
+                        }}
                       >
-                        <SelectTrigger className="w-full border-gray-300 dark:border-gray-600 z-[100001]">
-                          <SelectValue placeholder="Select a voice" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]" style={{ zIndex: 100003 }}>
-                          {availableVoices
-                            .filter(voice => voice.lang.startsWith('en'))
-                            .map((voice) => (
-                              <SelectItem key={voice.name} value={voice.name}>
-                                {voice.name} ({voice.lang})
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Loading voices...
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Speed Control */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Speech Speed: {preferences.ttsSpeed.toFixed(1)}x
-                    </label>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.0"
-                      step="0.1"
-                      value={preferences.ttsSpeed}
-                      onChange={(e) => updatePreference('ttsSpeed', parseFloat(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      <span>0.5x (Slow)</span>
-                      <span>1.0x (Normal)</span>
-                      <span>2.0x (Fast)</span>
+                        <Play className="w-4 h-4" />
+                        Preview Voice
+                      </Button>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Pitch Control */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Speech Pitch: {preferences.ttsPitch.toFixed(1)}
-                    </label>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.0"
-                      step="0.1"
-                      value={preferences.ttsPitch}
-                      onChange={(e) => updatePreference('ttsPitch', parseFloat(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      <span>0.5 (Lower)</span>
-                      <span>1.0 (Normal)</span>
-                      <span>2.0 (Higher)</span>
+                {/* Font Size */}
+                <Card className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Type className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      Font Size
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => updatePreference('fontSize', size)}
+                          className={`p-3 rounded-xl border-2 transition-all ${
+                            preferences.fontSize === size
+                              ? 'border-[var(--theme-color,#635BFF)] bg-[var(--theme-color,#635BFF)]/10'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400  hover:cursor-pointer'
+                          }`}
+                        >
+                          <div className="font-medium text-gray-900 dark:text-white capitalize text-center">
+                            {size === 'extra-large' ? 'XL' : size.charAt(0).toUpperCase()}
+                          </div>
+                          {preferences.fontSize === size && (
+                            <Check className="w-4 h-4 mx-auto mt-1 text-[var(--theme-color,#635BFF)]" />
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+
+                {/* Font Family */}
+                <Card className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Type className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      Font Style
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Select
+                      value={preferences.fontFamily}
+                      onValueChange={(value) => updatePreference('fontFamily', value as AccessibilityPreferences['fontFamily'])}
+                    >
+                      <SelectTrigger className="w-full border-gray-300 dark:border-gray-600 z-[100001]">
+                        <SelectValue placeholder="Select font style" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]" style={{ zIndex: 100003 }} position="popper">
+                        <SelectItem value="default">Default (System)</SelectItem>
+                        <SelectItem value="arial">Arial</SelectItem>
+                        <SelectItem value="verdana">Verdana</SelectItem>
+                        <SelectItem value="georgia">Georgia</SelectItem>
+                        <SelectItem value="comic-sans">Comic Sans (Dyslexia-friendly)</SelectItem>
+                        <SelectItem value="open-dyslexic">OpenDyslexic (Recommended for Dyslexia)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
+
+                {/* Theme Color */}
+                <Card className="border border-gray-300 dark:border-gray-700 shadow-md p-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      Theme Color
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                      {([
+                        { value: 'purple', color: '#635BFF', label: 'Purple' },
+                        { value: 'blue', color: '#6ca6f1ff', label: 'Blue' },
+                        { value: 'green', color: '#4CAF50', label: 'Green' },
+                        { value: 'orange', color: '#FF9800', label: 'Orange' },
+                        { value: 'pink', color: '#E91E63', label: 'Pink' },
+                      ] as const).map((colorOption) => (
+                        <button
+                          key={colorOption.value}
+                          onClick={() => updatePreference('themeColor', colorOption.value)}
+                          className={`p-3 rounded-xl border-2 transition-all ${
+                            preferences.themeColor === colorOption.value
+                              ? 'border-gray-900 dark:border-white'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 hover:cursor-pointer'
+                          }`}
+                          title={colorOption.label}
+                        >
+                          <div
+                            className="w-full h-8 rounded-lg"
+                            style={{ backgroundColor: colorOption.color }}
+                          />
+                          {preferences.themeColor === colorOption.value && (
+                            <Check className="w-4 h-4 mx-auto mt-1 text-gray-900 dark:text-white" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Actions */}
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button
                   onClick={resetToDefaults}
                   variant="outline"

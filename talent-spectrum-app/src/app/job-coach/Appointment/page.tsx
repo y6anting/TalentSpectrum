@@ -46,6 +46,21 @@ export default function JobCoachAppointmentPage() {
   const coachEmail = session?.user?.email || "";
   const meetUrl = "https://meet.google.com/"; // change this url to google meet. make sure it has https
   
+  // Listen for candidate selection event from Candidate List
+  useEffect(() => {
+    const handleSelectCandidate = (event: CustomEvent) => {
+      const { candidateEmail } = event.detail;
+      if (candidateEmail) {
+        setSelectedCandidate(candidateEmail);
+      }
+    };
+    
+    window.addEventListener('selectCandidateForAppointment', handleSelectCandidate as EventListener);
+    return () => {
+      window.removeEventListener('selectCandidateForAppointment', handleSelectCandidate as EventListener);
+    };
+  }, []);
+  
   // Fetch all candidates
   const fetchCandidates = async () => {
     try {
@@ -145,8 +160,20 @@ export default function JobCoachAppointmentPage() {
 
     setIsBooking(true);
     try {
+      // Check if it's a virtual slot (starts with "virtual-")
+      const isVirtualSlot = typeof selectedAppointmentId === 'string' && selectedAppointmentId.startsWith('virtual-');
+      
       // Find the selected appointment
-      const selectedAppointment = selectedDayAppointments.find(apt => apt.id === selectedAppointmentId);
+      let selectedAppointment;
+      if (isVirtualSlot) {
+        // Extract dateTime from virtual slot ID
+        const dateTimeStr = selectedAppointmentId.replace('virtual-', '');
+        selectedAppointment = selectedDayAppointments.find(apt => 
+          apt.dateTime.toISOString() === dateTimeStr
+        );
+      } else {
+        selectedAppointment = selectedDayAppointments.find(apt => apt.id === selectedAppointmentId);
+      }
       
       if (!selectedAppointment) {
         showError("Slot Not Found", "The selected appointment slot could not be found.");
@@ -162,9 +189,37 @@ export default function JobCoachAppointmentPage() {
         return;
       }
       
+      // If it's a virtual slot (id is null or undefined), create it first
+      let appointmentIdToBook = selectedAppointmentId;
+      if (isVirtualSlot || selectedAppointment.id === null || selectedAppointment.id === undefined) {
+        // Create the appointment first
+        const createRes = await fetch(`${APPOINTMENT_BASE_URL}/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            jobCoach: coachEmail,
+            dateTime: selectedAppointment.dateTime.toISOString(),
+          }),
+        });
+        
+        if (!createRes.ok) {
+          const errorText = await createRes.text();
+          throw new Error(`Failed to create appointment: ${errorText}`);
+        }
+        
+        const createData = await createRes.json();
+        appointmentIdToBook = createData.id;
+        
+        if (!appointmentIdToBook) {
+          throw new Error("Failed to get appointment ID after creation");
+        }
+      }
+      
       // Book the appointment
       const res = await fetch(
-        `${APPOINTMENT_BASE_URL}/book?id=${selectedAppointmentId}&candidate=${encodeURIComponent(candidate.email)}`,
+        `${APPOINTMENT_BASE_URL}/book?id=${appointmentIdToBook}&candidate=${encodeURIComponent(candidate.email)}`,
         {
           method: "PUT",
         }
@@ -175,6 +230,14 @@ export default function JobCoachAppointmentPage() {
         try {
           const errorData = await res.json();
           errorMessage = errorData.detail || errorData.message || errorMessage;
+          // Customize error message for job coach perspective
+          if (errorMessage.includes("already have a booked appointment")) {
+            errorMessage = `You already have a booked appointment with ${candidate.name || candidate.email}. Please cancel your existing appointment first before booking a new one.`;
+          } else if (errorMessage.includes("already booked")) {
+            errorMessage = `This appointment slot is already booked with ${candidate.name || candidate.email}.`;
+          } else if (errorMessage.includes("conflicting appointment")) {
+            errorMessage = `${candidate.name || candidate.email} has a conflicting appointment. Please choose a different time.`;
+          }
         } catch {
           const errorText = await res.text();
           errorMessage = errorText || errorMessage;
@@ -182,7 +245,7 @@ export default function JobCoachAppointmentPage() {
         throw new Error(errorMessage);
       }
 
-      // Refresh appointments and candidate data
+      // Refresh appointments and candidate data to update the available slots list
       await fetchAppointments();
       await fetchCandidates();
       
@@ -190,7 +253,7 @@ export default function JobCoachAppointmentPage() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('appointmentBooked', {
           detail: {
-            appointmentId: selectedAppointmentId,
+            appointmentId: appointmentIdToBook,
             dateTime: selectedAppointment.dateTime,
             coachEmail: coachEmail,
             candidateEmail: candidate.email,
@@ -198,11 +261,11 @@ export default function JobCoachAppointmentPage() {
         }));
       }
       
-      success("Appointment Booked", `Successfully booked appointment with ${candidate.name} on ${selectedDate?.toLocaleDateString()} at ${selectedAppointment.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+      success("Appointment Booked", `Successfully booked appointment with ${candidate.name || candidate.email} on ${selectedDate?.toLocaleDateString()} at ${selectedAppointment.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
 
       setSelectedAppointmentId(null);
       setSelectedDate(null);
-      setSelectedCandidate(null);
+      // Keep selectedCandidate so user can book more appointments with the same candidate
       setShowPopup(false);
     } catch (err: any) {
       console.error("Booking error:", err);
@@ -328,11 +391,22 @@ export default function JobCoachAppointmentPage() {
     // Find the selected candidate
     const candidate = availableCandidates.find(c => c.email === selectedCandidate);
     
-    // Get available appointments for this coach (where candidate is null)
+    // Get all booked appointments for this candidate with this coach
+    const bookedAppointmentIds = new Set(
+      appointments
+        .filter(apt => apt.candidate === selectedCandidate && apt.jobCoach === coachEmail && apt.dateTime > new Date())
+        .map(apt => apt.id)
+    );
+    
+    // Get available appointments for this coach (where candidate is null - not booked by anyone)
     const selectedDateStr = formatDate(selectedDate);
-    return appointments
+    const existingAppointments = appointments
       .filter(a => {
-        if (a.jobCoach !== coachEmail || a.candidate !== null) return false;
+        if (a.jobCoach !== coachEmail) return false;
+        // Exclude ALL booked appointments (booked by anyone, not just this candidate)
+        if (a.candidate !== null) return false;
+        // Also exclude appointments that are already booked by this candidate (double check)
+        if (a.id !== null && a.id !== undefined && bookedAppointmentIds.has(a.id)) return false;
         const weekday = a.dateTime.getDay();
         // Only include Monday-Friday (weekday 1-5), exclude Saturday (6) and Sunday (0)
         if (weekday === 0 || weekday === 6) return false;
@@ -344,6 +418,39 @@ export default function JobCoachAppointmentPage() {
         candidate: apt.candidate,
         dateTime: apt.dateTime,
       }));
+    
+    // If there are existing appointments, return them
+    if (existingAppointments.length > 0) {
+      return existingAppointments;
+    }
+    
+    // Generate virtual slots for weekdays when no appointments exist
+    // Match backend logic: 9 AM, 11 AM, 1 PM, 3 PM, 5 PM
+    const weekday = selectedDate.getDay();
+    if (weekday >= 1 && weekday <= 5) {
+      const workingHours = [9, 11, 13, 15, 17];
+      const now = new Date();
+      const virtualSlots = workingHours
+        .map(hour => {
+          const slotDate = new Date(selectedDate);
+          slotDate.setHours(hour, 0, 0, 0);
+          // Only include future slots
+          if (slotDate > now) {
+            return {
+              id: null,
+              jobCoach: coachEmail,
+              candidate: null,
+              dateTime: slotDate,
+            };
+          }
+          return null;
+        })
+        .filter((slot): slot is { id: null; jobCoach: string; candidate: null; dateTime: Date } => slot !== null);
+      
+      return virtualSlots;
+    }
+    
+    return [];
   }, [availableCandidates, appointments, selectedCandidate, selectedDate, coachEmail]);
 
   const handlePrevMonth = () => {
@@ -370,7 +477,13 @@ export default function JobCoachAppointmentPage() {
     // Only show Monday-Friday as available
     const weekday = d.getDay();
     if (weekday === 0 || weekday === 6) return false; // Sunday=0, Saturday=6
-    return availableDays.some((a) => formatDate(a) === formatDate(d));
+    // Show all Monday-Friday dates as available (not just those with existing appointments)
+    // The backend generates virtual slots, so all weekdays should be available
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(d);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate >= today; // Only future dates
   };
 
   const monthNames = [
@@ -389,7 +502,15 @@ export default function JobCoachAppointmentPage() {
   ];
 
   const handleBookClick = (appointment: any) => {
-    setSelectedAppointmentId(appointment.id);
+    if (!selectedCandidate) {
+      showError("No Candidate Selected", "Please select a candidate first before booking an appointment.");
+      return;
+    }
+    // For virtual slots, use a temporary identifier based on dateTime
+    const appointmentId = appointment.id !== null && appointment.id !== undefined 
+      ? appointment.id 
+      : `virtual-${appointment.dateTime.toISOString()}`;
+    setSelectedAppointmentId(appointmentId as any);
     setShowPopup(true);
   };
 
@@ -406,6 +527,11 @@ export default function JobCoachAppointmentPage() {
   return (
     <>
       {/* <h1 className="text-2xl font-bold text-[#3a4043] pb-4 ">Book an Appointment</h1> */}
+      <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-[#3a4043]">
+                    Book an Appointment
+                  </h2>
+                </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-5">
         <Card>
           <div className="p-5 space-y-3">

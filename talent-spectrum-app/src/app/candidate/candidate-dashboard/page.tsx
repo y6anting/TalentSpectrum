@@ -94,6 +94,8 @@ export default function CandidateDashboard() {
         return;
       }
       
+      console.log("🚀 Starting AI Matching for candidate:", candidateEmail);
+      
       const response = await fetch(`/api/ai-matching/run_matching?candidate_email=${encodeURIComponent(candidateEmail)}`, {
         method: "POST",
       });
@@ -101,17 +103,53 @@ export default function CandidateDashboard() {
       const isJson = response.headers.get("content-type")?.includes("application/json");
       const payload = isJson ? await response.json() : null;
 
+      console.log("📡 AI Matching API Response:", {
+        ok: response.ok,
+        status: response.status,
+        payload: payload
+      });
+
       if (!response.ok) {
         const errorMessage =
           (payload && (payload.detail?.message || payload.detail || payload.error || payload.message)) ||
           "Failed to trigger AI job matching.";
+        console.error("❌ AI Matching failed:", errorMessage);
         throw new Error(errorMessage);
       }
 
       const message = (payload && (payload.message || payload.detail)) || "AI job matching completed successfully.";
+      console.log("✅ AI Matching completed:", message);
+      
+      // Fetch match results after completion to verify scores
+      console.log("🔍 Fetching updated match results...");
+      const matchResponse = await fetch(`/api/match-results?candidate_email=${encodeURIComponent(candidateEmail)}`);
+      if (matchResponse.ok) {
+        const matchData = await matchResponse.json();
+        console.log("📊 Match Results Retrieved:", {
+          totalMatches: matchData.length,
+          matches: matchData.map((m: any) => ({
+            job_id: m.job_id,
+            job_title: m.job_title,
+            total_score: m.total_score,
+            primary_score: m.primary_score,
+            secondary_score: m.secondary_score,
+            tertiary_score: m.tertiary_score
+          }))
+        });
+        
+        // Dispatch event to refresh match scores across all components
+        window.dispatchEvent(new CustomEvent('matchScoresUpdated', {
+          detail: { candidateEmail, matchData }
+        }));
+        console.log("📢 Dispatched 'matchScoresUpdated' event to refresh scores across the app");
+      } else {
+        console.warn("⚠️ Failed to fetch match results after matching:", matchResponse.status);
+      }
+      
       success("AI Matching Completed", message);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to trigger AI job matching.";
+      console.error("❌ AI Matching error:", error);
       showError("AI Matching Failed", errorMessage);
     } finally {
       setIsRunningAiMatch(false);
@@ -533,8 +571,8 @@ export default function CandidateDashboard() {
       console.log('Full session object:', session); // Add this
       console.log('Session user email:', session?.user?.email); // Add this
 
-      const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
-      preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+      // Always use login email as primary - backend will handle linking resume email
+      preferredEmail = session?.user?.email || "";
 
       if (!preferredEmail) {
         console.error('No email available to fetch profile.');
@@ -773,8 +811,8 @@ export default function CandidateDashboard() {
     useEffect(() => {
     const fetchEducationData = async () => {
       if (status === "loading") return;
-      const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
-      const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+      // Always use login email - backend handles linking resume email
+      const preferredEmail = session?.user?.email || "";
       if (!preferredEmail) return;
 
       setIsLoading(true);
@@ -791,8 +829,10 @@ export default function CandidateDashboard() {
 
         const data = await response.json();
 
-        // ✅ Check if education data exists and is valid
-        if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+        // ✅ Check if education data exists and is valid - check both 'education' and 'educations' fields
+        if (data.educations && Array.isArray(data.educations) && data.educations.length > 0) {
+          setEducations(data.educations);
+        } else if (data.education && Array.isArray(data.education) && data.education.length > 0) {
           setEducations(data.education);
         } else {
           // no existing data, keep default empty education
@@ -822,8 +862,8 @@ export default function CandidateDashboard() {
   useEffect(() => {
   const fetchExperienceData = async () => {
     if (status === "loading") return;
-    const resumeEmail = typeof window !== 'undefined' ? sessionStorage.getItem('resumeParsedEmail') : null;
-    const preferredEmail = (resumeEmail && resumeEmail.trim()) ? resumeEmail : (session?.user?.email || "");
+    // Always use login email - backend handles linking resume email
+    const preferredEmail = session?.user?.email || "";
     if (!preferredEmail) return;
 
     setIsLoading(true);
@@ -839,8 +879,10 @@ export default function CandidateDashboard() {
 
       const data = await response.json();
 
-      // ✅ Check if experience data exists and is valid
-      if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
+      // ✅ Check if experience data exists and is valid - check both 'experience' and 'experiences' fields
+      if (data.experiences && Array.isArray(data.experiences) && data.experiences.length > 0) {
+        setExperiences(data.experiences);
+      } else if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
         setExperiences(data.experience);
       } else {
         // No existing data, set default blank experience
@@ -949,10 +991,21 @@ export default function CandidateDashboard() {
       const applicationsData = await applicationsResponse.json();
       const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
 
-      console.log('Applications data:', applicationsData);
-      console.log('Jobs data count:', jobsData.length);
+      console.log('📊 [Applications] Raw applications data:', applicationsData);
+      console.log('📊 [Applications] Applications count:', Array.isArray(applicationsData) ? applicationsData.length : 0);
+      console.log('📊 [Applications] Jobs data count:', jobsData.length);
+      
+      // Log interview scheduled applications
+      if (Array.isArray(applicationsData)) {
+        const interviewScheduled = applicationsData.filter((app: any) => app.status === 'interview_scheduled');
+        console.log('📅 [Applications] Interview scheduled applications:', interviewScheduled.length);
+        interviewScheduled.forEach((app: any) => {
+          console.log(`  - ${app.jobTitle || app.job_title}: ${app.interviewDate || app.interview_date || 'No date'}`);
+        });
+      }
 
       // Fetch match results for applications
+      console.log("📊 [Applications] Fetching match results...");
       let matchResultsMap = new Map();
       if (email) {
         try {
@@ -1042,6 +1095,19 @@ export default function CandidateDashboard() {
           })
         : [];
 
+      console.log("📊 [Applications] Match scores updated:", mapped.map((app: any) => ({
+        jobTitle: app.jobTitle,
+        score: app.score,
+        primary_score: app.primaryMatchScore
+      })));
+      
+      // Update appliedJobs Set from fetched applications
+      const appliedJobKeys = new Set<string>(
+        mapped.map((app: any) => `${app.jobTitle}-${app.company}`)
+      );
+      setAppliedJobs(appliedJobKeys);
+      console.log("📊 [Applications] Updated appliedJobs Set:", Array.from(appliedJobKeys));
+
       setApplications(mapped);
       if (mapped.length > 0 && !selectedApplication) {
         setSelectedApplication(mapped[0]);
@@ -1051,6 +1117,22 @@ export default function CandidateDashboard() {
       setApplications([]);
     }
   }, [selectedApplication]);
+
+  // Listen for match scores update event to refresh applications
+  useEffect(() => {
+    const handleMatchScoresUpdated = (event: CustomEvent) => {
+      console.log('🔄 [Applications] Received matchScoresUpdated event, refreshing applications...');
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        fetchApplicationsData(sessionEmail);
+      }
+    };
+    
+    window.addEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    return () => {
+      window.removeEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    };
+  }, [session, fetchApplicationsData]);
 
   // Initial fetch on mount
   useEffect(() => {
@@ -1070,6 +1152,37 @@ export default function CandidateDashboard() {
       }
     }
   }, [activeTab, session, fetchApplicationsData]);
+
+  // Periodic refresh for applications when Applications tab is active (every 30 seconds)
+  useEffect(() => {
+    if (activeTab !== 'applications') return;
+    
+    const sessionEmail = session?.user?.email;
+    if (!sessionEmail) return;
+
+    const interval = setInterval(() => {
+      console.log('🔄 [Applications] Periodic refresh...');
+      fetchApplicationsData(sessionEmail);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [activeTab, session?.user?.email, fetchApplicationsData]);
+
+  // Refresh when page becomes visible (user switches back to tab/window)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'applications') {
+        const sessionEmail = session?.user?.email;
+        if (sessionEmail) {
+          console.log('🔄 [Applications] Page became visible, refreshing...');
+          fetchApplicationsData(sessionEmail);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [activeTab, session?.user?.email, fetchApplicationsData]);
 
   // Listen for job applied event to refresh applications
   useEffect(() => {
@@ -1121,16 +1234,27 @@ export default function CandidateDashboard() {
       }
     };
     
+    const handleApplicationStatusUpdated = () => {
+      // Refetch applications when status is updated (e.g., interview scheduled)
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        console.log('🔄 [Applications] Application status updated, refreshing applications...');
+        fetchApplicationsData(sessionEmail);
+      }
+    };
+    
     if (typeof window !== 'undefined') {
       window.addEventListener('jobApplied', handler as EventListener);
       window.addEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
       window.addEventListener('applicationWithdrawn', handleApplicationWithdrawn as EventListener);
+      window.addEventListener('applicationStatusUpdated', handleApplicationStatusUpdated as EventListener);
     }
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('jobApplied', handler as EventListener);
         window.removeEventListener('jobStatusChanged', handleJobStatusChanged as EventListener);
         window.removeEventListener('applicationWithdrawn', handleApplicationWithdrawn as EventListener);
+        window.removeEventListener('applicationStatusUpdated', handleApplicationStatusUpdated as EventListener);
       }
     };
   }, [session, selectedApplication, fetchApplicationsData]);
@@ -1171,16 +1295,21 @@ export default function CandidateDashboard() {
         if (matchResponse && matchResponse.ok) {
           try {
             const matchData = await matchResponse.json();
+            console.log(`[Saved Jobs] Fetched ${Array.isArray(matchData) ? matchData.length : 0} match results`);
             if (Array.isArray(matchData)) {
               matchData.forEach((match: any) => {
                 if (match.job_id) {
                   matchResultsMap.set(match.job_id.toString(), match);
+                  console.log(`[Saved Jobs] Added match result for job_id: ${match.job_id}, total_score: ${match.total_score}`);
                 }
               });
             }
+            console.log(`[Saved Jobs] Match results map size: ${matchResultsMap.size}`);
           } catch (matchErr) {
             console.warn('Failed to parse match results:', matchErr);
           }
+        } else {
+          console.warn('[Saved Jobs] Match response not OK:', matchResponse?.status, matchResponse?.statusText);
         }
 
         // Import transform utilities
@@ -1213,6 +1342,21 @@ export default function CandidateDashboard() {
               // If matching job found, enrich with full job details
               if (matchingJob) {
                 const transformedJob = transformJob(matchingJob);
+                // Log for debugging
+                if (actualJobId) {
+                  console.log(`[Saved Jobs] Job ${actualJobId}:`, {
+                    jobTitle: job.jobTitle ?? job.job_title ?? job.title,
+                    company: job.company ?? job.employer,
+                    hasAiMatch: !!aiMatchScore,
+                    aiMatchScore: aiMatchScore ? {
+                      total: aiMatchScore.total_score,
+                      primary: aiMatchScore.primary_score,
+                      secondary: aiMatchScore.secondary_score,
+                      tertiary: aiMatchScore.tertiary_score
+                    } : null,
+                    fallbackScore: transformedJob.matchScore
+                  });
+                }
                 return {
                   ...baseJob,
                   // Override with transformed job data
@@ -1240,6 +1384,12 @@ export default function CandidateDashboard() {
             })
           : [];
 
+        console.log("📊 [Saved Jobs] Match scores updated:", mapped.map((job: any) => ({
+          jobTitle: job.jobTitle,
+          matchScore: job.matchScore,
+          primary_score: job.primaryMatchScore
+        })));
+
         setSavedJobs(mapped);
         
         const savedKeys = new Set<string>();
@@ -1254,7 +1404,16 @@ export default function CandidateDashboard() {
         setSavedJobKeys(savedKeys);
         setSavedJobIds(savedIds);
         
-        if (mapped.length > 0 && !selectedSavedJob) {
+        // Update selectedSavedJob if it exists in the updated jobs
+        if (selectedSavedJob) {
+          const updatedSelectedJob = mapped.find((job: any) => 
+            job.id === selectedSavedJob.id || 
+            (job.jobTitle === selectedSavedJob.jobTitle && job.company === selectedSavedJob.company)
+          );
+          if (updatedSelectedJob) {
+            setSelectedSavedJob(updatedSelectedJob);
+          }
+        } else if (mapped.length > 0) {
           setSelectedSavedJob(mapped[0]);
         }
         setSavedJobsLoaded(true);
@@ -1269,6 +1428,20 @@ export default function CandidateDashboard() {
     if (sessionEmail) {
       fetchSavedJobsData(sessionEmail);
     }
+    
+    // Listen for match scores update event to refresh saved jobs
+    const handleMatchScoresUpdated = (event: CustomEvent) => {
+      console.log('🔄 [Saved Jobs] Received matchScoresUpdated event, refreshing saved jobs...');
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) {
+        fetchSavedJobsData(sessionEmail);
+      }
+    };
+    
+    window.addEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    return () => {
+      window.removeEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    };
   }, [session]);
 
   // Refresh saved jobs when Saved Jobs tab is activated
@@ -1280,8 +1453,8 @@ export default function CandidateDashboard() {
         const fetchSavedJobsData = async (email: string) => {
           try {
             setSavedJobsLoaded(false);
-            // Fetch both saved jobs and all jobs in parallel
-            const [savedJobsResponse, jobsResponse] = await Promise.all([
+            // Fetch saved jobs, all jobs, and match results in parallel
+            const [savedJobsResponse, jobsResponse, matchResponse] = await Promise.all([
               fetch(`/api/saved-jobs?candidateEmail=${encodeURIComponent(email)}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
@@ -1289,7 +1462,8 @@ export default function CandidateDashboard() {
               fetch('/api/jobs', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-              })
+              }),
+              fetch(`${API_BASE}/match_results/candidate/${encodeURIComponent(email)}`).catch(() => null)
             ]);
 
             if (!savedJobsResponse.ok) {
@@ -1302,12 +1476,10 @@ export default function CandidateDashboard() {
             const savedJobsData = await savedJobsResponse.json();
             const jobsData = jobsResponse.ok ? await jobsResponse.json() : [];
             
-            // Fetch match results for saved jobs
+            // Build match results map from the parallel fetch
             let matchResultsMap = new Map();
-            if (email) {
-              try {
-                const matchResponse = await fetch(`${API_BASE}/match_results/candidate/${encodeURIComponent(email)}`);
                 if (matchResponse && matchResponse.ok) {
+              try {
                   const matchData = await matchResponse.json();
                   if (Array.isArray(matchData)) {
                     matchData.forEach((match: any) => {
@@ -1315,10 +1487,9 @@ export default function CandidateDashboard() {
                         matchResultsMap.set(match.job_id.toString(), match);
                       }
                     });
-                  }
                 }
               } catch (matchErr) {
-                console.warn('Failed to fetch match results for saved jobs:', matchErr);
+                console.warn('Failed to parse match results:', matchErr);
               }
             }
 
@@ -1379,6 +1550,7 @@ export default function CandidateDashboard() {
                 })
               : [];
 
+            // Update selectedSavedJob if it exists in the updated jobs
             setSavedJobs(mapped);
             
             const savedKeys = new Set<string>();
@@ -1393,8 +1565,16 @@ export default function CandidateDashboard() {
             setSavedJobKeys(savedKeys);
             setSavedJobIds(savedIds);
             
-            // Only set selected job if there are jobs and none is currently selected
-            if (mapped.length > 0 && !selectedSavedJob) {
+            // Update selectedSavedJob if it exists in the updated jobs
+            if (selectedSavedJob) {
+              const updatedSelectedJob = mapped.find((job: any) => 
+                job.id === selectedSavedJob.id || 
+                (job.jobTitle === selectedSavedJob.jobTitle && job.company === selectedSavedJob.company)
+              );
+              if (updatedSelectedJob) {
+                setSelectedSavedJob(updatedSelectedJob);
+              }
+            } else if (mapped.length > 0) {
               setSelectedSavedJob(mapped[0]);
             }
             setSavedJobsLoaded(true);
@@ -1420,12 +1600,39 @@ export default function CandidateDashboard() {
       const data = await response.json();
       
       // Check if profile exists and has meaningful data
-      return data && (
-        data.personal_identifiers?.fullName ||
-        data.experience?.length > 0 ||
-        data.education?.length > 0 ||
-        data.exp_skill?.employer
+      // Check both singular and plural field names for compatibility
+      const hasPersonalInfo = data.personal_identifiers && (
+        data.personal_identifiers.fullName ||
+        data.personal_identifiers.emailAddress ||
+        data.name
       );
+      
+      const hasEducation = (data.educations && Array.isArray(data.educations) && data.educations.length > 0) ||
+                          (data.education && Array.isArray(data.education) && data.education.length > 0) ||
+                          (data.education && typeof data.education === 'object' && Object.keys(data.education).length > 0);
+      
+      const hasExperience = (data.experiences && Array.isArray(data.experiences) && data.experiences.length > 0) ||
+                           (data.experience && Array.isArray(data.experience) && data.experience.length > 0) ||
+                           (data.experience && typeof data.experience === 'object' && Object.keys(data.experience).length > 0) ||
+                           data.exp_skill?.employer;
+      
+      // Check if resume was uploaded (resume_url exists)
+      const hasResume = data.resume_url && data.resume_url.trim() !== '';
+      
+      const hasValidProfile = hasPersonalInfo || hasEducation || hasExperience || hasResume;
+      
+      console.log('Profile check result:', {
+        hasPersonalInfo,
+        hasEducation,
+        hasExperience,
+        hasResume,
+        hasValidProfile,
+        educations: data.educations?.length,
+        experiences: data.experiences?.length,
+        resume_url: data.resume_url
+      });
+      
+      return hasValidProfile;
     } catch (error) {
       console.error('Error checking user profile:', error);
       return false;
@@ -1788,6 +1995,10 @@ export default function CandidateDashboard() {
         return <Badge variant="secondary" className="bg-green-100 text-green-800">Shortlisted</Badge>;
       case "interview_scheduled":
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Interview Scheduled</Badge>;
+      case "interview_accepted":
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Interview Accepted</Badge>;
+      case "interview_rejected":
+        return <Badge variant="secondary" className="bg-red-100 text-red-800">Interview Rejected</Badge>;
       case "rejected":
         return <Badge variant="secondary" className="bg-red-100 text-red-800">Not Selected</Badge>;
       case "accepted":
@@ -1816,7 +2027,10 @@ export default function CandidateDashboard() {
   const grad_year = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
-  if (isLoading) {
+  // Allow Browse Jobs tab to render even while loading (it doesn't depend on profile data)
+  const shouldShowLoadingSkeleton = isLoading && activeTab !== "browse jobs";
+  
+  if (shouldShowLoadingSkeleton) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-violet-50 to-background">
         <div className="page-wrap py-8">

@@ -387,10 +387,23 @@ async def upload_pdf(file: UploadFile, session_email: str = None):
         # Ensure directory exists
         os.makedirs(PDFS_DIR, exist_ok=True)
 
-        # Save file
-        filepath = os.path.join(PDFS_DIR, file.filename)
+        # Save file with unique name based on email or session_email
+        # Use email from session or generate unique filename
+        if session_email:
+            # Sanitize email for filename
+            safe_email = session_email.replace('@', '_').replace('.', '_')
+            filename = f"{safe_email}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        else:
+            # Use original filename but make it unique
+            base_name = os.path.splitext(file.filename)[0]
+            filename = f"{base_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        filepath = os.path.join(PDFS_DIR, filename)
         with open(filepath, "wb") as f:
             f.write(await file.read())
+        
+        # Store relative path for database (relative to PDFS_DIR)
+        resume_url = f"/{PDFS_DIR}/{filename}"
 
         # Extract text from PDF
         reader = PdfReader(filepath)
@@ -552,27 +565,82 @@ Output ONLY valid JSON matching the schema, with education and experience arrays
             db: Session = next(get_db())
             profile_request = convert_resume_data_to_profile_request(parsed_info)
             
-            # ADD EMAIL FALLBACK LOGIC - Use session_email if resume has no email
-            if not profile_request.candidate_email and not profile_request.email:
-                if session_email:
-                    print(f"📧 Resume has no email. Using session email as fallback: {session_email}")
-                    profile_request.candidate_email = session_email
-                    # Also update personal_identifiers if they exist
-                    if profile_request.personal_identifiers:
-                        profile_request.personal_identifiers["emailAddress"] = session_email
-                else:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Resume contains no email and no session email provided as fallback"
-                    )
-            else:
-                email_used = profile_request.candidate_email or profile_request.email
-                print(f"Using email from resume: {email_used}")
+            # Get resume email from parsed data
+            resume_email = profile_request.candidate_email or profile_request.email
             
-            created_profile = await create_profile(db=db, profile=profile_request)
-            print(f"✅ Profile created for candidate: {created_profile}")
+            # CRITICAL: Always use session_email (login email) as primary candidate_email
+            # This ensures profile is always linked to the logged-in user
+            if not session_email:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Session email is required. Please ensure you are logged in."
+                )
+            
+            # Use session email as primary identifier
+            primary_email = session_email.lower().strip()
+            profile_request.candidate_email = primary_email
+            profile_request.email = primary_email
+            
+            # Store resume email in personal_identifiers if it differs from login email
+            if resume_email and resume_email.lower().strip() != primary_email:
+                print(f"📧 Resume email ({resume_email}) differs from login email ({primary_email}). Linking them.")
+                if not profile_request.personal_identifiers:
+                    profile_request.personal_identifiers = {}
+                # Store resume email in personal_identifiers for reference
+                profile_request.personal_identifiers["resume_email"] = resume_email
+                # Also keep emailAddress as resume email if it's more complete
+                if resume_email and not profile_request.personal_identifiers.get("emailAddress"):
+                    profile_request.personal_identifiers["emailAddress"] = resume_email
+            
+            # Check if profile exists with resume email - if so, we need to merge/update it
+            from database.models.candidate import CandidateProfile
+            if resume_email and resume_email.lower().strip() != primary_email:
+                existing_profile_with_resume_email = db.query(CandidateProfile).filter(
+                    CandidateProfile.candidate_email == resume_email.lower().strip()
+                ).first()
+                
+                if existing_profile_with_resume_email:
+                    print(f"⚠️ Found existing profile with resume email ({resume_email}). Updating to use login email ({primary_email}).")
+                    # Update the existing profile to use login email
+                    existing_profile_with_resume_email.candidate_email = primary_email
+                    # Merge data from resume into existing profile
+                    # Update education and experience records to use new email
+                    from database.models.candidate import Education, Experience
+                    db.query(Education).filter(Education.candidate_email == resume_email.lower().strip()).update(
+                        {Education.candidate_email: primary_email}
+                    )
+                    db.query(Experience).filter(Experience.candidate_email == resume_email.lower().strip()).update(
+                        {Experience.candidate_email: primary_email}
+                    )
+                    db.commit()
+                    print(f"✅ Merged profile from resume email to login email")
+            
+            # Check if profile exists with login email - update it, otherwise create new
+            existing_profile = db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_email == primary_email
+            ).first()
+            
+            if existing_profile:
+                print(f"📝 Updating existing profile for login email: {primary_email}")
+                # Update existing profile with resume data
+                from routers.profiles import update_profile
+                updated_profile = await update_profile(db, primary_email, profile_request)
+            else:
+                print(f"✨ Creating new profile for login email: {primary_email}")
+                created_profile = await create_profile(db=db, profile=profile_request)
+                print(f"✅ Profile created for candidate: {created_profile}")
+            
+            # Update profile with resume URL using login email
+            profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == primary_email).first()
+            if profile:
+                profile.resume_url = resume_url
+                db.commit()
+                db.refresh(profile)
+                print(f"✅ Resume URL saved to profile: {resume_url}")
         except Exception as profile_error:
-            print(f"⚠️ Warning: Failed to create profile: {profile_error}")
+            import traceback
+            print(f"⚠️ Warning: Failed to create/update profile: {profile_error}")
+            print(traceback.format_exc())
 
         return UploadPDFResponse(
             status="ok",

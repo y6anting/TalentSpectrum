@@ -56,6 +56,7 @@ app.add_middleware(
 # Create necessary directories
 os.makedirs("audio_outputs", exist_ok=True)
 os.makedirs("uploads", exist_ok=True)
+os.makedirs("uploads/resumes", exist_ok=True)  # Resume PDFs directory
 os.makedirs("temp", exist_ok=True)
 
 # Logo directory for company logos - match jobs.py path calculation
@@ -72,6 +73,8 @@ if os.path.exists(LOGO_DIR):
     app.mount("/logo", StaticFiles(directory=LOGO_DIR), name="logo")
 if os.path.exists(PROFILE_PICTURES_DIR):
     app.mount("/profile-pictures", StaticFiles(directory=PROFILE_PICTURES_DIR), name="profile-pictures")
+if os.path.exists("uploads/resumes"):
+    app.mount("/uploads/resumes", StaticFiles(directory="uploads/resumes"), name="resumes")
 
 # Create database tables on startup
 # @app.on_event("startup")

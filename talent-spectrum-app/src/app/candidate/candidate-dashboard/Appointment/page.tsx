@@ -303,7 +303,7 @@ export default function AppointmentPage() {
           throw new Error(errorMessage);
         }
         
-        // Refresh appointments and coach data
+        // Refresh appointments and coach data to update the available slots list
         await fetchAppointments();
         await fetchJobCoachesWithAppointments();
         
@@ -342,7 +342,7 @@ export default function AppointmentPage() {
           throw new Error(errorMessage);
         }
 
-        // Refresh appointments and coach data
+        // Refresh appointments and coach data to update the available slots list
         await fetchAppointments();
         await fetchJobCoachesWithAppointments();
         
@@ -519,13 +519,16 @@ export default function AppointmentPage() {
         .map(apt => apt.id)
     );
     
+    let existingAppointments: any[] = [];
+    
     if (coach && coach.available_appointments && coach.available_appointments.length > 0) {
       // Use appointments from coach data
       const selectedDateStr = formatDate(selectedDate);
-      return coach.available_appointments
+      existingAppointments = coach.available_appointments
         .filter(apt => {
+          // Exclude ALL booked appointments (booked by anyone, not just this candidate)
           if (apt.candidate !== null) return false;
-          // Exclude appointments that are already booked by this candidate
+          // Also exclude appointments that are already booked by this candidate (double check)
           if (apt.id !== null && apt.id !== undefined && bookedAppointmentIds.has(apt.id)) return false;
           const aptDate = new Date(apt.dateTime);
           const weekday = aptDate.getDay();
@@ -539,13 +542,13 @@ export default function AppointmentPage() {
           candidate: apt.candidate,
           dateTime: new Date(apt.dateTime),
         }));
-    }
-    
+    } else {
     // Fallback to appointments array
-    return appointments.filter(
+      existingAppointments = appointments.filter(
       (a) => {
+          // Exclude ALL booked appointments (booked by anyone, not just this candidate)
         if (a.candidate !== null) return false;
-        // Exclude appointments that are already booked by this candidate
+          // Also exclude appointments that are already booked by this candidate (double check)
         if (a.id !== null && a.id !== undefined && bookedAppointmentIds.has(a.id)) return false;
         const weekday = a.dateTime.getDay();
         // Only include Monday-Friday
@@ -554,6 +557,40 @@ export default function AppointmentPage() {
                formatDate(a.dateTime) === formatDate(selectedDate);
       }
     );
+    }
+    
+    // If there are existing appointments, return them
+    if (existingAppointments.length > 0) {
+      return existingAppointments;
+    }
+    
+    // Generate virtual slots for weekdays when no appointments exist
+    // Match backend logic: 9 AM, 11 AM, 1 PM, 3 PM, 5 PM
+    const weekday = selectedDate.getDay();
+    if (weekday >= 1 && weekday <= 5) {
+      const workingHours = [9, 11, 13, 15, 17];
+      const now = new Date();
+      const virtualSlots = workingHours
+        .map(hour => {
+          const slotDate = new Date(selectedDate);
+          slotDate.setHours(hour, 0, 0, 0);
+          // Only include future slots
+          if (slotDate > now) {
+            return {
+              id: null,
+              jobCoach: coach?.email || selectedCoach,
+              candidate: null,
+              dateTime: slotDate,
+            };
+          }
+          return null;
+        })
+        .filter((slot): slot is { id: null; jobCoach: string; candidate: null; dateTime: Date } => slot !== null);
+      
+      return virtualSlots;
+    }
+    
+    return [];
   }, [availableJobCoaches, appointments, selectedCoach, selectedDate, candidateNameTemp]);
 
 
@@ -581,7 +618,13 @@ export default function AppointmentPage() {
     // Only show Monday-Friday as available
     const weekday = d.getDay();
     if (weekday === 0 || weekday === 6) return false; // Sunday=0, Saturday=6
-    return availableDays.some((a) => formatDate(a) === formatDate(d));
+    // Show all Monday-Friday dates as available (not just those with existing appointments)
+    // The backend generates virtual slots, so all weekdays should be available
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(d);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate >= today; // Only future dates
   };
 
   const monthNames = [

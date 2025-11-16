@@ -23,8 +23,23 @@ async def get_profiles(db: DbDep):
 @router.get("/{email}")
 async def get_profiles_by_email(email: str, db: DbDep):
     try:
-        # Get the candidate profile using email (pg_db style)
+        email = email.lower().strip()
+        
+        # First, try to get profile by candidate_email (primary lookup)
         profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_email == email).first()
+        
+        # If not found, check if any profile has this email in personal_identifiers.resume_email
+        # This handles the case where resume was uploaded with different email
+        if not profile:
+            all_profiles = db.query(CandidateProfile).all()
+            for p in all_profiles:
+                if p.personal_identifiers and isinstance(p.personal_identifiers, dict):
+                    resume_email = p.personal_identifiers.get("resume_email", "").lower().strip()
+                    email_address = p.personal_identifiers.get("emailAddress", "").lower().strip()
+                    if resume_email == email or email_address == email:
+                        profile = p
+                        print(f"✅ Found profile by resume_email/emailAddress: {p.candidate_email}")
+                        break
         
         if not profile:
             # Return empty profile structure instead of 404
@@ -33,11 +48,13 @@ async def get_profiles_by_email(email: str, db: DbDep):
         print(f"Error in get_profiles_by_email: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
-    # Get related education records using email
-    educations = db.query(Education).filter(Education.candidate_email == email).all()
+    # Get related education records using the profile's candidate_email (not the lookup email)
+    # This ensures we get the correct records even if lookup was by resume_email
+    profile_email = profile.candidate_email
+    educations = db.query(Education).filter(Education.candidate_email == profile_email).all()
     
-    # Get related experience records using email
-    experiences = db.query(Experience).filter(Experience.candidate_email == email).all()
+    # Get related experience records using the profile's candidate_email
+    experiences = db.query(Experience).filter(Experience.candidate_email == profile_email).all()
     
     # Extract profile picture URL from personal_identifiers
     personal_identifiers = profile.personal_identifiers or {}
@@ -57,6 +74,7 @@ async def get_profiles_by_email(email: str, db: DbDep):
         "preferences": profile.preferences,
         "personal_identifiers": profile.personal_identifiers,
         "profile_picture_url": profile_picture_url,  # Add profile picture URL
+        "resume_url": profile.resume_url,  # Add resume URL
         "education": profile.education,
         "experience": profile.experience,
         "skills": profile.skills,
@@ -114,14 +132,27 @@ async def create_profile(db: DbDep, profile: CandidateProfileRequest):
     # Create the main profile
     profile_data = profile.model_dump(exclude_unset=True, exclude_none=True)
     
+    # Extract education and experience data before removing them
+    educations_data = profile_data.get('educations', [])
+    experiences_data = profile_data.get('experiences', [])
+    
     # Remove fields that shouldn't be in the profile table
-    educations_data = profile_data.pop('educations', [])
-    experiences_data = profile_data.pop('experiences', [])
+    profile_data.pop('educations', None)
+    profile_data.pop('experiences', None)
     profile_data.pop('email', None)
     profile_data.pop('candidate_email', None)
     profile_data.pop('applications', None)
     profile_data.pop('saved_jobs', None)
     profile_data.pop('dateOfBirth', None)
+    
+    # Store education and experience as JSON in the profile table (for backward compatibility)
+    # Convert to the format expected by the JSON field
+    education_json = educations_data if educations_data else []
+    experience_json = experiences_data if experiences_data else []
+    
+    # Add education and experience JSON to profile_data
+    profile_data['education'] = education_json
+    profile_data['experience'] = experience_json
     
     new_profile = CandidateProfile(candidate_email=user_email, **profile_data)
     db.add(new_profile)
@@ -208,6 +239,10 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
             )
             db.add(education)
             print(f"   Added education {i+1}: {edu_data.get('level')} in {edu_data.get('fieldOfStudy') or edu_data.get('field_of_study')}")
+        
+        # Also update the JSON field in candidate_profiles table
+        existing.education = educations_data
+        print(f"   Updated education JSON field in candidate_profiles table")
     else:
         print("No education data provided in update")
     
@@ -233,6 +268,10 @@ async def update_profile(db: DbDep, email: str, profile: CandidateProfileRequest
             )
             db.add(experience)
             print(f"   Added experience {i+1}: {exp_data.get('title') or exp_data.get('Title')} at {exp_data.get('employer')}")
+        
+        # Also update the JSON field in candidate_profiles table
+        existing.experience = experiences_data
+        print(f"   Updated experience JSON field in candidate_profiles table")
     else:
         print("⚠️ No experience data provided in update")
     
@@ -509,17 +548,23 @@ async def get_applications(email: str, db: Session = Depends(get_db)):
     result = []
     for app in applications:
         app_data = {
-            "id": str(app.id),
-            "jobTitle": app.job_title,
+            "id": app.id,  # Return as integer, not string
+            "candidate_email": app.candidate_email,
+            "job_id": app.job_id if hasattr(app, 'job_id') else None,
+            "job_title": app.job_title,
+            "jobTitle": app.job_title,  # Keep both for compatibility
             "company": app.company,
-            "appliedDate": app.applied_date.strftime("%Y-%m-%d") if app.applied_date else None,
+            "applied_date": app.applied_date.isoformat() if app.applied_date else None,
+            "appliedDate": app.applied_date.isoformat() if app.applied_date else None,  # Keep both for compatibility
             "status": app.status,
             "location": app.location,
             "salary": app.salary,
-            "accommodationsRequested": app.accommodations_requested,
+            "accommodations_requested": app.accommodations_requested,
+            "accommodationsRequested": app.accommodations_requested,  # Keep both for compatibility
             "score": app.score,
-            "interviewDate": app.interview_date.strftime("%Y-%m-%d") if app.interview_date else None,
-            "job_id": app.job_id if hasattr(app, 'job_id') else None,
+            "interview_date": app.interview_date.isoformat() if app.interview_date else None,  # Full datetime with time
+            "interviewDate": app.interview_date.isoformat() if app.interview_date else None,  # Full datetime with time
+            "updated_at": app.updated_at.isoformat() if hasattr(app, 'updated_at') and app.updated_at else None,  # Include for notifications
         }
         result.append(app_data)
     

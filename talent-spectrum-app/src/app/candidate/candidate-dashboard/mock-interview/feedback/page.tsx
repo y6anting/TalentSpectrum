@@ -88,14 +88,23 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
         ? Math.round((session.endTime.getTime() - session.startTime.getTime()) / 1000)
         : 0;
 
+      // Ensure timestamps are properly formatted as ISO strings (UTC)
+      // The backend will parse these correctly and store them in the database
+      const startTimeISO = session.startTime 
+        ? (session.startTime instanceof Date ? session.startTime.toISOString() : new Date(session.startTime).toISOString())
+        : new Date().toISOString();
+      const endTimeISO = session.endTime 
+        ? (session.endTime instanceof Date ? session.endTime.toISOString() : new Date(session.endTime).toISOString())
+        : new Date().toISOString();
+      
       const reportData = {
         candidate_email: authSession.user.email,
         position_title: session.selectedPosition?.title || "Unknown Position",
         position_level: session.positionLevel || session.selectedPosition?.level || "entry",
         interview_type: session.interviewType,
         total_questions: session.totalQuestions,
-        start_time: session.startTime?.toISOString() || new Date().toISOString(),
-        end_time: session.endTime?.toISOString() || new Date().toISOString(),
+        start_time: startTimeISO,
+        end_time: endTimeISO,
         duration_seconds: duration,
         overall_score: parsed.overall_score || 0,
         clarity_score: 0,
@@ -271,13 +280,36 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
     }
 
     setIsGeneratingFeedback(true);
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
     try {
-      console.log("🤖 Generating new feedback...");
+        console.log(`🤖 Generating new feedback... (attempt ${retryCount + 1}/${maxRetries})`);
       const feedback = await generateAIFeedback(
         sessionData.selectedPosition,
         sessionData.interviewType,
         sessionData.answers
       );
+        
+        // Verify feedback is valid JSON string
+        try {
+          const parsed = JSON.parse(feedback);
+          if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Invalid feedback format');
+          }
+          // Valid JSON object, proceed
+        } catch (parseError) {
+          // Not valid JSON, might be fallback - retry
+          console.warn('Invalid feedback format, retrying...', parseError);
+          if (retryCount < maxRetries - 1) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+            continue;
+          } else {
+            throw new Error('Feedback is not in valid JSON format');
+          }
+        }
       
       const updatedSession = {
         ...sessionData,
@@ -288,17 +320,42 @@ const MockInterviewFeedbackPage: React.FC<EmbeddedNavProps> = ({ onNavigate }) =
       // Set session only after feedback is fully generated to prevent flashing
       setSession(updatedSession);
       sessionStorage.setItem('mockInterviewSession', JSON.stringify(updatedSession));
+        setIsGeneratingFeedback(false);
+        return; // Success, exit the retry loop
     } catch (error) {
-      console.error("Failed to generate feedback:", error);
+        console.error(`Failed to generate feedback (attempt ${retryCount + 1}):`, error);
+        retryCount++;
+        
+        if (retryCount >= maxRetries) {
+          // All retries exhausted, show fallback
+          console.warn("⚠️ All retry attempts failed, using fallback feedback");
       const fallbackSession = {
         ...sessionData,
-        feedback: "Thank you for completing the interview! Keep practicing to improve your skills."
+            feedback: JSON.stringify({
+              overall_score: 75,
+              overall: "Thank you for completing the interview! Keep practicing to improve your skills.",
+              strengths: [
+                "Actively participated throughout the interview.",
+                "Clear and confident communication.",
+                "Demonstrated self-awareness and enthusiasm."
+              ],
+              areas_for_improvement: [
+                "Provide more detailed examples when answering - try using the STAR method.",
+                "Be more specific with metrics and quantifiable results.",
+                "Practice common behavioral questions to build confidence."
+              ]
+            })
       };
       setSession(fallbackSession);
       sessionStorage.setItem('mockInterviewSession', JSON.stringify(fallbackSession));
-    } finally {
-      setIsGeneratingFeedback(false);
+        } else {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
     }
+    
+      setIsGeneratingFeedback(false);
   };
 
   if (loading || !session) {

@@ -57,6 +57,7 @@ import JobViewModeButtons, { ViewMode } from "@/app/employer/component/JobViewMo
 import ViewProfileDialog from "@/app/employer/component/ViewProfileDialog";
 import ResumeDialog from "@/app/employer/component/ResumeDialog";
 import EmployerOverview from "@/app/employer/component/EmployerOverview";
+import ShortlistedApplicants from "@/app/employer/component/ShortlistedApplicants";
 import { useToastHelpers } from "@/components/ui/toast";
 import PostJob from "@/app/employer/post-job/page"; 
 import { Input } from "@/app/components/input"; 
@@ -226,13 +227,14 @@ export default function EmployerDashboard() {
   // Search states for filtering
   const [jobSearchTerm, setJobSearchTerm] = useState("");
   const [applicantSearchTerm, setApplicantSearchTerm] = useState("");
+  const [applicantSortBy, setApplicantSortBy] = useState("recent"); // Sort for Job Postings Applicants tab
   
   // Filter states for Job Postings
   const [jobFilterStatus, setJobFilterStatus] = useState("all");
   
   // Filter states for Shortlisted Applicants
   const [applicantFilterStatus, setApplicantFilterStatus] = useState("all");
-  const [applicantSortBy, setApplicantSortBy] = useState("recent");
+  const [shortlistedApplicantSortBy, setShortlistedApplicantSortBy] = useState("recent");
 
   // View mode for job details (description, applicants, matched) - per job ID
   const [jobViewModes, setJobViewModes] = useState<Map<number, ViewMode>>(new Map());
@@ -272,6 +274,8 @@ export default function EmployerDashboard() {
       closed: "bg-red-100 text-red-800",
       under_review: "bg-yellow-100 text-yellow-800",
       interview_scheduled: "bg-blue-100 text-blue-800",
+      interview_accepted: "bg-green-100 text-green-800",
+      interview_rejected: "bg-red-100 text-red-800",
       shortlisted: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
     };
@@ -280,6 +284,8 @@ export default function EmployerDashboard() {
       shortlisted: "Shortlisted",
       rejected: "Rejected",
       interview_scheduled: "Interview Scheduled",
+      interview_accepted: "Interview Accepted",
+      interview_rejected: "Interview Rejected",
       active: "Active",
       draft: "Draft",
       closed: "Closed",
@@ -632,24 +638,56 @@ export default function EmployerDashboard() {
     setShowProfileDialog(true);
   };
 
-  // Handle viewing resume
-  const handleViewResume = async (candidateEmail: string) => {
+  // Handle downloading resume (same as ShortlistedApplicants)
+  const handleViewResume = async (candidateEmail: string, candidateName?: string) => {
     try {
       const response = await fetch(`${API_BASE}/profiles/${encodeURIComponent(candidateEmail)}`);
       if (response.ok) {
         const profileData = await response.json();
-        if (profileData.resume_url) {
-          setResumeUrl(profileData.resume_url);
-          setShowResumeDialog(true);
-        } else {
+        if (!profileData.resume_url) {
           showError("Resume Not Found", "This candidate has not uploaded a resume.");
+          return;
         }
+
+        // Construct full URL if it's a relative path
+        const resumeUrl = profileData.resume_url.startsWith('http') 
+          ? profileData.resume_url 
+          : `${API_BASE}${profileData.resume_url.startsWith('/') ? '' : '/'}${profileData.resume_url}`;
+
+        // Fetch the resume file
+        const resumeResponse = await fetch(resumeUrl);
+        if (!resumeResponse.ok) {
+          throw new Error("Failed to download resume file");
+        }
+
+        // Get the blob
+        const blob = await resumeResponse.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Extract filename from URL or use candidate name
+        const urlParts = profileData.resume_url.split('/');
+        const filename = urlParts[urlParts.length - 1] || `${candidateName || candidateEmail}_resume.pdf`;
+        link.download = filename;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        success("Resume Downloaded", `Resume for ${candidateName || candidateEmail} has been downloaded successfully.`);
       } else {
         showError("Error", "Failed to fetch candidate profile.");
       }
     } catch (error) {
-      console.error("Error viewing resume:", error);
-      showError("Error", "An error occurred while fetching the resume.");
+      console.error("Error downloading resume:", error);
+      showError("Error", "An error occurred while downloading the resume.");
     }
   };
 
@@ -1195,44 +1233,7 @@ const handleSaveEditJob = async () => {
     fetchData();
   }, [session, status, router]);
 
-  // Refresh shortlisted candidates when applications tab is activated
-  useEffect(() => {
-    if (activeTab === "applications" && currentEmployerEmail) {
-      const fetchShortlistedCandidates = async () => {
-        try {
-          console.log("Fetching shortlisted candidates for:", currentEmployerEmail);
-          const shortlistResponse = await fetch(`${API_BASE}/shortlist/employer/${currentEmployerEmail}`);
-          console.log("Shortlist response status:", shortlistResponse.status);
-          if (shortlistResponse.ok) {
-            const shortlistData = await shortlistResponse.json();
-            console.log("Shortlist data received:", shortlistData);
-            const transformedData = Array.isArray(shortlistData) ? shortlistData.map((item: any) => ({
-              id: item.id,
-              candidateName: item.candidate_name || item.candidateName || "Unknown Candidate",
-              candidateEmail: item.candidate_email || item.candidateEmail || "",
-              jobTitle: item.job_title || item.jobTitle || "",
-              appliedDate: item.applied_date || item.appliedDate || new Date().toISOString(),
-              status: item.status || "shortlisted",
-              accommodationsRequested: item.accommodations_requested || item.accommodationsRequested || false,
-              accommodationDetails: item.accommodation_details || item.accommodationDetails || "",
-              experience: item.experience || "",
-              score: item.score || 0,
-            })) : [];
-            console.log("Transformed shortlisted candidates:", transformedData);
-            setShortlistedCandidates(transformedData);
-          } else {
-            const errorText = await shortlistResponse.text();
-            console.error("Failed to fetch shortlisted candidates. Status:", shortlistResponse.status, "Error:", errorText);
-            setShortlistedCandidates([]);
-          }
-        } catch (err) {
-          console.error("Error refreshing shortlisted candidates:", err);
-          setShortlistedCandidates([]);
-        }
-      };
-      fetchShortlistedCandidates();
-    }
-  }, [activeTab, currentEmployerEmail, API_BASE]);
+  // Note: ShortlistedApplicants component handles its own data fetching
 
   // Auto-select the first job when job postings update (after edit, delete, or refresh)
   useEffect(() => {
@@ -1308,36 +1309,7 @@ const handleSaveEditJob = async () => {
       }
     });
 
-  const filteredShortlistedCandidates = shortlistedCandidates
-    .filter((app) => {
-      // Search filter
-      const matchesSearch = !applicantSearchTerm || 
-        (app.candidateName && app.candidateName.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
-        (app.jobTitle && app.jobTitle.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
-        (app.status && app.status.toLowerCase().includes(applicantSearchTerm.toLowerCase())) ||
-        (app.candidateEmail && app.candidateEmail.toLowerCase().includes(applicantSearchTerm.toLowerCase()));
-      
-      // Status filter - for shortlisted tab, show all candidates by default
-      // But allow filtering by other statuses if needed
-      const matchesStatus = applicantFilterStatus === "all" || 
-        (app.status && app.status.toLowerCase() === applicantFilterStatus.toLowerCase());
-      
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      switch (applicantSortBy) {
-        case "recent":
-          const dateA = a.appliedDate ? new Date(a.appliedDate).getTime() : 0;
-          const dateB = b.appliedDate ? new Date(b.appliedDate).getTime() : 0;
-          return dateB - dateA;
-        case "match":
-          return (b.score || 0) - (a.score || 0);
-        case "name":
-          return (a.candidateName || "").localeCompare(b.candidateName || "");
-        default:
-          return 0;
-      }
-    });
+  // Note: Filtering logic moved to ShortlistedApplicants component
 
   const renderInputField = (
     label: string,
@@ -1441,7 +1413,7 @@ const handleSaveEditJob = async () => {
 
                     { id: "post-job", label: "Post New Job", icon: SquarePen },
                     { id: "jobs", label: "Job Postings", icon: FileText },
-                     { id: "applications", label: "Shortlisted Applicants", icon: Users },
+                     { id: "shortlisted applicants", label: "Shortlisted Applicants", icon: Users },
                     {
                       id: "search-candidates",
                       label: "Talent Pool",
@@ -1506,7 +1478,7 @@ const handleSaveEditJob = async () => {
                 {/* Header */}
                 <div className="mb-4 flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-[#3a4043]">Job Postings</h2>
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -1514,7 +1486,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
 
                 {/* Search and Filters */}
@@ -1918,8 +1890,9 @@ const handleSaveEditJob = async () => {
                             <div>
                               <div className="flex items-center justify-between mb-4">
                                 <h4 className="font-semibold text-[#3a4043]">Applicants</h4>
-                                {/* Search Bar for Applicants */}
+                                {/* Search Bar and Sort Filter for Applicants */}
                                 {jobApplicants.length > 0 && (
+                                  <div className="flex items-center gap-3">
                                   <div className="relative w-64">
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
                                     <Input
@@ -1931,6 +1904,21 @@ const handleSaveEditJob = async () => {
                                       }}
                                       className="pl-10"
                                     />
+                                    </div>
+                                    <Select value={applicantSortBy} onValueChange={(value) => {
+                                      setApplicantSortBy(value);
+                                      setApplicantCurrentPage(1);
+                                    }}>
+                                      <SelectTrigger className="w-48 cursor-pointer">
+                                        <SortAsc className="w-4 h-4 mr-2" />
+                                        <SelectValue placeholder="Sort by" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="recent" className="cursor-pointer">Most Recent</SelectItem>
+                                        <SelectItem value="match" className="cursor-pointer">Highest Match Score</SelectItem>
+                                        <SelectItem value="name" className="cursor-pointer">Name A-Z</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                 )}
                               </div>
@@ -1940,7 +1928,7 @@ const handleSaveEditJob = async () => {
                                 </div>
                               ) : (() => {
                                 // Filter applicants by search term
-                                const filteredApplicants = jobApplicants.filter((app: any) => {
+                                let filteredApplicants = jobApplicants.filter((app: any) => {
                                   if (!applicantSearchTerm) return true;
                                   const search = applicantSearchTerm.toLowerCase();
                                   return (
@@ -1948,6 +1936,21 @@ const handleSaveEditJob = async () => {
                                     (app.candidate_email && app.candidate_email.toLowerCase().includes(search)) ||
                                     (app.job_title && app.job_title.toLowerCase().includes(search))
                                   );
+                                });
+
+                                // Sort applicants
+                                filteredApplicants = [...filteredApplicants].sort((a: any, b: any) => {
+                                  switch (applicantSortBy) {
+                                    case "match":
+                                      return (b.score || 0) - (a.score || 0); // Highest score first
+                                    case "name":
+                                      return (a.candidate_name || a.candidate_email || "").localeCompare(b.candidate_name || b.candidate_email || "");
+                                    case "recent":
+                                    default:
+                                      const dateA = a.applied_date ? new Date(a.applied_date).getTime() : 0;
+                                      const dateB = b.applied_date ? new Date(b.applied_date).getTime() : 0;
+                                      return dateB - dateA; // Most recent first
+                                  }
                                 });
 
                                 // Pagination
@@ -2063,7 +2066,7 @@ const handleSaveEditJob = async () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-bold text-[#3a4043]">Talent Pool</h2>
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -2071,7 +2074,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
                 <CandidateList />
               </div>
@@ -2085,206 +2088,24 @@ const handleSaveEditJob = async () => {
             )}
 
             {/* Shortlisted Applicants Tab */}
-            {activeTab === "applications" && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold text-[#3a4043]">Shortlisted Applicants</h2>
-                  <Button
-                    onClick={handleRunAiMatching}
-                    disabled={isRunningAiMatch}
-                    className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
-                hover:bg-[#635BFF]/10 hover:text-[#524BCC] hover:border-[#524BCC] cursor-pointer"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
-                </div>
-
-                {/* Search and Filters */}
-                <Card className="mb-3">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      {/* Search */}
-                      <div className="flex-1">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6f7a80] w-4 h-4" />
-                          <Input
-                            placeholder="Search applicants by name, job title, or status..."
-                            value={applicantSearchTerm}
-                            onChange={(e) => setApplicantSearchTerm(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Filters */}
-                      <div className="flex gap-4">
-                        <Select value={applicantFilterStatus} onValueChange={setApplicantFilterStatus}>
-                          <SelectTrigger className="w-52">
-                            <Filter className="w-4 h-4 mr-2" />
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                            <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
-                            <SelectItem value="under_review">Under Review</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <Select value={applicantSortBy} onValueChange={setApplicantSortBy}>
-                          <SelectTrigger className="w-40">
-                            <SortAsc className="w-4 h-4 mr-2" />
-                            <SelectValue placeholder="Sort by" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="recent">Most Recent</SelectItem>
-                            <SelectItem value="match">Best Match</SelectItem>
-                            <SelectItem value="name">Name A-Z</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Results Summary */}
-                <div className="mb-6 ml-2">
-                  <p className="text-[#6f7a80] text-sm">
-                    Showing {filteredShortlistedCandidates.length} of {shortlistedCandidates.length} shortlisted applicants
-                  </p>
-                  {/* Debug info */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Debug: Total candidates: {shortlistedCandidates.length}, Filtered: {filteredShortlistedCandidates.length}, 
-                      Search: "{applicantSearchTerm}", Status filter: "{applicantFilterStatus}"
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  {filteredShortlistedCandidates.length > 0 ? (
-                    filteredShortlistedCandidates.map((app) => (
-                      <Card key={app.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="text-lg font-semibold text-[#3a4043] mb-1">
-                                {app.candidateName}
-                              </h3>
-                              <p className="text-[#635bff] font-medium mb-2">
-                                Applied for: {app.jobTitle || "No job specified"}
-                              </p>
-                              {app.candidateEmail && (
-                                <p className="text-sm text-gray-500 mb-2">
-                                  Email: {app.candidateEmail}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Experience: {app.experience || "Not specified"}</span>
-                                <span>Match Score: {app.score || 0}%</span>
-                                <span>Shortlisted: {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString() : "N/A"}</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(app.status)}
-                            </div>
-                          </div>
-                          {app.accommodationsRequested && (
-                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                              <div className="flex items-start gap-2">
-                                <Shield className="h-4 w-4 text-purple-600 mt-0.5" />
-                                <div>
-                                  <p className="text-sm font-medium text-purple-800">
-                                    Accommodations Requested
-                                  </p>
-                                  <p className="text-sm text-purple-700">
-                                    {app.accommodationDetails}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <div className="flex">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
-                                    className={`h-4 w-4 ${star <= Math.floor(app.score / 20)
-                                      ? "text-yellow-400 fill-current"
-                                      : "text-gray-300"
-                                      }`}
-                                  />
-                                ))}
-                              </div>
-                              <span className="text-sm text-gray-600">
-                                ({app.score}% match)
-                              </span>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => app.candidateEmail && handleViewProfile(app.candidateEmail)}
-                                className="cursor-pointer"
-                                disabled={!app.candidateEmail}
-                              >
-                                View Profile
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-green-600 text-green-600 hover:bg-green-50 cursor-pointer"
-                              >
-                                <Calendar className="h-4 w-4 mr-1" />
-                                Schedule Interview
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-[#635bff] hover:bg-[#5346e6] text-white cursor-pointer"
-                              >
-                                Contact
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
-                    <Card>
-                      <CardContent className="p-12 text-center">
-                        <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-[#3a4043] mb-2">
-                          {applicantSearchTerm 
-                            ? "No Matching Applicants Found" 
-                            : "No Shortlisted Candidates Yet"}
-                        </h3>
-                        <p className="text-gray-600 mb-4">
-                          {applicantSearchTerm
-                            ? "Try adjusting your search terms"
-                            : "Start shortlisting candidates from your job postings to see them here."}
-                        </p>
-                        {!applicantSearchTerm && (
-                          <Button
-                            className="bg-[#635bff] hover:bg-[#5748e5] text-white hover:cursor-pointer"
-                            onClick={() => setActiveTab("jobs")}
-                          >
-                            View Job Postings
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
+            {activeTab === "shortlisted applicants" && (
+              <ShortlistedApplicants
+                currentEmployerEmail={currentEmployerEmail}
+                API_BASE={API_BASE}
+                onViewProfile={handleViewProfile}
+                onRunAiMatching={handleRunAiMatching}
+                isRunningAiMatch={isRunningAiMatch}
+                getStatusBadge={getStatusBadge}
+                getMatchScoreColor={getMatchScoreColor}
+                onTabChange={setActiveTab}
+              />
             )}
 
             {activeTab === "settings" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-bold text-[#3a4043]">Company Settings</h2>
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -2292,7 +2113,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
 
                 {/* Changed to full width (md:grid-cols-1) */}
@@ -2485,7 +2306,7 @@ const handleSaveEditJob = async () => {
                   <h2 className="text-2xl font-bold text-[#3a4043]">
                     Double Tax Relief Calculator
                   </h2>
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -2493,7 +2314,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
                 <Card>
                   <CardHeader>
@@ -2658,7 +2479,7 @@ const handleSaveEditJob = async () => {
             {activeTab === "post-job" && (
               <div className="space-y-4">
                 <div className="flex justify-end mb-4">
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -2666,7 +2487,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
                 <PostJob
                   // onJobPosted={handleJobPosted}
@@ -2688,7 +2509,7 @@ const handleSaveEditJob = async () => {
                   <h2 className="text-2xl font-bold text-[#3a4043]">
                     Consult AI
                   </h2>
-                  <Button
+                  {/* <Button
                     onClick={handleRunAiMatching}
                     disabled={isRunningAiMatch}
                     className="bg-white border border-[#635BFF] rounded-3xl text-[#635BFF] font-semibold 
@@ -2696,7 +2517,7 @@ const handleSaveEditJob = async () => {
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     {isRunningAiMatch ? "Running..." : "Run AI Matching"}
-                  </Button>
+                  </Button> */}
                 </div>
                 <div className="flex-1 min-h-0">
                   <ChatBot.Chat />

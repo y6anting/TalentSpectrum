@@ -71,7 +71,7 @@ class MatchDataSchema(BaseModel):
     job_id: int
     job_title: str
     company_name: str
-    company_id: int
+    company_id: Optional[int] = 0  # Optional since Post_Job doesn't have company_id
     employer_email: EmailStr # Note: Using EmailStr for validation
     primary_score: int
     secondary_score: int

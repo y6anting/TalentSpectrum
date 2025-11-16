@@ -649,6 +649,13 @@ const LoginPage = () => {
                           e.preventDefault();
                           handleNextStep();
                         }
+                        // Prevent Tab from going back to first field
+                        if (e.key === 'Tab' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (signupData.name.trim()) {
+                            handleNextStep();
+                          }
+                        }
                       }}
                       className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your full name"
@@ -673,6 +680,14 @@ const LoginPage = () => {
                           e.preventDefault();
                           handleNextStep();
                         }
+                        // Prevent Tab from going back to first field
+                        if (e.key === 'Tab' && !e.shiftKey) {
+                          e.preventDefault();
+                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                          if (signupData.email.trim() && emailRegex.test(signupData.email)) {
+                            handleNextStep();
+                          }
+                        }
                       }}
                       className="w-full px-4 py-3 border-b-2 border-gray-300 outline-none transition-colors bg-transparent"
                       placeholder="Enter your email"
@@ -693,6 +708,17 @@ const LoginPage = () => {
                         name="password"
                         value={signupData.password}
                         onChange={handleSignupInputChange}
+                        onKeyDown={(e) => {
+                          // Prevent Tab from going back to first field
+                          if (e.key === 'Tab' && !e.shiftKey) {
+                            e.preventDefault();
+                            // Focus next field (confirmPassword)
+                            const nextField = document.querySelector('input[name="confirmPassword"]') as HTMLInputElement;
+                            if (nextField) {
+                              nextField.focus();
+                            }
+                          }
+                        }}
                         className="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-[#635BFF] outline-none transition-colors bg-transparent"
                         placeholder="Create a password"
                         autoFocus

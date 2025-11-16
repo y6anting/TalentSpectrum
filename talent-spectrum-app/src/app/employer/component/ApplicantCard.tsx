@@ -81,7 +81,7 @@ export default function ApplicantCard({
               size="sm"
               variant="outline"
               className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
-              onClick={() => onViewResume(applicant.candidate_email)}
+              onClick={() => onViewResume(applicant.candidate_email, applicant.candidate_name)}
             >
               <Download className="w-4 h-4 mr-2" />
               Resume

@@ -509,7 +509,7 @@ export default function SavedJobsPage({
                       </div>
                     </div>
                     <div className="flex items-center gap-3 ml-4">
-                      <Badge className={`${getMatchScoreColor(getOverallMatchScore(selectedSavedJob))} bg-opacity-10 text-lg px-4 py-2`}>
+                      <Badge className={`${getMatchScoreColor(getOverallMatchScore(selectedSavedJob))} bg-opacity-10 text-2xl px-4 py-2`}>
                         {getOverallMatchScore(selectedSavedJob)}% match
                       </Badge>
                       <button

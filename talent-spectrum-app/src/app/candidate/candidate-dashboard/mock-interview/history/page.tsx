@@ -161,7 +161,13 @@ export default function InterviewHistoryPage({ onNavigate }: EmbeddedNavProps = 
               <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No Interview History Yet</h3>
               <p className="text-[#6f7a80] mb-6">Complete an interview and save it to see it here.</p>
               <Button
-                onClick={() => router.push('/candidate/candidate-dashboard?tab=mock-interview')}
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate("setup");
+                  } else {
+                    router.push('/candidate/candidate-dashboard?tab=mock-interview&subtab=setup');
+                  }
+                }}
                 className="bg-[#635bff] hover:bg-[#524aff] text-white hover:cursor-pointer"
               >
                 Start Your First Interview
@@ -173,19 +179,25 @@ export default function InterviewHistoryPage({ onNavigate }: EmbeddedNavProps = 
 
       {/* 10 History Limit Message and Practice Again Button */}
       {!loading && !error && reports.length > 0 && (
-        <Card className="bg-[#635BFF]/2 border-[#635BFF]/30">
+        <Card className="bg-[#635BFF]/5 border-[#635BFF]/30">
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-4 mt-1">
               <div className="flex items-start gap-3 flex-1">
                 <AlertCircle className="h-5 w-5 text-[#635BFF] mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm text-[#635BFF]">
-                    <strong>Note:</strong> Only the 10 most recent interview reports are stored. Older reports will be automatically deleted when you exceed this limit.
+                  <p className="text-sm text-gray-600">
+                    <strong>Note:</strong> Only the 10 most recent interview reports are stored. Older reports will be automatically deleted.
                   </p>
                 </div>
               </div>
               <Button
-                onClick={() => router.push('/candidate/candidate-dashboard?tab=mock-interview')}
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate("setup");
+                  } else {
+                    router.push('/candidate/candidate-dashboard?tab=mock-interview');
+                  }
+                }}
                 className="bg-[#635BFF] hover:bg-[#524BCC] text-white hover:cursor-pointer whitespace-nowrap"
               >
                 Practice Again
@@ -198,7 +210,19 @@ export default function InterviewHistoryPage({ onNavigate }: EmbeddedNavProps = 
       {!loading && !error && reports.length > 0 && (
         <div className="space-y-4">
           {reports.map((report, index) => {
-            const date = new Date(report.created_at || report.end_time || report.start_time);
+            // Parse the date string - backend returns ISO strings
+            // If timezone info is missing, assume UTC
+            const dateStr = report.created_at || report.end_time || report.start_time;
+            let date: Date;
+            if (dateStr) {
+              // If the string doesn't end with Z or timezone offset, assume UTC
+              const normalizedStr = dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)
+                ? dateStr
+                : dateStr + 'Z'; // Append Z to indicate UTC
+              date = new Date(normalizedStr);
+            } else {
+              date = new Date();
+            }
             const formattedDate = isNaN(date.getTime()) 
               ? '—' 
               : date.toLocaleDateString('en-US', { 

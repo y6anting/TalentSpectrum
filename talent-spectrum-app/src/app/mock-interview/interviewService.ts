@@ -179,13 +179,33 @@ export async function generateAIFeedback(
     
     console.log('✅ Client: AI feedback received');
     console.log('📋 Source:', data.source);
+    console.log('📋 Success:', data.success);
     
-    return data.feedback || 'Thank you for completing the interview!';
+    // Only return feedback if it's from Gemini (success: true)
+    // If it's fallback (success: false), throw an error to retry or handle appropriately
+    if (data.success === false || data.source === 'fallback') {
+      console.warn('⚠️ Client: Received fallback feedback, this should not be shown');
+      throw new Error('Feedback generation failed, received fallback response');
+    }
+    
+    // Ensure we have valid feedback before returning
+    if (!data.feedback) {
+      throw new Error('No feedback received from API');
+    }
+    
+    // Convert feedback object to JSON string for storage
+    // The API returns feedback as an object, but we need to store it as a string
+    const feedbackString = typeof data.feedback === 'string' 
+      ? data.feedback 
+      : JSON.stringify(data.feedback);
+    
+    return feedbackString;
     
   } catch (error) {
     console.error('❌ Client: Error requesting feedback:', error);
     console.log('🔄 Check server logs for details');
-    return 'Thank you for completing the interview! Keep practicing to improve your skills.';
+    // Re-throw the error so the caller can handle it (e.g., show loading state)
+    throw error;
   }
 }
 

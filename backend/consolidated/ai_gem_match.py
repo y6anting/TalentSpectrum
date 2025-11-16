@@ -20,8 +20,8 @@ if not api_key:
     
 # --- 1. Configuration and Data Fetching ---
 # NOTE: Ensure your local server is running at this address!
-CANDIDATE_URL = "http://127.0.0.1:8000/profiles/all/candidate-profiles"
-JOB_URL = "http://127.0.0.1:8000/company/all/full_profile"
+CANDIDATE_URL = "http://127.0.0.1:8000/profiles/"  # Fixed: Use correct endpoint
+JOB_URL = "http://127.0.0.1:8000/jobs/"  # Fixed: Use correct endpoint
 API_URL = "http://127.0.0.1:8000/match_results/store_results" # NEW: Endpoint to store results
 MODEL_NAME = "gemini-2.0-flash"
 
@@ -171,30 +171,36 @@ def get_candidate_summary(candidate: Dict[str, Any]) -> Dict[str, str]:
 
 
 # --- Helper Function for Job Display (Corrected for ID fetch) ---
-def get_job_summary(job: Dict[str, Any]) -> Dict[str, str]:
+def get_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
     """Extracts required display fields from a job profile, using company data."""
     
-    company_name = job.get("company_name", "Unknown Company") 
+    # Extract company name from employer_email if company_name not available
+    employer_email = job.get("employer_email", "")
+    company_name = job.get("company_name") or employer_email.split("@")[0].replace(".", " ").replace("_", " ").title() if employer_email else "Unknown Company"
+    
+    # Get job ID - Post_Job model uses 'id' field
+    job_id = job.get("id") or job.get("job_id")
+    
+    # Company ID doesn't exist in Post_Job model, so set to 0 (will be stored as NULL in DB)
+    # The database model allows NULL for company_id
+    company_id = job.get("company_id") or 0
     
     summary = {
-        # FIXED: Explicitly look for 'job_id' and fallback to 'id'
-        "job_id": str(job.get("job_id") or job.get("id", "N/A")), 
+        "job_id": job_id,  # Keep as integer, not string
         "job_title": job.get("job_title", "N/A"),
-        
         "company_name": company_name, 
-        # FIXED: Explicitly look for 'company_id'
-        "company_id": str(job.get("company_id", "N/A")), 
-        
-        "employer_email": job.get("employer_email", "placeholder@example.com"), # Use placeholder for Pydantic
+        "company_id": company_id,  # Use 0 if not found (will be NULL in DB)
+        "employer_email": employer_email or "placeholder@example.com",
         "location": job.get("location", "N/A"),
         "experience_level": job.get("experience_level", "N/A"),
         "work_mode": job.get("work_mode", "N/A"),
     }
     
-    # Final cleanup of "N/A" strings
+    # Final cleanup of "N/A" strings (but keep numeric values)
     for key, value in summary.items():
-        if value is None or value in ["None specified", "None", "N/A", ""]:
-            summary[key] = "N/A"
+        if key not in ["job_id", "company_id"]:  # Don't convert numeric IDs
+            if value is None or value in ["None specified", "None", "N/A", ""]:
+                summary[key] = "N/A"
             
     return summary
 
@@ -280,13 +286,23 @@ def conduct_ai_job_matching():
         for job in jobs:
             
             job_summary = get_job_summary(job) 
-            job_id = int(job_summary["job_id"]) if job_summary["job_id"].isdigit() else None
-            company_id = int(job_summary["company_id"]) if job_summary["company_id"].isdigit() else None
+            job_id = job_summary["job_id"]
+            company_id = job_summary["company_id"] or 0  # Use 0 if None (will be NULL in DB)
             
-            # Skip if job_id or company_id could not be parsed to integer (as required by Pydantic)
-            if job_id is None or company_id is None:
-                print(f"  -> Skipping Job: {job_summary['job_title']} due to invalid ID format.")
+            # Skip if job_id is None or invalid (company_id can be 0)
+            if job_id is None or (isinstance(job_id, str) and not job_id.isdigit()):
+                print(f"  -> Skipping Job: {job_summary.get('job_title', 'Unknown')} due to invalid job ID.")
                 continue
+            
+            # Ensure job_id is integer
+            if isinstance(job_id, str):
+                job_id = int(job_id)
+            
+            # Ensure company_id is integer (0 if not found)
+            if isinstance(company_id, str):
+                company_id = int(company_id) if company_id.isdigit() else 0
+            elif company_id is None:
+                company_id = 0
 
             job_title = job_summary["job_title"] 
             company_name = job_summary["company_name"]
@@ -440,12 +456,23 @@ def conduct_ai_job_matching_for_candidate(candidate_email: str):
     
     for job in jobs:
         job_summary = get_job_summary(job)
-        job_id = int(job_summary["job_id"]) if job_summary["job_id"].isdigit() else None
-        company_id = int(job_summary["company_id"]) if job_summary["company_id"].isdigit() else None
+        job_id = job_summary["job_id"]
+        company_id = job_summary["company_id"] or 0  # Use 0 if None (will be NULL in DB)
         
-        if job_id is None or company_id is None:
-            print(f"  -> Skipping Job: {job_summary['job_title']} due to invalid ID format.")
+        # Skip if job_id is None or invalid (company_id can be 0)
+        if job_id is None or (isinstance(job_id, str) and not job_id.isdigit()):
+            print(f"  -> Skipping Job: {job_summary.get('job_title', 'Unknown')} due to invalid job ID.")
             continue
+        
+        # Ensure job_id is integer
+        if isinstance(job_id, str):
+            job_id = int(job_id)
+        
+        # Ensure company_id is integer (0 if not found)
+        if isinstance(company_id, str):
+            company_id = int(company_id) if company_id.isdigit() else 0
+        elif company_id is None:
+            company_id = 0
         
         job_title = job_summary["job_title"]
         company_name = job_summary["company_name"]

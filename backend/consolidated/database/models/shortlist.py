@@ -21,6 +21,7 @@ class ShortlistedCandidate(Base):
     accommodation_details = Column(Text, nullable=True)
     experience = Column(Text, nullable=True)
     score = Column(Integer, nullable=True)  # Match percentage
+    interview_date = Column(DateTime, nullable=True)  # Interview date and time
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # Pydantic schema for creating a shortlisted candidate
@@ -37,6 +38,7 @@ class ShortlistRequest(BaseModel):
     accommodation_details: Optional[str] = None
     experience: Optional[str] = None
     score: Optional[int] = None
+    interview_date: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -56,6 +58,7 @@ class ShortlistResponse(BaseModel):
     accommodation_details: Optional[str]
     experience: Optional[str]
     score: Optional[int]
+    interview_date: Optional[datetime]
     created_at: datetime
 
     class Config:

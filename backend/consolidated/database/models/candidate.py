@@ -35,6 +35,7 @@ class CandidateProfile(Base):
     applications = Column(JSON)  # Applications
     saved_jobs = Column(JSON)  # Saved jobs
     exp_skill = Column(JSON)
+    resume_url = Column(String)  # Path to uploaded PDF resume file
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -72,6 +73,7 @@ class JobApplication(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_email = Column(String, index=True)  # Email-based lookup
+    job_id = Column(Integer, index=True, nullable=True)  # Link to Post_Job.id for accurate duplicate checking
     job_title = Column(String)
     company = Column(String)
     applied_date = Column(DateTime, default=datetime.utcnow)
@@ -81,6 +83,7 @@ class JobApplication(Base):
     accommodations_requested = Column(Boolean, default=False)
     score = Column(Integer)
     interview_date = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Track status updates
 
 class SavedJob(Base):
     __tablename__ = "saved_jobs"

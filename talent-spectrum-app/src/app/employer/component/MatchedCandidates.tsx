@@ -12,7 +12,6 @@ import { Badge } from "@/app/components/badge";
 import {
   Users,
   Eye,
-  Star,
   MapPin,
   Shield,
   Briefcase,
@@ -21,8 +20,15 @@ import {
   XCircle,
   User,
   Loader2, // Added for loading indicator
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
+  BrainCircuit,
+  House,
+  Download,
 } from "lucide-react";
 import { motion } from "framer-motion"; // Changed from "motion/react" to "framer-motion" for common usage
+import ViewProfileDialog from "./ViewProfileDialog";
 
 // ============= TYPES (Existing) =============
 type EnvironmentPreference = {
@@ -423,6 +429,11 @@ export default function MatchedCandidates({
   const [selectedCandidate, setSelectedCandidate] =
     useState<MatchedCandidate | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [expandedMatchingScore, setExpandedMatchingScore] = useState<string | null>(null);
+  const [selectedCandidateEmail, setSelectedCandidateEmail] = useState<string | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Show 5 candidates per page
 
   useEffect(() => {
     const fetchMatchResults = async () => {
@@ -441,7 +452,14 @@ export default function MatchedCandidates({
         if (rawData && rawData.length > 0) {
           const mappedData = mapApiDataToMatchedCandidate(rawData);
           setAllMatchedCandidates(mappedData); // Replace mock data with fetched data
-          console.log("Successfully loaded data from API.");
+          console.log("✅ [Matched Candidates] Successfully loaded data from API:", {
+            totalCandidates: mappedData.length,
+            scores: mappedData.map((c: MatchedCandidate) => ({
+              candidate: c.candidateSummary.name,
+              jobTitle: c.jobTitle,
+              overallMatch: c.overallMatchPercentage
+            }))
+          });
         } else {
           console.log("API returned no data, displaying mock data as fallback.");
           // If API returns no data, `allMatchedCandidates` remains `mockMatchedCandidates`
@@ -458,12 +476,34 @@ export default function MatchedCandidates({
     };
 
     fetchMatchResults();
+    
+    // Listen for match scores update event
+    const handleMatchScoresUpdated = () => {
+      console.log('🔄 [Matched Candidates] Received matchScoresUpdated event, refreshing...');
+      fetchMatchResults();
+    };
+    
+    window.addEventListener('matchScoresUpdated', handleMatchScoresUpdated);
+    return () => {
+      window.removeEventListener('matchScoresUpdated', handleMatchScoresUpdated);
+    };
   }, []); // Empty dependency array means this runs once on mount
 
-  // Filter candidates by job title from the currently available data (fetched or mock)
-  const candidates = allMatchedCandidates.filter(
-    (candidate) => candidate.jobTitle === jobTitle
-  );
+  // Filter candidates by job title and sort by highest score first
+  const candidates = allMatchedCandidates
+    .filter((candidate) => candidate.jobTitle === jobTitle)
+    .sort((a, b) => b.overallMatchPercentage - a.overallMatchPercentage); // Sort descending by match score
+
+  // Reset pagination when job title changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [jobTitle]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(candidates.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCandidates = candidates.slice(startIndex, endIndex);
 
   const handleViewCandidateDetails = (candidate: MatchedCandidate) => {
     setSelectedCandidate(candidate);
@@ -574,7 +614,7 @@ export default function MatchedCandidates({
                   </div>
 
                   {/* Skills */}
-                  <div className="mb-3">
+                  {/* <div className="mb-3">
                     <div className="flex flex-wrap gap-2">
                       {match.candidateSummary.skills
                         .slice(0, 4)
@@ -593,10 +633,10 @@ export default function MatchedCandidates({
                         </Badge>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Accommodations */}
-                  {match.candidateSummary.accommodations.length > 0 && (
+                  {/* {match.candidateSummary.accommodations.length > 0 && (
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
                       <div className="flex items-start gap-2">
                         <Shield className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
@@ -610,7 +650,7 @@ export default function MatchedCandidates({
                         </div>
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Match Breakdown Preview */}
                   <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
@@ -633,41 +673,276 @@ export default function MatchedCandidates({
                       <div className="text-purple-600">Culture</div>
                     </div>
                   </div>
-```
-<div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-4 w-4 ${
-                              star <=
-                              Math.floor(match.overallMatchPercentage / 20)
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewCandidateDetails(match)}
+
+                  {/* Detailed Matching Score - Expandable with Action Buttons */}
+                  <div className="pt-4 border-t border-[#e8e6f0] mb-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => setExpandedMatchingScore(expandedMatchingScore === match.id ? null : match.id)}
+                        className="w-fit flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Details
+                        <span className="font-semibold text-[#635BFF]">View Matching Detail</span>
+                        {expandedMatchingScore === match.id ? (
+                          <ChevronUp className="h-5 w-5 text-[#6f7a80]" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-[#6f7a80]" />
+                        )}
+                      </button>
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                          className="bg-[#635bff] hover:bg-[#524aff] text-white cursor-pointer whitespace-nowrap"
+                          onClick={() => {
+                            setSelectedCandidateEmail(match.candidateSummary.email);
+                            setShowProfileDialog(true);
+                          }}
+                      >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Profile
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-[#635bff] hover:bg-[#5346e6] text-white"
-                        onClick={() => handleShortlist(match)}
-                      >
-                        <Star className="h-4 w-4 mr-1" />
-                        Shortlist
+                          variant="outline" 
+                          className="border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer whitespace-nowrap"
+                          onClick={async () => {
+                            try {
+                              const profileResponse = await fetch(`${API_BASE}/profiles/${encodeURIComponent(match.candidateSummary.email)}`);
+                              if (profileResponse.ok) {
+                                const profileData = await profileResponse.json();
+                                if (profileData.resume_url) {
+                                  const resumeUrl = `${API_BASE}${profileData.resume_url}`;
+                                  const link = document.createElement('a');
+                                  link.href = resumeUrl;
+                                  link.download = `${match.candidateSummary.name}_Resume.pdf`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                } else {
+                                  alert("Resume not available for this candidate.");
+                                }
+                              } else {
+                                alert("Failed to fetch candidate profile.");
+                              }
+                            } catch (error) {
+                              console.error("Error downloading resume:", error);
+                              alert("Error downloading resume. Please try again.");
+                            }
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Resume
                       </Button>
                     </div>
+                    </div>
+                    {expandedMatchingScore === match.id && (() => {
+                      const primaryMatchScore = match.primaryMatch.percentage;
+                      const secondaryMatchScore = match.secondaryMatch.percentage;
+                      const tertiaryMatchScore = match.tertiaryMatch.percentage;
+                      const overallMatchScore = match.overallMatchPercentage;
+
+                      return (
+                        <div className="mt-4 space-y-6">
+                          {/* Overall Match Score */}
+                          <div className="text-center py-6 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-2">Overall Match</p>
+                            <div className="text-6xl font-bold text-[#635bff] mb-2">
+                              {overallMatchScore}%
+                            </div>
+                          </div>
+
+                          {/* Primary Match: Experience, Skill & Education */}
+                          <Card className="border-2 border-green-200">
+                            <CardHeader className="bg-green-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-green-100 rounded-lg">
+                                    <Briefcase className="h-5 w-5 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Primary Match: <br />Experience, Skill & Education</CardTitle>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      Strong alignment with required technical skills
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-3xl font-bold text-green-600">{primaryMatchScore}%</div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                              <div className="space-y-4">
+                                {match.primaryMatch.matchedPoints && match.primaryMatch.matchedPoints.length > 0 && (
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2">
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                      Matched Skills
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2 ml-6">
+                                      {match.primaryMatch.matchedPoints.map((skill, idx) => (
+                                        <Badge key={idx} className="bg-green-100 text-green-800 border-green-300">
+                                          {skill}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {match.primaryMatch.mismatchedPoints && match.primaryMatch.mismatchedPoints.length > 0 && (
+                                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-yellow-600">⚠</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.primaryMatch.mismatchedPoints.join(", ")}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {match.primaryMatch.aiRecommendation && (
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.primaryMatch.aiRecommendation}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Secondary Match: Environmental Fit */}
+                          <Card className="border-2 border-purple-200">
+                            <CardHeader className="bg-purple-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-purple-100 rounded-lg">
+                                    <House className="h-5 w-5 text-purple-600" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Secondary Match: <br /> Environmental Fit</CardTitle>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      Excellent fit for remote work and preference for written communication
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-3xl font-bold text-purple-600">{secondaryMatchScore}%</div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                              <div className="space-y-4">
+                                {match.secondaryMatch.matchedPoints && match.secondaryMatch.matchedPoints.length > 0 && (
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-3">Matched Preferences</h4>
+                                    <div className="space-y-2 ml-6">
+                                      {match.secondaryMatch.matchedPoints.map((point, idx) => (
+                                        <div key={idx} className="flex items-start gap-2">
+                                          <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                                          <span className="text-sm text-gray-700">{point}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {match.secondaryMatch.mismatchedPoints && match.secondaryMatch.mismatchedPoints.length > 0 && (
+                                  <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-orange-600">📋</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.secondaryMatch.mismatchedPoints.join(", ")}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {match.secondaryMatch.aiRecommendation && (
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.secondaryMatch.aiRecommendation}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Tertiary Match: Other Factors */}
+                          <Card className="border-2 border-blue-200">
+                            <CardHeader className="bg-blue-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-blue-100 rounded-lg">
+                                    <BrainCircuit className="h-5 w-5 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Tertiary Match: <br /> Other Factors</CardTitle>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      Good alignment with company&apos;s focus on detail-oriented problem solving
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-3xl font-bold text-blue-600">{tertiaryMatchScore}%</div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                              <div className="space-y-4">
+                                {match.tertiaryMatch.matchedPoints && match.tertiaryMatch.matchedPoints.length > 0 && (
+                                  <div>
+                                    <h4 className="font-semibold text-[#3a4043] mb-3">Matched Factors</h4>
+                                    <div className="space-y-2 ml-6">
+                                      {match.tertiaryMatch.matchedPoints.map((point, idx) => (
+                                        <div key={idx} className="flex items-start gap-2">
+                                          <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                                          <span className="text-sm text-gray-700">{point}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {match.tertiaryMatch.mismatchedPoints && match.tertiaryMatch.mismatchedPoints.length > 0 && (
+                                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-yellow-600">⚠</span>
+                                      Consider
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.tertiaryMatch.mismatchedPoints.join(", ")}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {match.tertiaryMatch.aiRecommendation && (
+                                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-semibold text-[#3a4043] mb-2 flex items-center gap-2 text-sm">
+                                      <span className="text-blue-600">💡</span>
+                                      AI Recommendation
+                                    </h4>
+                                    <p className="text-sm text-gray-700 ml-6">
+                                      {match.tertiaryMatch.aiRecommendation}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </motion.div>
               ))
@@ -681,6 +956,50 @@ export default function MatchedCandidates({
               </div>
             )}
           </div>
+          
+          {/* Pagination */}
+          {candidates.length > itemsPerPage && (
+            <div className="mt-6 flex justify-center items-center gap-2 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="hover:cursor-pointer"
+              >
+                Previous
+              </Button>
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i + 1}
+                    size="sm"
+                    variant={currentPage === i + 1 ? "default" : "outline"}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={currentPage === i + 1 
+                      ? "bg-[#635bff] text-white hover:bg-[#524aff] cursor-pointer" 
+                      : "hover:cursor-pointer"}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="hover:cursor-pointer"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+          {candidates.length > 0 && (
+            <div className="mt-2 text-sm text-[#6f7a80] text-center">
+              Showing {startIndex + 1}-{Math.min(endIndex, candidates.length)} of {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -847,17 +1166,26 @@ export default function MatchedCandidates({
                   >
                     Close
                   </Button>
-                  <Button
-                    className="bg-[#635bff] hover:bg-[#5748e5] text-white"
-                    onClick={() => handleShortlist(selectedCandidate)}
-                  >
-                    <Star className="h-4 w-4 mr-2" /> Shortlist Candidate
-                  </Button>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
+      )}
+
+      {/* View Profile Dialog */}
+      {selectedCandidateEmail && (
+        <ViewProfileDialog
+          candidateEmail={selectedCandidateEmail}
+          open={showProfileDialog}
+          onOpenChange={(open) => {
+            setShowProfileDialog(open);
+            if (!open) {
+              setSelectedCandidateEmail(null);
+            }
+          }}
+          API_BASE={API_BASE}
+        />
       )}
     </>
   );

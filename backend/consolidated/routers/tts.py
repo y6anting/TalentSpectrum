@@ -19,7 +19,7 @@ os.makedirs(audio_dir, exist_ok=True)
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "en-US-AriaNeural"
+    voice: str = "en-US-JennyNeural"  # Default to Jenny (US female voice)
     rate: int = 0
     volume: float = 1.0
     pitch: Optional[str] = None
@@ -29,7 +29,7 @@ class TTSRequest(BaseModel):
 
 async def generate_edge_tts(
     text: str,
-    voice: str = "en-US-AriaNeural",
+    voice: str = "en-US-JennyNeural",  # Default to Jenny (US female voice)
     rate: int = 0,
     volume: float = 1.0,
     pitch: str = None,
@@ -47,33 +47,48 @@ async def generate_edge_tts(
         audio_filename = f"tts_audio_{timestamp}_{unique_id}.mp3"
         audio_path = os.path.join(audio_dir, audio_filename)
 
-        if use_ssml:
-            ssml_parts = [
-                f'<speak version="1.0" xml:lang="en-US">',
-                f'<voice name="{voice}">'
-            ]
-            if style:
-                ssml_parts.append(f'<mstts:express-as style="{style}">')
-            prosody_attrs = [f'rate="{rate_str}"', f'volume="{volume_str}"']
-            if pitch:
-                prosody_attrs.append(f'pitch="{pitch}"')
-            ssml_parts.append(f'<prosody {" ".join(prosody_attrs)}>{text}</prosody>')
-            if style:
-                ssml_parts.append('</mstts:express-as>')
-            ssml_parts.append('</voice></speak>')
+        try:
+            if use_ssml:
+                ssml_parts = [
+                    f'<speak version="1.0" xml:lang="en-US">',
+                    f'<voice name="{voice}">'
+                ]
+                if style:
+                    ssml_parts.append(f'<mstts:express-as style="{style}">')
+                prosody_attrs = [f'rate="{rate_str}"', f'volume="{volume_str}"']
+                if pitch:
+                    prosody_attrs.append(f'pitch="{pitch}"')
+                ssml_parts.append(f'<prosody {" ".join(prosody_attrs)}>{text}</prosody>')
+                if style:
+                    ssml_parts.append('</mstts:express-as>')
+                ssml_parts.append('</voice></speak>')
 
-            ssml = "".join(ssml_parts)
-            communicate = edge_tts.Communicate(ssml, voice)
-        else:
-            communicate = edge_tts.Communicate(text, voice, rate=rate_str, volume=volume_str)
+                ssml = "".join(ssml_parts)
+                communicate = edge_tts.Communicate(ssml, voice)
+            else:
+                communicate = edge_tts.Communicate(text, voice, rate=rate_str, volume=volume_str)
 
-        await communicate.save(audio_path)
+            await communicate.save(audio_path)
 
-        if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
-            raise HTTPException(status_code=500, detail="Failed to generate audio file")
+            if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+                raise HTTPException(status_code=500, detail="Failed to generate audio file")
 
-        return audio_filename
+            return audio_filename
+        except Exception as tts_error:
+            # If TTS fails, try with a fallback voice
+            print(f"⚠️ TTS failed with voice {voice}, trying fallback voice: {tts_error}")
+            try:
+                fallback_voice = "en-US-JennyNeural" if voice != "en-US-JennyNeural" else "en-GB-SoniaNeural"
+                communicate = edge_tts.Communicate(text, fallback_voice, rate=rate_str, volume=volume_str)
+                await communicate.save(audio_path)
+                print(f"✅ TTS succeeded with fallback voice: {fallback_voice}")
+                return audio_filename
+            except Exception as fallback_error:
+                print(f"❌ Fallback TTS also failed: {fallback_error}")
+                raise HTTPException(status_code=500, detail=f"TTS generation failed with both primary and fallback voices: {str(fallback_error)}")
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
 

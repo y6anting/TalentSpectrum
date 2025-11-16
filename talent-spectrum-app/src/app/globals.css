@@ -344,3 +344,38 @@ body.dark-mode {
 .dark-mode .bg-gradient-to-b {
   background: linear-gradient(to bottom, #1a1a1a, #0a0a0a) !important;
 }
+
+/* Global Dark Mode using CSS Filter */
+html.forced-dark {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Set lighter background for dark mode */
+/* IMPORTANT: With invert filter, we set a DARK color that will invert to LIGHT */
+/* To get light gray (#d3cdcd), we set dark gray (#2c3232) which inverts to light */
+/* For even lighter background, use darker color here (e.g., #1a1a1a inverts to very light) */
+html.forced-dark,
+html.forced-dark body {
+  background-color: #2c3232 !important;
+}
+
+/* Dark mode gradient backgrounds */
+/* Use dark violet shades that will invert to light violet for better visibility */
+/* Targets elements with both bg-gradient-to-b and from-violet-50 classes */
+/* html.forced-dark [class*="bg-gradient-to-b"][class*="from-violet-50"] {
+  background: linear-gradient(to bottom, #160929, #000000) !important;
+} */
+
+/* Alternative: If you want even lighter result, use darker starting color */
+/* html.forced-dark [class*="bg-gradient-to-b"][class*="from-violet-50"] {
+  background: linear-gradient(to bottom, #581c87, #1e293b) !important;
+} */
+
+/* Prevent images from being inverted twice */
+html.forced-dark img,
+html.forced-dark picture,
+html.forced-dark video,
+html.forced-dark iframe,
+html.forced-dark svg {
+  filter: invert(1) hue-rotate(180deg) !important;
+}

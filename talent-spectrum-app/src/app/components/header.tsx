@@ -5,8 +5,9 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
 import NotificationBell from "./NotificationBell";
+import { useDarkMode } from "@/app/hooks/useDarkMode";
 
 interface HeaderProps {
   setCurrentPage?: (page: string) => void;
@@ -22,6 +23,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
   const { data: session, status } = useSession();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
 
   // Normalize role to uppercase
   const role = session?.user?.role
@@ -212,9 +214,25 @@ export default function Header({ setCurrentPage }: HeaderProps) {
 
           {/* Desktop Auth Area */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-full hover:bg-violet-100/70 transition-all duration-200 cursor-pointer"
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 text-[#635bff]" />
+              ) : (
+                <Moon className="w-5 h-5 text-[#635bff]" />
+              )}
+            </button>
+            
             {session?.user ? (
               <>
-                <NotificationBell />
+                <div className="flex items-center">
+                  <NotificationBell />
+                </div>
                 <span className="text-[#3a4043]">
                   Hi,{" "}
                   <span className="font-semibold">
@@ -225,7 +243,7 @@ export default function Header({ setCurrentPage }: HeaderProps) {
                 </span>
                 <button
                   onClick={handleSignOut}
-                  className="bg-[#635bff] hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
+                  className="bg-[#635bff] hover:cursor-pointer hover:bg-[#524aff] text-white px-4 py-2 rounded-full font-medium shadow-md transition-all cursor-pointer duration-200"
                 >
                   Sign out
                 </button>
@@ -285,6 +303,27 @@ export default function Header({ setCurrentPage }: HeaderProps) {
               ))}
 
               <div className="pt-4 border-t border-violet-100 flex flex-col gap-2">
+                {/* Dark Mode Toggle for Mobile */}
+                <button
+                  onClick={() => {
+                    toggleDarkMode();
+                  }}
+                  className="flex items-center justify-center gap-2 py-2 px-4 rounded-md hover:bg-violet-100/70 transition-all duration-200 cursor-pointer"
+                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {isDarkMode ? (
+                    <>
+                      <Sun className="w-5 h-5 text-[#635bff]" />
+                      <span className="text-[#635bff] font-medium">Light Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-5 h-5 text-[#635bff]" />
+                      <span className="text-[#635bff] font-medium">Dark Mode</span>
+                    </>
+                  )}
+                </button>
+                
                 {session?.user ? (
                   <>
                     <div className="flex items-center justify-center gap-2 py-2 hover: cursor-pointer">

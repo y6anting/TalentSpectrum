@@ -54,7 +54,7 @@ export default function OverviewPage({
             icon: Eye,
             iconColor: "text-blue-600",
             title: "Profile Views",
-            value: 12,
+            value: 0,
           },
           {
             icon: Heart,

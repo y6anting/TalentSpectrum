@@ -202,6 +202,11 @@ export default function CandidateJobListingContent() {
         }
       }
       
+      // Check if resume was uploaded (resume_url exists)
+      if (!hasValidProfile && data.resume_url && data.resume_url.trim() !== '') {
+        hasValidProfile = true;
+      }
+      
       console.log('Profile validation result:', hasValidProfile, 'for user:', userEmail);
       return hasValidProfile;
     } catch (error) {
@@ -315,30 +320,65 @@ export default function CandidateJobListingContent() {
     };
   };
 
-  // Fetch jobs from API - fetch immediately without waiting for session
+  // Fetch jobs and match results together to avoid showing fallback scores
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchJobsAndScores = async () => {
       try {
         setIsLoading(true);
         setFetchError(null);
         
         // Fetch jobs immediately (don't wait for session)
-        const response = await fetch('/api/jobs');
-        if (!response.ok) {
+        const jobsResponse = await fetch('/api/jobs');
+        if (!jobsResponse.ok) {
           throw new Error('Failed to fetch jobs');
         }
-        const jobsData: Job[] = await response.json();
+        const jobsData: Job[] = await jobsResponse.json();
         
-        // Transform jobs first (without AI scores for now)
-        const transformedJobs = jobsData.map((job: Job) => transformJob(job));
+        // If session is available, fetch match results in parallel
+        let matchResultsMap = new Map();
+        if (session?.user?.email) {
+          try {
+            const matchResponse = await fetch(`/api/match-results?candidate_email=${encodeURIComponent(session.user.email)}`);
+            if (matchResponse.ok) {
+              const matchData = await matchResponse.json();
+              matchData.forEach((match: any) => {
+                matchResultsMap.set(match.job_id.toString(), match);
+              });
+              setMatchResults(matchResultsMap);
+            }
+          } catch (matchErr) {
+            console.warn('Failed to fetch match results:', matchErr);
+          }
+        }
         
-        // Set jobs immediately so UI can render
+        // Transform jobs with AI scores if available (avoid fallback scores)
+        const transformedJobs = jobsData.map((job: Job) => {
+          const aiMatch = matchResultsMap.get(job.id.toString());
+          return transformJob(job, aiMatch);
+        });
+        
+        // Sort by most recent first (by default) - using created_at or id
+        transformedJobs.sort((a, b) => {
+          const aDate = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+          const bDate = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+          
+          // If dates are equal or both are 0, use id as tiebreaker (higher id = newer)
+          if (aDate === bDate || (aDate === 0 && bDate === 0)) {
+            const aId = parseInt(a.id) || 0;
+            const bId = parseInt(b.id) || 0;
+            return bId - aId; // Higher ID = newer job
+          }
+          
+          // Most recent first (descending order)
+          return bDate - aDate;
+        });
+        
+        // Set jobs with correct scores (no fallback scores shown)
         setJobs(transformedJobs);
         if (transformedJobs.length > 0) {
           setSelectedJob(transformedJobs[0]);
         }
         
-        // Set loading to false after jobs are displayed
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching jobs:', err);
@@ -347,10 +387,10 @@ export default function CandidateJobListingContent() {
       }
     };
 
-    fetchJobs();
-  }, []); // Fetch immediately on mount
+    fetchJobsAndScores();
+  }, [session?.user?.email]); // Re-fetch when session becomes available
 
-  // Fetch match results when session becomes available (non-blocking)
+  // Listen for match scores update event to refresh scores
   useEffect(() => {
     if (!session?.user?.email || jobs.length === 0) return;
     
@@ -370,11 +410,9 @@ export default function CandidateJobListingContent() {
         
         // Update jobs with AI scores if available
         setJobs(currentJobs => {
-          return currentJobs.map((job: DisplayJob) => {
+          const updatedJobs = currentJobs.map((job: DisplayJob) => {
             const aiMatch = matchResultsMap.get(job.id);
             if (aiMatch) {
-              // Find original job data - we need to re-fetch or store it
-              // For now, update the match score directly
               return {
                 ...job,
                 matchScore: Math.round(aiMatch.total_score),
@@ -384,12 +422,16 @@ export default function CandidateJobListingContent() {
               };
             }
             return job;
-          });
         });
         
-        // Update selected job with AI scores
+          // Also update selectedJob if it exists in the updated jobs
         setSelectedJob(currentSelected => {
           if (!currentSelected) return currentSelected;
+            const updatedSelectedJob = updatedJobs.find(job => job.id === currentSelected.id);
+            if (updatedSelectedJob) {
+              return updatedSelectedJob;
+            }
+            // If selected job still exists but wasn't updated, check for AI match
           const aiMatch = matchResultsMap.get(currentSelected.id);
           if (aiMatch) {
             return {
@@ -403,13 +445,32 @@ export default function CandidateJobListingContent() {
           return currentSelected;
         });
         
-        console.log(`Loaded ${matchData.length} AI match results for candidate`);
+          return updatedJobs;
+        });
+        
+        console.log(`📊 [Browse Jobs] Loaded ${matchData.length} AI match results for candidate`);
+        console.log(`📊 [Browse Jobs] Match scores updated:`, Array.from(matchResultsMap.entries()).map(([id, match]: [string, any]) => ({
+          job_id: id,
+          total_score: match.total_score,
+          primary_score: match.primary_score
+        })));
       } catch (matchErr) {
-        console.warn('Failed to fetch match results, using static scores:', matchErr);
+        console.warn('Failed to fetch match results:', matchErr);
       }
     };
     
     fetchMatchResults();
+    
+    // Listen for match scores update event
+    const handleMatchScoresUpdated = (event: CustomEvent) => {
+      console.log('🔄 [Browse Jobs] Received matchScoresUpdated event, refreshing scores...');
+      fetchMatchResults();
+    };
+    
+    window.addEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    return () => {
+      window.removeEventListener('matchScoresUpdated', handleMatchScoresUpdated as EventListener);
+    };
   }, [session?.user?.email, jobs.length]); // Fetch when session is available
 
   // Load applied and saved jobs status using authenticated session email
@@ -424,8 +485,19 @@ export default function CandidateJobListingContent() {
         const applicationsResponse = await fetch(`/api/applications?candidateEmail=${encodeURIComponent(userEmail)}`);
         if (applicationsResponse.ok) {
           const applications = await applicationsResponse.json();
-          const appliedJobIds = new Set<string>(applications.map((app: any) => `${app.job_title}-${app.company}`));
+          // Use consistent format: handle both snake_case (from API) and camelCase (from transformed data)
+          // Normalize the format to match how we check: `${job.title}-${job.company}`
+          const appliedJobIds = new Set<string>(
+            applications.map((app: any) => {
+              // API returns job_title (snake_case), but DisplayJob uses title (from job.job_title)
+              // So we need to use job_title to match the format
+              const jobTitle = (app.jobTitle || app.job_title || '').trim();
+              const company = (app.company || '').trim();
+              return `${jobTitle}-${company}`;
+            }).filter((key: string) => key !== '-') // Filter out empty keys
+          );
           setAppliedJobs(appliedJobIds);
+          console.log('📊 [JobListing] Loaded applied jobs from API:', Array.from(appliedJobIds));
         }
 
         // Fetch saved jobs
@@ -446,6 +518,21 @@ export default function CandidateJobListingContent() {
     };
     loadJobStatus();
   }, [session]);
+
+  // Listen for job applied event to refresh appliedJobs
+  useEffect(() => {
+    const handleJobApplied = (event: CustomEvent) => {
+      const { jobTitle, company } = event.detail;
+      const jobKey = `${jobTitle}-${company}`;
+      setAppliedJobs(prev => new Set([...prev, jobKey]));
+      console.log('📊 [JobListing] Job applied, updated appliedJobs:', jobKey);
+    };
+
+    window.addEventListener('jobApplied', handleJobApplied as EventListener);
+    return () => {
+      window.removeEventListener('jobApplied', handleJobApplied as EventListener);
+    };
+  }, []);
 
   // Listen for job status changes and refresh jobs
   useEffect(() => {
@@ -483,6 +570,22 @@ export default function CandidateJobListingContent() {
           const transformedJobs = jobsData.map((job: Job) => {
             const aiMatch = matchResultsMap.get(job.id.toString());
             return transformJob(job, aiMatch);
+          });
+          
+          // Sort by most recent first (by default) - using created_at or id
+          transformedJobs.sort((a, b) => {
+            const aDate = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+            const bDate = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+            
+            // If dates are equal or both are 0, use id as tiebreaker (higher id = newer)
+            if (aDate === bDate || (aDate === 0 && bDate === 0)) {
+              const aId = parseInt(a.id) || 0;
+              const bId = parseInt(b.id) || 0;
+              return bId - aId; // Higher ID = newer job
+            }
+            
+            // Most recent first (descending order)
+            return bDate - aDate;
           });
           
           setJobs(transformedJobs);
@@ -768,9 +871,17 @@ export default function CandidateJobListingContent() {
       } else if (sortBy === "company") {
         return a.company.localeCompare(b.company);
       }
-      // Default: recent (sort by postedDate, most recent first)
+      // Default: recent (sort by postedDate or id, most recent first)
+      // Use id as fallback for jobs without dates (higher id = newer)
       const aDate = a.postedDate ? new Date(a.postedDate).getTime() : 0;
       const bDate = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+      
+      // If dates are equal or both are 0, use id as tiebreaker (higher id = newer)
+      if (aDate === bDate || (aDate === 0 && bDate === 0)) {
+        const aId = parseInt(a.id) || 0;
+        const bId = parseInt(b.id) || 0;
+        return bId - aId; // Higher ID = newer job
+      }
       
       // Most recent first (descending order)
       return bDate - aDate;
@@ -890,7 +1001,19 @@ export default function CandidateJobListingContent() {
           </p>
         </div>
 
-        {/* Main Content */}
+        {/* Empty State - Full Width */}
+        {filteredJobs.length === 0 && !isLoading ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">No jobs found</h3>
+              <p className="text-sm text-gray-500">
+                Try adjusting your search or filters
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Main Content - Grid Layout */
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
           {/* Left Side - Job List */}
           <div className="lg:col-span-1 xl:col-span-2 space-y-4">
@@ -1001,34 +1124,6 @@ export default function CandidateJobListingContent() {
 
                     </motion.div>
                     ))}
-
-              {/* No Results */}
-              {filteredJobs.length === 0 && !isLoading && (
-                <div className="w-full flex items-center justify-center py-20 col-span-full">
-                  <Card className="max-w-md border border-gray-200">
-                    <CardContent className="p-8 text-center">
-                      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Briefcase className="w-12 h-12 text-gray-400" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-[#3a4043] mb-2">No Jobs Found</h3>
-                      <p className="text-[#6f7a80] text-sm mb-6">
-                        Try adjusting your search criteria or filters to find more opportunities.
-                      </p>
-                      <Button 
-                        className="bg-[#635bff] hover:bg-[#524aff] text-white"
-                        onClick={() => {
-                          setSearchTerm("");
-                          setFilterLocation("all");
-                          setFilterType("all");
-                          setSortBy("recent");
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1064,7 +1159,7 @@ export default function CandidateJobListingContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 ml-4">
-                    <Badge className={`${getMatchScoreColor(selectedJob?.matchScore || 0)} bg-opacity-10 text-lg px-4 py-2`}>
+                    <Badge className={`${getMatchScoreColor(selectedJob?.matchScore || 0)} bg-opacity-10 text-2xl px-4 py-2`}>
                       {selectedJob?.matchScore}% match
                     </Badge>
                     <button
@@ -1409,6 +1504,7 @@ export default function CandidateJobListingContent() {
             )}
           </div>
         </div>
+        )}
     </div>
   );
 }
